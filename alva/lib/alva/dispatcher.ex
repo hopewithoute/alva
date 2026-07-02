@@ -14,11 +14,21 @@ defmodule Alva.Dispatcher do
 
         case action.type do
           :read ->
-            data =
-              Ash.read!(resource, action: action_name)
-              |> Enum.map(&strip_metadata/1)
+            if event_def.lookup do
+              lookup_field = event_def.lookup
+              lookup_key = to_string(lookup_field)
+              lookup_value = Map.get(params, lookup_key)
 
-            %{ok: true, data: data}
+              case Ash.get(resource, [{lookup_field, lookup_value}], action: action_name) do
+                {:ok, record} -> handle_success(strip_metadata(record))
+                {:error, error} -> handle_error(error)
+              end
+            else
+              case Ash.read(resource, action: action_name) do
+                {:ok, records} -> handle_success(Enum.map(records, &strip_metadata/1))
+                {:error, error} -> handle_error(error)
+              end
+            end
 
           :create ->
             changeset = Ash.Changeset.for_create(resource, action_name, params)

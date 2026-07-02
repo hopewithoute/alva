@@ -43,6 +43,8 @@ defmodule Alva.DispatcherTest do
     live_vue do
       event "test.archive", action: :archive, lookup: :id
       event "test.say_hello", action: :say_hello
+      event "test.get", action: :read, lookup: :id
+      event "test.list", action: :read
     end
   end
 
@@ -91,5 +93,28 @@ defmodule Alva.DispatcherTest do
 
     assert result.ok == false
     assert result.error.type == "validation"
+  end
+
+  test "dispatch handles :read event with lookup as Get action", %{record: record} do
+    result = Alva.Dispatcher.dispatch("test.get", %{"id" => record.id}, domains: [TestDomain])
+
+    assert result.ok == true
+    assert is_map(result.data)
+    assert result.data.id == record.id
+  end
+
+  test "dispatch returns not_found for :read Get action with missing id" do
+    result = Alva.Dispatcher.dispatch("test.get", %{}, domains: [TestDomain])
+
+    assert result.ok == false
+    assert result.error.type == "not_found"
+  end
+
+  test "dispatch handles :read event without lookup as List action", %{record: record} do
+    result = Alva.Dispatcher.dispatch("test.list", %{}, domains: [TestDomain])
+
+    assert result.ok == true
+    assert is_list(result.data)
+    assert Enum.any?(result.data, fn r -> r.id == record.id end)
   end
 end
