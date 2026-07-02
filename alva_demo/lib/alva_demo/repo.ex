@@ -2,7 +2,7 @@ defmodule AlvaDemo.Repo do
   use AshPostgres.Repo,
     otp_app: :alva_demo,
     warn_on_missing_ash_functions?: false
-  
+
   def installed_extensions do
     ["uuid-ossp", "citext"]
   end

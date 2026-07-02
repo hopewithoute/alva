@@ -7,10 +7,13 @@
     <.live_title default="AlvaDemo" suffix=" · Phoenix Framework" phx-no-format>{assigns[:page_title]}</.live_title>
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
     <%= if Mix.env() == :dev do %>
-      <script type="module" src="http://localhost:5173/@vite/client"></script>
-      <script defer type="module" src="http://localhost:5173/js/app.js"></script>
+      <script type="module" src="http://localhost:5173/@vite/client">
+      </script>
+      <script defer type="module" src="http://localhost:5173/js/app.js">
+      </script>
     <% else %>
-      <script defer phx-track-static type="module" src={~p"/assets/app.js"}></script>
+      <script defer phx-track-static type="module" src={~p"/assets/app.js"}>
+      </script>
     <% end %>
     <script>
       (() => {

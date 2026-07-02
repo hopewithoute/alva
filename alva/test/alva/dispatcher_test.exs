@@ -22,21 +22,21 @@ defmodule Alva.DispatcherTest do
     end
 
     actions do
-      defaults [:update, :destroy]
+      defaults([:update, :destroy])
 
       read :get do
-        get? true
+        get?(true)
       end
 
       action :get_context, :map do
-        run fn _input, context ->
+        run(fn _input, context ->
           {:ok, %{actor: context.actor, tenant: context.tenant}}
-        end
+        end)
       end
 
       read :read do
-        primary? true
-        pagination offset?: true, required?: false
+        primary?(true)
+        pagination(offset?: true, required?: false)
       end
 
       create :create do
@@ -170,7 +170,8 @@ defmodule Alva.DispatcherTest do
   end
 
   test "dispatch handles :read event list by stripping meta from params" do
-    result = Alva.Dispatcher.dispatch("test.list", %{"meta" => %{"other" => 1}}, domains: [TestDomain])
+    result =
+      Alva.Dispatcher.dispatch("test.list", %{"meta" => %{"other" => 1}}, domains: [TestDomain])
 
     assert result.ok == true
     assert is_list(result.data)
@@ -182,7 +183,10 @@ defmodule Alva.DispatcherTest do
     Ash.create!(Ash.Changeset.for_create(TestResource, :create, %{name: "Page2"}))
     Ash.create!(Ash.Changeset.for_create(TestResource, :create, %{name: "Page3"}))
 
-    result = Alva.Dispatcher.dispatch("test.list", %{"page" => %{"limit" => 2, "offset" => 0, "hacked" => "yes"}}, domains: [TestDomain])
+    result =
+      Alva.Dispatcher.dispatch(
+        "test.list",
+        %{"page" => %{"limit" => 2, "offset" => 0, "hacked" => "yes"}}, domains: [TestDomain])
 
     assert result.ok == true
     assert is_list(result.data)
@@ -206,17 +210,22 @@ defmodule Alva.DispatcherTest do
 
     assert result.ok == true
     assert is_list(result.data)
-    
+
     names = Enum.map(result.data, & &1.name)
     assert names == ["Apple", "Test", "Zebra"]
-    
-    result_desc = Alva.Dispatcher.dispatch("test.list", %{"sort" => "-name"}, domains: [TestDomain])
+
+    result_desc =
+      Alva.Dispatcher.dispatch("test.list", %{"sort" => "-name"}, domains: [TestDomain])
+
     names_desc = Enum.map(result_desc.data, & &1.name)
     assert names_desc == ["Zebra", "Test", "Apple"]
   end
 
   test "dispatch handles :read event lookup by stripping meta from params", %{record: record} do
-    result = Alva.Dispatcher.dispatch("test.get", %{"id" => record.id, "meta" => %{"page" => 1}}, domains: [TestDomain])
+    result =
+      Alva.Dispatcher.dispatch("test.get", %{"id" => record.id, "meta" => %{"page" => 1}},
+        domains: [TestDomain]
+      )
 
     assert result.ok == true
     assert result.data.id == record.id

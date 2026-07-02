@@ -17,20 +17,27 @@ defmodule Alva.Result do
   """
   def apply(result, socket, opts \\ [])
 
-  def apply(%{ok: true, data: data} = result, %Phoenix.LiveView.Socket{} = socket, opts) when not is_nil(data) do
+  def apply(%{ok: true, data: data} = result, %Phoenix.LiveView.Socket{} = socket, opts)
+      when not is_nil(data) do
     strategy = Keyword.get(opts, :strategy, {:reply, :data})
 
-    case strategy do
-      {:stream_insert, key} ->
-        socket = Phoenix.LiveView.stream_insert(socket, key, data)
-        {:reply, result, socket}
-
-      _ ->
-        {:reply, result, socket}
-    end
+    socket = apply_strategy(strategy, socket, data)
+    {:reply, result, socket}
   end
 
   def apply(result, socket, _opts) do
     {:reply, result, socket}
+  end
+
+  defp apply_strategy({:stream_insert, key}, socket, data) do
+    Phoenix.LiveView.stream_insert(socket, key, data)
+  end
+
+  defp apply_strategy({:stream_delete, key}, socket, data) do
+    Phoenix.LiveView.stream_delete(socket, key, data)
+  end
+
+  defp apply_strategy(_, socket, _data) do
+    socket
   end
 end

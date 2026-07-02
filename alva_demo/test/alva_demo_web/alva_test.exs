@@ -35,10 +35,10 @@ defmodule AlvaDemoWeb.AlvaTest do
 
   test "dispatch/3 handles students.archive successfully" do
     student = AlvaDemo.Academics.Student.create!(%{name: "To Be Archived"})
-    
+
     params = %{"id" => student.id}
     assert {:reply, reply, _socket} = AlvaDemoWeb.Alva.dispatch("students.archive", params, %{})
-    
+
     assert reply.ok == true
     assert reply.data.status == :archived
     assert reply.data.id == student.id

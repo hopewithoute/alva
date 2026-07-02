@@ -10,9 +10,9 @@ defmodule AlvaDemo.Academics.Student do
   end
 
   live_vue do
-    event "students.list", action: :read
-    event "students.create", action: :create
-    event "students.archive", action: :archive, lookup: :id
+    event("students.list", action: :read)
+    event("students.create", action: :create)
+    event("students.archive", action: :archive, lookup: :id)
   end
 
   actions do
@@ -40,9 +40,9 @@ defmodule AlvaDemo.Academics.Student do
     uuid_primary_key :id
 
     attribute :name, :string, allow_nil?: false, public?: true
-    
+
     attribute :status, :atom do
-      constraints [one_of: [:active, :archived]]
+      constraints one_of: [:active, :archived]
       default :active
       public? true
     end

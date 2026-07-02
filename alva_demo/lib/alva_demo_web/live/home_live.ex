@@ -2,6 +2,11 @@ defmodule AlvaDemoWeb.HomeLive do
   use AlvaDemoWeb, :live_view
 
   @impl true
+  def mount(_params, _session, socket) do
+    {:ok, stream(socket, :students, [])}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div class="min-h-screen bg-gray-50 p-10">

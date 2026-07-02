@@ -1,6 +1,6 @@
 # 20 - Result Strategy: Stream Delete for Archive
 
-Status: ready-for-agent
+Status: completed
 
 ## Parent
 
