@@ -9,42 +9,49 @@ defmodule Alva.DispatcherTest do
       extensions: [Alva.Resource]
 
     ets do
-      private? true
+      private?(true)
     end
 
     resource do
-      require_primary_key? false
+      require_primary_key?(false)
     end
 
     attributes do
-      uuid_primary_key :id
-      attribute :name, :string, public?: true
+      uuid_primary_key(:id)
+      attribute(:name, :string, public?: true)
     end
 
     actions do
-      defaults [:read]
+      defaults([:read])
 
       create :create do
-        accept [:name]
+        accept([:name])
       end
 
       destroy :archive do
-        accept []
+        accept([])
       end
 
       action :say_hello, :string do
-        argument :name, :string, allow_nil?: false
-        run fn input, _context ->
+        argument(:name, :string, allow_nil?: false)
+
+        run(fn input, _context ->
           {:ok, "Hello #{input.arguments.name}"}
-        end
+        end)
+      end
+
+      read :search do
+        argument(:query, :string, allow_nil?: false)
+        filter(expr(name == ^arg(:query)))
       end
     end
 
     live_vue do
-      event "test.archive", action: :archive, lookup: :id
-      event "test.say_hello", action: :say_hello
-      event "test.get", action: :read, lookup: :id
-      event "test.list", action: :read
+      event("test.archive", action: :archive, lookup: :id)
+      event("test.say_hello", action: :say_hello)
+      event("test.get", action: :read, lookup: :id)
+      event("test.list", action: :read)
+      event("test.search", action: :search)
     end
   end
 
@@ -52,7 +59,7 @@ defmodule Alva.DispatcherTest do
     use Ash.Domain, validate_config_inclusion?: false, extensions: [Alva.Domain]
 
     resources do
-      resource Alva.DispatcherTest.TestResource
+      resource(Alva.DispatcherTest.TestResource)
     end
   end
 
@@ -67,7 +74,7 @@ defmodule Alva.DispatcherTest do
 
     assert result.ok == true
     assert result.data.id == record.id
-    
+
     # Assert record is deleted
     assert_raise Ash.Error.Invalid, fn ->
       Ash.get!(TestResource, record.id)
@@ -82,7 +89,8 @@ defmodule Alva.DispatcherTest do
   end
 
   test "dispatch handles :action event" do
-    result = Alva.Dispatcher.dispatch("test.say_hello", %{"name" => "World"}, domains: [TestDomain])
+    result =
+      Alva.Dispatcher.dispatch("test.say_hello", %{"name" => "World"}, domains: [TestDomain])
 
     assert result.ok == true
     assert result.data == "Hello World"
@@ -116,5 +124,31 @@ defmodule Alva.DispatcherTest do
     assert result.ok == true
     assert is_list(result.data)
     assert Enum.any?(result.data, fn r -> r.id == record.id end)
+  end
+
+  test "dispatch handles :read event with arguments for filtering" do
+    # create another record so we can filter
+    Ash.create!(Ash.Changeset.for_create(TestResource, :create, %{name: "Other"}))
+
+    result = Alva.Dispatcher.dispatch("test.search", %{"query" => "Other"}, domains: [TestDomain])
+
+    assert result.ok == true
+    assert is_list(result.data)
+    assert length(result.data) == 1
+    assert hd(result.data).name == "Other"
+  end
+
+  test "dispatch handles :read event list by stripping meta from params" do
+    result = Alva.Dispatcher.dispatch("test.list", %{"meta" => %{"page" => 1}}, domains: [TestDomain])
+
+    assert result.ok == true
+    assert is_list(result.data)
+  end
+
+  test "dispatch handles :read event lookup by stripping meta from params", %{record: record} do
+    result = Alva.Dispatcher.dispatch("test.get", %{"id" => record.id, "meta" => %{"page" => 1}}, domains: [TestDomain])
+
+    assert result.ok == true
+    assert result.data.id == record.id
   end
 end

@@ -10,6 +10,13 @@ defmodule Alva.Error do
     }
   end
 
+  def format(%Ash.Error.Query.NotFound{}) do
+    %{
+      type: "not_found",
+      message: "Resource not found"
+    }
+  end
+
   def format(%Ash.Error.Invalid{} = error) do
     fields =
       error.errors

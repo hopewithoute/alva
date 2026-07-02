@@ -1,6 +1,6 @@
 # 12 - Dispatcher O(1) Optimization
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `docs/prd.md` (Phase 2)

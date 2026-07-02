@@ -1,6 +1,6 @@
 # 10 - DSL Verifier for Action Existence & Public Status
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `docs/prd.md` (Phase 2 & Key Invariant 8.1)

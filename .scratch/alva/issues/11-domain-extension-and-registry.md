@@ -1,6 +1,6 @@
 # 11 - Domain Extension & O(1) Static Registry
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `docs/prd.md` (Phase 2)

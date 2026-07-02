@@ -11,6 +11,7 @@ defmodule Alva.Dispatcher do
       {:ok, resource, event_def} ->
         action_name = event_def.action
         action = Ash.Resource.Info.action(resource, action_name)
+        params = Map.drop(params, ["meta", :meta])
 
         case action.type do
           :read ->
@@ -18,13 +19,33 @@ defmodule Alva.Dispatcher do
               lookup_field = event_def.lookup
               lookup_key = to_string(lookup_field)
               lookup_value = Map.get(params, lookup_key)
+              action_params = Map.delete(params, lookup_key)
 
-              case Ash.get(resource, [{lookup_field, lookup_value}], action: action_name) do
-                {:ok, record} -> handle_success(strip_metadata(record))
-                {:error, error} -> handle_error(error)
+              if is_nil(lookup_value) do
+                handle_error(not_found_error(resource, lookup_field, lookup_value))
+              else
+                require Ash.Query
+                require Ash.Expr
+
+                query =
+                  Ash.Query.for_read(resource, action_name, action_params)
+                  |> Ash.Query.filter(^Ash.Expr.ref(lookup_field) == ^lookup_value)
+
+                case Ash.read_one(query) do
+                  {:ok, record} when not is_nil(record) ->
+                    handle_success(strip_metadata(record))
+
+                  {:ok, nil} ->
+                    handle_error(not_found_error(resource, lookup_field, lookup_value))
+
+                  {:error, error} ->
+                    handle_error(error)
+                end
               end
             else
-              case Ash.read(resource, action: action_name) do
+              query = Ash.Query.for_read(resource, action_name, params)
+
+              case Ash.read(query) do
                 {:ok, records} -> handle_success(Enum.map(records, &strip_metadata/1))
                 {:error, error} -> handle_error(error)
               end
@@ -62,9 +83,14 @@ defmodule Alva.Dispatcher do
 
             with {:ok, record} <- Ash.get(resource, [{lookup_field, lookup_value}]) do
               case Ash.destroy(record, action: action_name) do
-                result when result in [:ok, {:ok, record}] -> handle_success(strip_metadata(record))
-                {:ok, _} -> handle_success(strip_metadata(record))
-                {:error, error} -> handle_error(error)
+                result when result in [:ok, {:ok, record}] ->
+                  handle_success(strip_metadata(record))
+
+                {:ok, _} ->
+                  handle_success(strip_metadata(record))
+
+                {:error, error} ->
+                  handle_error(error)
               end
             else
               {:error, error} -> handle_error(error)
@@ -110,6 +136,13 @@ defmodule Alva.Dispatcher do
     record
     |> Map.from_struct()
     |> Map.drop([:__meta__])
+  end
+
+  defp not_found_error(resource, lookup_field, lookup_value) do
+    Ash.Error.Query.NotFound.exception(
+      resource: resource,
+      primary_key: %{lookup_field => lookup_value}
+    )
   end
 
   defp handle_success(data) do
