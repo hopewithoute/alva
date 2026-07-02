@@ -21,7 +21,8 @@ defmodule Alva.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ash, "~> 3.0"}
+      {:ash, "~> 3.0"},
+      {:phoenix_live_view, "~> 1.0"}
     ]
   end
 end
