@@ -66,17 +66,12 @@ defmodule Alva.Dispatcher do
 
   defp find_event(domains, event_name) do
     Enum.find_value(domains, :error, fn domain ->
-      resources = Ash.Domain.Info.resources(domain)
+      map = Alva.Domain.Info.alva_event_map(domain)
 
-      Enum.find_value(resources, nil, fn resource ->
-        events = Alva.Resource.Info.events(resource)
-
-        event = Enum.find(events, &(&1.name == event_name))
-
-        if event do
-          {:ok, resource, event}
-        end
-      end)
+      case Map.fetch(map, event_name) do
+        {:ok, {resource, event}} -> {:ok, resource, event}
+        :error -> nil
+      end
     end)
   end
 
