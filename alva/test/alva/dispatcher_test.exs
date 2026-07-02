@@ -22,7 +22,10 @@ defmodule Alva.DispatcherTest do
     end
 
     actions do
-      defaults([:read])
+      read :read do
+        primary? true
+        pagination offset?: true, required?: false
+      end
 
       create :create do
         accept([:name])
@@ -139,8 +142,30 @@ defmodule Alva.DispatcherTest do
   end
 
   test "dispatch handles :read event list by stripping meta from params" do
-    result = Alva.Dispatcher.dispatch("test.list", %{"meta" => %{"page" => 1}}, domains: [TestDomain])
+    result = Alva.Dispatcher.dispatch("test.list", %{"meta" => %{"other" => 1}}, domains: [TestDomain])
 
+    assert result.ok == true
+    assert is_list(result.data)
+  end
+
+  test "dispatch handles :read event list with pagination" do
+    # create multiple records
+    Ash.create!(Ash.Changeset.for_create(TestResource, :create, %{name: "Page1"}))
+    Ash.create!(Ash.Changeset.for_create(TestResource, :create, %{name: "Page2"}))
+    Ash.create!(Ash.Changeset.for_create(TestResource, :create, %{name: "Page3"}))
+
+    result = Alva.Dispatcher.dispatch("test.list", %{"page" => %{"limit" => 2, "offset" => 0, "hacked" => "yes"}}, domains: [TestDomain])
+
+    assert result.ok == true
+    assert is_list(result.data)
+    assert length(result.data) == 2
+    assert result.meta.pagination.limit == 2
+    assert result.meta.pagination.offset == 0
+    assert result.meta.pagination.has_more == true
+  end
+
+  test "dispatch handles :read event list with non-map pagination" do
+    result = Alva.Dispatcher.dispatch("test.list", %{"page" => "invalid"}, domains: [TestDomain])
     assert result.ok == true
     assert is_list(result.data)
   end

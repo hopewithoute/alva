@@ -43,11 +43,36 @@ defmodule Alva.Dispatcher do
                 end
               end
             else
-              query = Ash.Query.for_read(resource, action_name, params)
+              page_opts = Map.get(params, "page", Map.get(params, :page))
+              action_params = Map.drop(params, ["page", :page])
 
-              case Ash.read(query) do
-                {:ok, records} -> handle_success(Enum.map(records, &strip_metadata/1))
-                {:error, error} -> handle_error(error)
+              read_opts =
+                if is_map(page_opts) do
+                  valid_keys = ~w(limit offset after before count filter)
+
+                  page_opts =
+                    page_opts
+                    |> Enum.filter(fn {k, _v} -> to_string(k) in valid_keys end)
+                    |> Enum.map(fn {k, v} -> {String.to_existing_atom(to_string(k)), v} end)
+                    |> Keyword.new()
+
+                  [page: page_opts]
+                else
+                  []
+                end
+
+              query = Ash.Query.for_read(resource, action_name, action_params)
+
+              case Ash.read(query, read_opts) do
+                {:ok, %{results: records} = page}
+                when is_struct(page, Ash.Page.Offset) or is_struct(page, Ash.Page.Keyset) ->
+                  handle_success(Enum.map(records, &strip_metadata/1), page)
+
+                {:ok, records} ->
+                  handle_success(Enum.map(records, &strip_metadata/1))
+
+                {:error, error} ->
+                  handle_error(error)
               end
             end
 
@@ -147,6 +172,20 @@ defmodule Alva.Dispatcher do
 
   defp handle_success(data) do
     %{ok: true, data: data}
+  end
+
+  defp handle_success(data, page) do
+    meta_pagination =
+      %{
+        has_more: Map.get(page, :more?),
+        limit: Map.get(page, :limit),
+        offset: Map.get(page, :offset),
+        count: Map.get(page, :count)
+      }
+      |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+      |> Enum.into(%{})
+
+    %{ok: true, data: data, meta: %{pagination: meta_pagination}}
   end
 
   defp handle_error(error) do
