@@ -72,10 +72,24 @@ defmodule Alva.DispatcherTest do
     end
   end
 
+  test "dispatch returns error for :destroy event with nil id" do
+    result = Alva.Dispatcher.dispatch("test.archive", %{}, domains: [TestDomain])
+
+    assert result.ok == false
+    assert result.error.type == "not_found"
+  end
+
   test "dispatch handles :action event" do
     result = Alva.Dispatcher.dispatch("test.say_hello", %{"name" => "World"}, domains: [TestDomain])
 
     assert result.ok == true
     assert result.data == "Hello World"
+  end
+
+  test "dispatch returns error for :action event with invalid args" do
+    result = Alva.Dispatcher.dispatch("test.say_hello", %{}, domains: [TestDomain])
+
+    assert result.ok == false
+    assert result.error.type == "validation"
   end
 end

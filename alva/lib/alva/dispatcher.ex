@@ -25,10 +25,10 @@ defmodule Alva.Dispatcher do
 
             case Ash.create(changeset) do
               {:ok, record} ->
-                %{ok: true, data: strip_metadata(record)}
+                handle_success(strip_metadata(record))
 
               {:error, error} ->
-                %{ok: false, error: Alva.Error.format(error)}
+                handle_error(error)
             end
 
           :update ->
@@ -37,17 +37,12 @@ defmodule Alva.Dispatcher do
             lookup_value = Map.get(params, lookup_key)
             update_params = Map.delete(params, lookup_key)
 
-            if is_nil(lookup_value) do
-              %{ok: false, error: %{type: "not_found", message: "Resource not found"}}
+            with {:ok, record} <- Ash.get(resource, [{lookup_field, lookup_value}]),
+                 changeset <- Ash.Changeset.for_update(record, action_name, update_params),
+                 {:ok, updated_record} <- Ash.update(changeset) do
+              handle_success(strip_metadata(updated_record))
             else
-              with {:ok, record} <- Ash.get(resource, [{lookup_field, lookup_value}]),
-                   changeset <- Ash.Changeset.for_update(record, action_name, update_params),
-                   {:ok, updated_record} <- Ash.update(changeset) do
-                %{ok: true, data: strip_metadata(updated_record)}
-              else
-                {:error, error} ->
-                  %{ok: false, error: Alva.Error.format(error)}
-              end
+              {:error, error} -> handle_error(error)
             end
 
           :destroy ->
@@ -55,19 +50,14 @@ defmodule Alva.Dispatcher do
             lookup_key = to_string(lookup_field)
             lookup_value = Map.get(params, lookup_key)
 
-            if is_nil(lookup_value) do
-              %{ok: false, error: %{type: "not_found", message: "Resource not found"}}
-            else
-              with {:ok, record} <- Ash.get(resource, [{lookup_field, lookup_value}]) do
-                case Ash.destroy(record, action: action_name) do
-                  :ok -> %{ok: true, data: strip_metadata(record)}
-                  {:ok, _} -> %{ok: true, data: strip_metadata(record)}
-                  {:error, error} -> %{ok: false, error: Alva.Error.format(error)}
-                end
-              else
-                {:error, error} ->
-                  %{ok: false, error: Alva.Error.format(error)}
+            with {:ok, record} <- Ash.get(resource, [{lookup_field, lookup_value}]) do
+              case Ash.destroy(record, action: action_name) do
+                result when result in [:ok, {:ok, record}] -> handle_success(strip_metadata(record))
+                {:ok, _} -> handle_success(strip_metadata(record))
+                {:error, error} -> handle_error(error)
               end
+            else
+              {:error, error} -> handle_error(error)
             end
 
           :action ->
@@ -75,10 +65,10 @@ defmodule Alva.Dispatcher do
 
             case Ash.run_action(input) do
               {:ok, result} ->
-                %{ok: true, data: result}
+                handle_success(result)
 
               {:error, error} ->
-                %{ok: false, error: Alva.Error.format(error)}
+                handle_error(error)
             end
 
           _ ->
@@ -110,5 +100,13 @@ defmodule Alva.Dispatcher do
     record
     |> Map.from_struct()
     |> Map.drop([:__meta__])
+  end
+
+  defp handle_success(data) do
+    %{ok: true, data: data}
+  end
+
+  defp handle_error(error) do
+    %{ok: false, error: Alva.Error.format(error)}
   end
 end
