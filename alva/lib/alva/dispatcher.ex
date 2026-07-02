@@ -20,7 +20,8 @@ defmodule Alva.Dispatcher do
             %{ok: true, data: data}
 
           :create ->
-            case Ash.create(resource, params, action: action_name) do
+            changeset = Ash.Changeset.for_create(resource, action_name, params)
+            case Ash.create(changeset) do
               {:ok, record} ->
                 %{ok: true, data: strip_metadata(record)}
 
