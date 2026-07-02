@@ -17,3 +17,10 @@ Status: done
 
 **Dependencies:** None
 **Estimated scope:** Small
+
+## Comments
+
+**Deviation Record (2026-07-03):**
+The original PRD specification required building a custom `on_compile` hook within `Alva.Resource` to extract the `public?: true` list of fields. However, during implementation, it was decided to omit this custom hook. 
+
+*Rationale*: Ash Framework's internal compiler already performs this exact extraction at compile-time and natively exposes it via `Ash.Resource.Info` (e.g., `public_attributes/1`, `public_relationships/1`). Therefore, creating an identical `on_compile` macro in `Alva` would violate the DRY principle (Speculative Generality). By querying `Ash.Resource.Info` directly inside `Alva.Dispatcher.strip_metadata/1`, we still achieve O(1) performance (since the functions return hardcoded lists generated during compilation) while significantly reducing unnecessary boilerplate. Additionally, `public_aggregates/1` was added to ensure complete serialization.
