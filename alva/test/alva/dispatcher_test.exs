@@ -170,6 +170,23 @@ defmodule Alva.DispatcherTest do
     assert is_list(result.data)
   end
 
+  test "dispatch handles :read event list with sort" do
+    Ash.create!(Ash.Changeset.for_create(TestResource, :create, %{name: "Zebra"}))
+    Ash.create!(Ash.Changeset.for_create(TestResource, :create, %{name: "Apple"}))
+
+    result = Alva.Dispatcher.dispatch("test.list", %{"sort" => "name"}, domains: [TestDomain])
+
+    assert result.ok == true
+    assert is_list(result.data)
+    
+    names = Enum.map(result.data, & &1.name)
+    assert names == ["Apple", "Test", "Zebra"]
+    
+    result_desc = Alva.Dispatcher.dispatch("test.list", %{"sort" => "-name"}, domains: [TestDomain])
+    names_desc = Enum.map(result_desc.data, & &1.name)
+    assert names_desc == ["Zebra", "Test", "Apple"]
+  end
+
   test "dispatch handles :read event lookup by stripping meta from params", %{record: record} do
     result = Alva.Dispatcher.dispatch("test.get", %{"id" => record.id, "meta" => %{"page" => 1}}, domains: [TestDomain])
 

@@ -43,8 +43,9 @@ defmodule Alva.Dispatcher do
                 end
               end
             else
-              page_opts = Map.get(params, "page", Map.get(params, :page))
-              action_params = Map.drop(params, ["page", :page])
+              page_opts = get_indifferent(params, "page", :page)
+              sort_opts = get_indifferent(params, "sort", :sort)
+              action_params = Map.drop(params, ["page", :page, "sort", :sort])
 
               read_opts =
                 if is_map(page_opts) do
@@ -62,6 +63,16 @@ defmodule Alva.Dispatcher do
                 end
 
               query = Ash.Query.for_read(resource, action_name, action_params)
+
+              query =
+                if sort_opts do
+                  case Ash.Sort.parse_input(resource, sort_opts) do
+                    {:ok, valid_sort} -> Ash.Query.sort(query, valid_sort)
+                    _ -> query
+                  end
+                else
+                  query
+                end
 
               case Ash.read(query, read_opts) do
                 {:ok, %{results: records} = page}
@@ -144,6 +155,10 @@ defmodule Alva.Dispatcher do
         Logger.warning("Alva Dispatcher: Unknown event #{event_name}")
         %{ok: false, error: %{type: "unknown", message: "Unknown event: #{event_name}"}}
     end
+  end
+
+  defp get_indifferent(map, string_key, atom_key) do
+    Map.get(map, string_key, Map.get(map, atom_key))
   end
 
   defp find_event(domains, event_name) do
