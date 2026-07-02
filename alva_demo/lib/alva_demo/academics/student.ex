@@ -19,6 +19,7 @@ defmodule AlvaDemo.Academics.Student do
   code_interface do
     domain AlvaDemo.Academics
     define :read
+    define :create
   end
 
   attributes do

@@ -13,6 +13,24 @@ defmodule AlvaDemoWeb.AlvaTest do
     assert hd(reply.data).name == "Budi"
   end
 
+  test "dispatch/3 handles students.create event (happy path)" do
+    params = %{"name" => "Siti"}
+    {:reply, reply, _socket} = AlvaDemoWeb.Alva.dispatch("students.create", params, %{})
+
+    assert reply.ok == true
+    assert reply.data.name == "Siti"
+    assert reply.data.status == :active
+    assert reply.data.id != nil
+  end
+
+  test "dispatch/3 handles students.create validation error" do
+    params = %{}
+    {:reply, reply, _socket} = AlvaDemoWeb.Alva.dispatch("students.create", params, %{})
+
+    assert reply.ok == false
+    assert reply.error.message =~ "is required"
+  end
+
   test "dispatch/3 handles unknown events" do
     {:reply, reply, _socket} = AlvaDemoWeb.Alva.dispatch("unknown", %{}, %{})
     assert reply.ok == false
