@@ -1,6 +1,6 @@
 # 08 - Slice 3: Generic Dispatcher for Create & Error Normalization
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `docs/prd.md` (Phase 1 & Phase 5)
