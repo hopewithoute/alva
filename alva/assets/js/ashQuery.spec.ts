@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { useAlvaQuery } from './useAlvaQuery'
-import { nextTick } from 'vue'
+import { ashQuery } from './ashQuery'
 
 // Mock vue's onMounted so we can trigger it manually for testing
 vi.mock('vue', async () => {
@@ -11,7 +10,7 @@ vi.mock('vue', async () => {
   }
 })
 
-describe('useAlvaQuery', () => {
+describe('ashQuery', () => {
   const mockApi = () => {
     const handlers: Record<string, Function> = {}
     return {
@@ -30,9 +29,8 @@ describe('useAlvaQuery', () => {
     const api = mockApi()
     api.call.mockResolvedValue({ ok: true, data: [] })
     
-    const { data, loading, error } = useAlvaQuery(api as any, 'students.list')
+    const { data, loading, error } = ashQuery(api as any, 'students.list')
     
-    // onMounted mock runs immediately, but fetch is async
     expect(loading.value).toBe(true)
     expect(data.value).toEqual([])
     expect(error.value).toBe(null)
@@ -45,7 +43,7 @@ describe('useAlvaQuery', () => {
 
   it('should initialize with provided data and not auto fetch', () => {
     const api = mockApi()
-    const { data, loading } = useAlvaQuery(api as any, 'students.list', undefined, { 
+    const { data, loading } = ashQuery(api as any, 'students.list', undefined, { 
       initialData: [{ id: 1, name: 'Test' }] 
     })
     
@@ -58,9 +56,8 @@ describe('useAlvaQuery', () => {
     const api = mockApi()
     api.call.mockResolvedValue({ ok: true, data: [{ id: 2, name: 'Fetched' }], meta: { page: 1 } })
     
-    const { data, meta, error, loading } = useAlvaQuery(api as any, 'students.list')
+    const { data, meta, error, loading } = ashQuery(api as any, 'students.list')
     
-    // Wait for async fetch
     await new Promise(resolve => setTimeout(resolve, 0))
     
     expect(loading.value).toBe(false)
@@ -74,7 +71,7 @@ describe('useAlvaQuery', () => {
     const mockError = { type: 'validation', message: 'Failed' }
     api.call.mockResolvedValue({ ok: false, error: mockError })
     
-    const { error, loading } = useAlvaQuery(api as any, 'students.list')
+    const { error, loading } = ashQuery(api as any, 'students.list')
     
     await new Promise(resolve => setTimeout(resolve, 0))
     
@@ -84,7 +81,7 @@ describe('useAlvaQuery', () => {
 
   it('should handle stream insertions and updates', () => {
     const api = mockApi()
-    const { data } = useAlvaQuery(api as any, 'students.list', undefined, {
+    const { data } = ashQuery(api as any, 'students.list', undefined, {
       initialData: [{ id: 1, name: 'A' }],
       streamInsertEvent: 'student_created'
     })
@@ -102,7 +99,7 @@ describe('useAlvaQuery', () => {
 
   it('should handle stream deletions', () => {
     const api = mockApi()
-    const { data } = useAlvaQuery(api as any, 'students.list', undefined, {
+    const { data } = ashQuery(api as any, 'students.list', undefined, {
       initialData: [{ id: 1, name: 'A' }, { id: 2, name: 'B' }],
       streamDeleteEvent: 'student_deleted'
     })
@@ -116,5 +113,21 @@ describe('useAlvaQuery', () => {
     // Delete by raw id (if server sends just the id)
     api.trigger('student_deleted', 2)
     expect(data.value).toEqual([])
+  })
+  
+  it('should handle custom primaryKey', () => {
+    const api = mockApi()
+    const { data } = ashQuery(api as any, 'students.list', undefined, {
+      initialData: [{ uuid: 'a', name: 'A' }],
+      streamInsertEvent: 'student_created',
+      streamDeleteEvent: 'student_deleted',
+      primaryKey: 'uuid'
+    })
+    
+    api.trigger('student_created', { uuid: 'b', name: 'B' })
+    expect(data.value).toEqual([{ uuid: 'a', name: 'A' }, { uuid: 'b', name: 'B' }])
+    
+    api.trigger('student_deleted', { uuid: 'a' })
+    expect(data.value).toEqual([{ uuid: 'b', name: 'B' }])
   })
 })

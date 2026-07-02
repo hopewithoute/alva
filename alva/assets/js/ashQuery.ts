@@ -6,13 +6,13 @@ export interface AshQueryOptions<T, PubSubEvents> {
   autoFetch?: boolean
   streamInsertEvent?: keyof PubSubEvents
   streamDeleteEvent?: keyof PubSubEvents
+  primaryKey?: string
 }
 
-export function useAlvaQuery<
+export function ashQuery<
   Events extends Record<string, { input: any; output: any }>,
   PubSubEvents extends Record<string, any>,
   E extends keyof Events,
-  // Extract the single item type from the array response
   T = Events[E]['output'] extends { data: infer D } ? (D extends any[] ? D[number] : D) : any
 >(
   api: { 
@@ -27,6 +27,7 @@ export function useAlvaQuery<
   const loading = ref(!options.initialData && options.autoFetch !== false)
   const error = ref<LiveError | null>(null)
   const meta = ref<Record<string, unknown> | null>(null)
+  const primaryKey = options.primaryKey || 'id'
 
   const fetch = async () => {
     loading.value = true
@@ -34,7 +35,10 @@ export function useAlvaQuery<
     const result = await api.call(event, params)
     
     if (result.ok) {
-      data.value = (Array.isArray(result.data) ? result.data : [result.data]) as unknown as T[]
+      if (!Array.isArray(result.data)) {
+        console.warn(`[ashQuery] Expected array response for ${String(event)}, but got ${typeof result.data}.`)
+      }
+      data.value = result.data as unknown as T[]
       meta.value = result.meta || null
     } else {
       error.value = result.error
@@ -48,36 +52,34 @@ export function useAlvaQuery<
     })
   }
 
+  const updateArray = (item: any, isDelete = false) => {
+    const pkValue = typeof item === 'object' && item !== null ? item[primaryKey] : item
+    if (pkValue === undefined || pkValue === null) return
+
+    const index = data.value.findIndex((existing: any) => existing[primaryKey] === pkValue)
+    
+    if (index >= 0) {
+      const newData = [...data.value]
+      if (isDelete) {
+        newData.splice(index, 1)
+      } else {
+        newData.splice(index, 1, item as T)
+      }
+      data.value = newData as any
+    } else if (!isDelete) {
+      data.value = [...data.value, item as T] as any
+    }
+  }
+
   if (options.streamInsertEvent) {
     api.on(options.streamInsertEvent, (payload: any) => {
-      const item = payload as T
-      const id = (item as any).id
-      if (id === undefined) return
-
-      const index = data.value.findIndex((existing: any) => existing.id === id)
-      
-      if (index >= 0) {
-        // Create a new array to ensure reactivity triggers properly
-        const newData = [...data.value]
-        newData.splice(index, 1, item)
-        data.value = newData as any
-      } else {
-        data.value = [...data.value, item] as any
-      }
+      updateArray(payload, false)
     })
   }
 
   if (options.streamDeleteEvent) {
     api.on(options.streamDeleteEvent, (payload: any) => {
-      const id = payload.id ?? payload
-      if (id === undefined) return
-
-      const index = data.value.findIndex((existing: any) => existing.id === id)
-      if (index >= 0) {
-        const newData = [...data.value]
-        newData.splice(index, 1)
-        data.value = newData as any
-      }
+      updateArray(payload, true)
     })
   }
 

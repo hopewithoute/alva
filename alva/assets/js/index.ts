@@ -1,2 +1,2 @@
 export * from './useAlvaApi'
-export * from './useAlvaQuery'
+export * from './ashQuery'

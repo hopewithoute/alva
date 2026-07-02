@@ -106,7 +106,8 @@ defmodule Alva.Dispatcher do
             update_params = Map.delete(params, lookup_key)
 
             with {:ok, record} <- fetch_record(resource, event_def, params, ash_opts),
-                 changeset <- Ash.Changeset.for_update(record, action_name, update_params, ash_opts),
+                 changeset <-
+                   Ash.Changeset.for_update(record, action_name, update_params, ash_opts),
                  {:ok, updated_record} <- Ash.update(changeset, ash_opts) do
               handle_success(strip_metadata(updated_record))
             else
