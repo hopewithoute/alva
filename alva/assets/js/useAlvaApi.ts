@@ -22,17 +22,28 @@ export type LiveResult<T = any> =
 
 export interface AlvaApiConfig {
   onError?: (error: LiveError, event: string) => void
-  onSuccess?: (data: any, event: string) => void
+  onSuccess?: (data: unknown, event: string) => void
+}
+
+export interface AshCallOptions {
+  optimisticUpdate?: boolean
+  // Future options for optimistic UI, caching, etc. can be added here
 }
 
 export function useAlvaApi<Events extends Record<string, { input: any; output: LiveResult<any> }> = any>(config?: AlvaApiConfig) {
   const live = useLiveVue()
 
-  const call = <E extends keyof Events>(
+  const ashCall = <E extends keyof Events>(
     event: E,
-    payload: Events[E]['input']
+    payload: Events[E]['input'],
+    options?: AshCallOptions
   ): Promise<Events[E]['output']> => {
     return new Promise((resolve) => {
+      // Opt-in pathway for optimistic UI
+      if (options?.optimisticUpdate) {
+        // Implementation for optimistic UI would intercept here
+      }
+
       live.pushEvent(event as string, payload, (reply: any) => {
         if (reply.ok) {
           config?.onSuccess?.(reply.data, event as string)
@@ -46,6 +57,6 @@ export function useAlvaApi<Events extends Record<string, { input: any; output: L
   }
 
   return {
-    call
+    ashCall
   }
 }

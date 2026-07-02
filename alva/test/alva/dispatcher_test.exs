@@ -19,11 +19,11 @@ defmodule Alva.DispatcherTest do
     attributes do
       uuid_primary_key(:id)
       attribute(:name, :string, public?: true)
+      attribute(:actor_name, :string, public?: true)
+      attribute(:tenant_id, :string, public?: true)
     end
 
     actions do
-      defaults([:update, :destroy])
-
       read :get do
         get?(true)
       end
@@ -40,11 +40,36 @@ defmodule Alva.DispatcherTest do
       end
 
       create :create do
-        accept([:name])
+        accept([:name, :tenant_id])
+        change fn changeset, context ->
+          actor_name = if context.actor, do: context.actor.name, else: nil
+          changeset
+          |> Ash.Changeset.change_attribute(:actor_name, actor_name)
+          |> Ash.Changeset.change_attribute(:tenant_id, context.tenant || Ash.Changeset.get_attribute(changeset, :tenant_id))
+        end
       end
 
+
       destroy :archive do
+        require_atomic?(false)
         accept([])
+        change fn changeset, context ->
+          actor_name = if context.actor, do: context.actor.name, else: nil
+          changeset
+          |> Ash.Changeset.change_attribute(:actor_name, actor_name)
+          |> Ash.Changeset.change_attribute(:tenant_id, context.tenant)
+        end
+      end
+
+      update :update do
+        require_atomic?(false)
+        accept([:name])
+        change fn changeset, context ->
+          actor_name = if context.actor, do: context.actor.name, else: nil
+          changeset
+          |> Ash.Changeset.change_attribute(:actor_name, actor_name)
+          |> Ash.Changeset.change_attribute(:tenant_id, context.tenant)
+        end
       end
 
       action :say_hello, :string do
@@ -59,6 +84,18 @@ defmodule Alva.DispatcherTest do
         argument(:query, :string, allow_nil?: false)
         filter(expr(name == ^arg(:query)))
       end
+
+      read :read_with_tenant do
+        prepare fn query, context ->
+          if context.tenant do
+            require Ash.Query
+            require Ash.Expr
+            Ash.Query.filter(query, Ash.Expr.expr(tenant_id == ^context.tenant))
+          else
+            query
+          end
+        end
+      end
     end
 
     live_vue do
@@ -68,6 +105,10 @@ defmodule Alva.DispatcherTest do
       event("test.get", action: :read, lookup: :id)
       event("test.list", action: :read)
       event("test.search", action: :search)
+      event("test.create", action: :create)
+      event("test.update", action: :update, lookup: :id)
+      event("test.read_tenant", action: :read_with_tenant)
+      event("test.get_tenant", action: :read_with_tenant, lookup: :id)
     end
   end
 
@@ -229,5 +270,92 @@ defmodule Alva.DispatcherTest do
 
     assert result.ok == true
     assert result.data.id == record.id
+  end
+
+  test "dispatch passes actor and tenant for :create event" do
+    result =
+      Alva.Dispatcher.dispatch(
+        "test.create",
+        %{"name" => "New"},
+        domains: [TestDomain],
+        actor: %{name: "Creator"},
+        tenant: "tenant_create"
+      )
+
+    assert result.ok == true
+    assert result.data.actor_name == "Creator"
+    assert result.data.tenant_id == "tenant_create"
+  end
+
+  test "dispatch passes actor and tenant for :update event", %{record: record} do
+    result =
+      Alva.Dispatcher.dispatch(
+        "test.update",
+        %{"id" => record.id, "name" => "Updated"},
+        domains: [TestDomain],
+        actor: %{name: "Updater"},
+        tenant: "tenant_update"
+      )
+
+    assert result.ok == true
+    assert result.data.actor_name == "Updater"
+    assert result.data.tenant_id == "tenant_update"
+  end
+
+  test "dispatch passes actor and tenant for :destroy event", %{record: record} do
+    result =
+      Alva.Dispatcher.dispatch(
+        "test.archive",
+        %{"id" => record.id},
+        domains: [TestDomain],
+        actor: %{name: "Destroyer"},
+        tenant: "tenant_destroy"
+      )
+
+    assert result.ok == true
+    assert result.data.actor_name == "Destroyer"
+    assert result.data.tenant_id == "tenant_destroy"
+  end
+
+  test "dispatch passes actor and tenant for :read list event" do
+    Ash.create!(Ash.Changeset.for_create(TestResource, :create, %{name: "T1", tenant_id: "tenant_1"}))
+    Ash.create!(Ash.Changeset.for_create(TestResource, :create, %{name: "T2", tenant_id: "tenant_2"}))
+
+    result =
+      Alva.Dispatcher.dispatch(
+        "test.read_tenant",
+        %{},
+        domains: [TestDomain],
+        tenant: "tenant_1"
+      )
+
+    assert result.ok == true
+    assert length(result.data) == 1
+    assert hd(result.data).name == "T1"
+  end
+
+  test "dispatch passes actor and tenant for :read lookup event" do
+    record1 = Ash.create!(Ash.Changeset.for_create(TestResource, :create, %{name: "T1", tenant_id: "tenant_1"}))
+
+    # Try to read with correct tenant
+    result_ok =
+      Alva.Dispatcher.dispatch(
+        "test.get_tenant",
+        %{"id" => record1.id},
+        domains: [TestDomain],
+        tenant: "tenant_1"
+      )
+    assert result_ok.ok == true
+
+    # Try to read with wrong tenant
+    result_err =
+      Alva.Dispatcher.dispatch(
+        "test.get_tenant",
+        %{"id" => record1.id},
+        domains: [TestDomain],
+        tenant: "tenant_wrong"
+      )
+    assert result_err.ok == false
+    assert result_err.error.type == "not_found"
   end
 end

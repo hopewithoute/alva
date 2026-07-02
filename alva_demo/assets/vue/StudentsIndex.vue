@@ -83,7 +83,7 @@ const createStudent = async () => {
   error.value = null
   fieldErrors.value = {}
   
-  const reply = await api.call('students.create', { name: newName.value.trim() ? newName.value : null })
+  const reply = await api.ashCall('students.create', { name: newName.value.trim() ? newName.value : null })
   
   isCreating.value = false
   if (reply.ok) {
@@ -99,7 +99,7 @@ const createStudent = async () => {
 }
 
 const archiveStudent = async (id: string) => {
-  const reply = await api.call('students.archive', { id })
+  const reply = await api.ashCall('students.archive', { id })
   if (reply.ok) {
     const index = students.value.findIndex(s => s.id === id)
     if (index !== -1) {
@@ -111,7 +111,7 @@ const archiveStudent = async (id: string) => {
 }
 
 onMounted(async () => {
-  const reply = await api.call('students.list', {})
+  const reply = await api.ashCall('students.list', {})
   loading.value = false
   if (reply.ok) {
     students.value = reply.data

@@ -19,7 +19,7 @@ describe('useAlvaApi', () => {
     } as any)
 
     const api = useAlvaApi()
-    const result = await api.call('students.create', { name: 'Test' })
+    const result = await api.ashCall('students.create', { name: 'Test' })
     
     expect(pushEventMock).toHaveBeenCalledWith('students.create', { name: 'Test' }, expect.any(Function))
     expect(result).toEqual({ ok: true, data: { id: 1 } })
@@ -37,7 +37,7 @@ describe('useAlvaApi', () => {
     const onSuccess = vi.fn()
     const api = useAlvaApi({ onSuccess })
     
-    await api.call('students.create', { name: 'Test 2' })
+    await api.ashCall('students.create', { name: 'Test 2' })
     
     expect(onSuccess).toHaveBeenCalledWith({ id: 2 }, 'students.create')
   })
@@ -55,7 +55,7 @@ describe('useAlvaApi', () => {
     const onError = vi.fn()
     const api = useAlvaApi({ onError })
     
-    const result = await api.call('students.create', { name: '' })
+    const result = await api.ashCall('students.create', { name: '' })
     
     expect(onError).toHaveBeenCalledWith(errorResponse, 'students.create')
     expect(result).toEqual({ ok: false, error: errorResponse })
