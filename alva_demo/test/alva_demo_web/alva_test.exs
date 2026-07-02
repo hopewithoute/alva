@@ -28,7 +28,9 @@ defmodule AlvaDemoWeb.AlvaTest do
     {:reply, reply, _socket} = AlvaDemoWeb.Alva.dispatch("students.create", params, %{})
 
     assert reply.ok == false
-    assert reply.error.message =~ "is required"
+    assert reply.error.type == "validation"
+    assert reply.error.message == "Validation failed"
+    assert reply.error.fields.name == ["is required"]
   end
 
   test "dispatch/3 handles unknown events" do

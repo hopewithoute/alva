@@ -2,21 +2,25 @@
   <div class="max-w-2xl mx-auto mt-10 p-6 bg-white shadow rounded-lg">
     <h1 class="text-3xl font-bold mb-6 text-gray-800">Students</h1>
     
-    <form @submit.prevent="createStudent" class="mb-6 flex gap-4">
-      <input 
-        v-model="newName" 
-        type="text" 
-        placeholder="New student name" 
-        class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-        :disabled="isCreating"
-      />
-      <button 
-        type="submit" 
-        class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
-        :disabled="isCreating || !newName.trim()"
-      >
-        {{ isCreating ? 'Adding...' : 'Add Student' }}
-      </button>
+    <form @submit.prevent="createStudent" class="mb-6">
+      <div class="flex gap-4">
+        <input 
+          v-model="newName" 
+          type="text" 
+          placeholder="New student name" 
+          class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          :class="{'border-red-500 focus:border-red-500 focus:ring-red-500': fieldErrors.name}"
+          :disabled="isCreating"
+        />
+        <button 
+          type="submit" 
+          class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+          :disabled="isCreating"
+        >
+          {{ isCreating ? 'Adding...' : 'Add Student' }}
+        </button>
+      </div>
+      <p v-if="fieldErrors.name" class="mt-1 text-sm text-red-600">{{ fieldErrors.name[0] }}</p>
     </form>
     
     <div v-if="loading" class="text-gray-500 animate-pulse">Loading students...</div>
@@ -54,21 +58,27 @@ const live = useLiveVue()
 const students = ref<Student[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
+const fieldErrors = ref<Record<string, string[]>>({})
 
 const newName = ref('')
 const isCreating = ref(false)
 
 const createStudent = () => {
-  if (!newName.value.trim()) return
-  
   isCreating.value = true
-  live.pushEvent('students.create', { name: newName.value }, (reply: any) => {
+  error.value = null
+  fieldErrors.value = {}
+  
+  live.pushEvent('students.create', { name: newName.value.trim() ? newName.value : null }, (reply: any) => {
     isCreating.value = false
     if (reply.ok) {
       students.value.push(reply.data)
       newName.value = ''
     } else {
-      error.value = reply.error?.message || 'Failed to create student'
+      if (reply.error?.type === 'validation') {
+        fieldErrors.value = reply.error.fields || {}
+      } else {
+        error.value = reply.error?.message || 'Failed to create student'
+      }
     }
   })
 }

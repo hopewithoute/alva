@@ -1,6 +1,6 @@
 # 03 - Spike: Write Happy Path (students.create)
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `docs/prd.md`
