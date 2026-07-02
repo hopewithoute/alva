@@ -219,22 +219,64 @@ defmodule Alva.Dispatcher do
   end
 
   defp handle_success(data) do
-    %{ok: true, data: data}
+    {permissions, cleaned_data} = extract_and_remove_permissions(data)
+    
+    if map_size(permissions) > 0 do
+      %{ok: true, data: cleaned_data, meta: %{_permissions: permissions}}
+    else
+      %{ok: true, data: cleaned_data}
+    end
   end
 
   defp handle_success(data, page) do
+    {permissions, cleaned_data} = extract_and_remove_permissions(data)
+
     meta_pagination =
       %{
-        has_more: Map.get(page, :more?),
-        limit: Map.get(page, :limit),
-        offset: Map.get(page, :offset),
-        count: Map.get(page, :count)
+        limit: page.limit,
+        offset: page.offset,
+        count: page.count,
+        has_more: page.more?
       }
-      |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+      |> Enum.reject(fn {_, v} -> is_nil(v) end)
       |> Enum.into(%{})
 
-    %{ok: true, data: data, meta: %{pagination: meta_pagination}}
+    meta = %{pagination: meta_pagination}
+    meta = if map_size(permissions) > 0 do
+      Map.put(meta, :_permissions, permissions)
+    else
+      meta
+    end
+
+    %{ok: true, data: cleaned_data, meta: meta}
   end
+
+  defp extract_and_remove_permissions(data) when is_list(data) do
+    if data == [] do
+      {%{}, []}
+    else
+      {permissions, _} = extract_permissions_from_map(hd(data))
+      new_data = Enum.map(data, fn item -> 
+        {_, cleaned} = extract_permissions_from_map(item)
+        cleaned
+      end)
+      {permissions, new_data}
+    end
+  end
+
+  defp extract_and_remove_permissions(data) when is_map(data) do
+    extract_permissions_from_map(data)
+  end
+
+  defp extract_and_remove_permissions(other), do: {%{}, other}
+
+  defp extract_permissions_from_map(map) when is_map(map) do
+    {perms, rest} = Map.split_with(map, fn {k, _v} -> 
+      String.starts_with?(to_string(k), "can_") 
+    end)
+    {Map.new(perms), Map.new(rest)}
+  end
+  defp extract_permissions_from_map(other), do: {%{}, other}
 
   defp handle_error(error) do
     %{ok: false, error: Alva.Error.format(error)}

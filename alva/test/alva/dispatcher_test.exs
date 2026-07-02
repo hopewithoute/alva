@@ -22,6 +22,7 @@ defmodule Alva.DispatcherTest do
       attribute(:actor_name, :string, public?: true)
       attribute(:tenant_id, :string, public?: true)
       attribute(:secret_key, :string, public?: false, default: "secret")
+      attribute(:can_archive, :boolean, public?: true, default: true)
     end
 
     actions do
@@ -367,5 +368,15 @@ defmodule Alva.DispatcherTest do
     assert Map.has_key?(result.data, :name)
     assert Map.has_key?(result.data, :id)
     refute Map.has_key?(result.data, :secret_key)
+  end
+
+  test "dispatch groups can_ calculations into meta._permissions", %{record: record} do
+    result = Alva.Dispatcher.dispatch("test.get", %{"id" => record.id}, domains: [TestDomain])
+    
+    assert result.ok == true
+    assert Map.has_key?(result.data, :name)
+    assert Map.has_key?(result.data, :id)
+    refute Map.has_key?(result.data, :can_archive)
+    assert result.meta._permissions.can_archive == true
   end
 end
