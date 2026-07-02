@@ -1,4 +1,4 @@
-import { useLiveVue } from 'live_vue'
+import { useLiveVue, useLiveEvent } from 'live_vue'
 
 export type LiveErrorType = 
   | "validation" 
@@ -30,7 +30,10 @@ export interface AshCallOptions {
   // Future options for optimistic UI, caching, etc. can be added here
 }
 
-export function useAlvaApi<Events extends Record<string, { input: any; output: LiveResult<any> }> = any>(config?: AlvaApiConfig) {
+export function useAlvaApi<
+  Events extends Record<string, { input: any; output: LiveResult<any> }> = any,
+  PubSubEvents extends Record<string, any> = any
+>(config?: AlvaApiConfig) {
   const live = useLiveVue()
 
   const ashCall = <E extends keyof Events>(
@@ -56,7 +59,15 @@ export function useAlvaApi<Events extends Record<string, { input: any; output: L
     })
   }
 
+  const on = <E extends keyof PubSubEvents>(
+    event: E,
+    callback: (payload: PubSubEvents[E]) => void
+  ): void => {
+    useLiveEvent<PubSubEvents[E]>(event as string, callback)
+  }
+
   return {
-    call: ashCall
+    call: ashCall,
+    on
   }
 }

@@ -1,6 +1,6 @@
 # 25 - ash.on (PubSub Subscriptions)
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `.scratch/alva/PRD.md` (Phase 6)

@@ -1,10 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
 import { useAlvaApi } from './useAlvaApi'
-import { useLiveVue } from 'live_vue'
+import { useLiveVue, useLiveEvent } from 'live_vue'
 
 vi.mock('live_vue', () => {
   return {
-    useLiveVue: vi.fn()
+    useLiveVue: vi.fn(),
+    useLiveEvent: vi.fn()
   }
 })
 
@@ -59,5 +60,14 @@ describe('useAlvaApi', () => {
     
     expect(onError).toHaveBeenCalledWith(errorResponse, 'students.create')
     expect(result).toEqual({ ok: false, error: errorResponse })
+  })
+
+  it('should register a pubsub event using on() which calls useLiveEvent', () => {
+    const api = useAlvaApi()
+    const callback = vi.fn()
+    
+    api.on('post_created', callback)
+    
+    expect(useLiveEvent).toHaveBeenCalledWith('post_created', callback)
   })
 })
