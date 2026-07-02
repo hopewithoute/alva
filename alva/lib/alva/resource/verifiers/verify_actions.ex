@@ -11,21 +11,25 @@ defmodule Alva.Resource.Verifiers.VerifyActions do
       action = Ash.Resource.Info.action(dsl_state, event.action)
 
       if is_nil(action) do
-        raise Spark.Error.DslError,
-          module: module,
-          path: [:live_vue, :event, event.name],
-          message: "Action #{inspect(event.action)} does not exist."
+        raise_dsl_error(module, event, "Action #{inspect(event.action)} does not exist.")
       end
 
       unless action.public? do
-        raise Spark.Error.DslError,
-          module: module,
-          path: [:live_vue, :event, event.name],
-          message:
-            "Action #{inspect(event.action)} must be public? true to be exposed via live_vue."
+        raise_dsl_error(
+          module,
+          event,
+          "Action #{inspect(event.action)} must be public? true to be exposed via live_vue."
+        )
       end
     end)
 
     :ok
+  end
+
+  defp raise_dsl_error(module, event, message) do
+    raise Spark.Error.DslError,
+      module: module,
+      path: [:live_vue, :event, event.name],
+      message: message
   end
 end
