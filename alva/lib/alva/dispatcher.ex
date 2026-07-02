@@ -178,10 +178,37 @@ defmodule Alva.Dispatcher do
     end)
   end
 
-  def strip_metadata(record) do
-    record
-    |> Map.from_struct()
-    |> Map.drop([:__meta__])
+  def strip_metadata(%module{} = record) do
+    if Ash.Resource.Info.resource?(module) do
+      fields = public_fields(module)
+
+      record
+      |> Map.take(fields)
+      |> Enum.reject(fn {_k, v} ->
+        match?(%Ash.NotLoaded{}, v) or match?(%Ash.ForbiddenField{}, v)
+      end)
+      |> Enum.map(fn {k, v} -> {k, strip_metadata(v)} end)
+      |> Enum.into(%{})
+    else
+      record
+      |> Map.from_struct()
+      |> Map.drop([:__meta__])
+    end
+  end
+
+  def strip_metadata(list) when is_list(list) do
+    Enum.map(list, &strip_metadata/1)
+  end
+
+  def strip_metadata(other), do: other
+
+  defp public_fields(resource) do
+    attrs = Ash.Resource.Info.public_attributes(resource) |> Enum.map(& &1.name)
+    calcs = Ash.Resource.Info.public_calculations(resource) |> Enum.map(& &1.name)
+    rels = Ash.Resource.Info.public_relationships(resource) |> Enum.map(& &1.name)
+    aggs = Ash.Resource.Info.public_aggregates(resource) |> Enum.map(& &1.name)
+
+    attrs ++ calcs ++ rels ++ aggs
   end
 
   defp not_found_error(resource, lookup_field, lookup_value) do

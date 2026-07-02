@@ -21,6 +21,7 @@ defmodule Alva.DispatcherTest do
       attribute(:name, :string, public?: true)
       attribute(:actor_name, :string, public?: true)
       attribute(:tenant_id, :string, public?: true)
+      attribute(:secret_key, :string, public?: false, default: "secret")
     end
 
     actions do
@@ -357,5 +358,14 @@ defmodule Alva.DispatcherTest do
       )
     assert result_err.ok == false
     assert result_err.error.type == "not_found"
+  end
+
+  test "dispatch strips private fields (Auto-DTO)", %{record: record} do
+    result = Alva.Dispatcher.dispatch("test.get", %{"id" => record.id}, domains: [TestDomain])
+    
+    assert result.ok == true
+    assert Map.has_key?(result.data, :name)
+    assert Map.has_key?(result.data, :id)
+    refute Map.has_key?(result.data, :secret_key)
   end
 end
