@@ -6,6 +6,7 @@ defmodule Alva.Dispatcher do
 
   def dispatch(event_name, params, opts \\ []) do
     domains = Keyword.get(opts, :domains, [])
+    ash_opts = Keyword.take(opts, [:actor, :tenant])
 
     case find_event(domains, event_name) do
       {:ok, resource, event_def} ->
@@ -31,7 +32,7 @@ defmodule Alva.Dispatcher do
                   Ash.Query.for_read(resource, action_name, action_params)
                   |> Ash.Query.filter(^Ash.Expr.ref(lookup_field) == ^lookup_value)
 
-                case Ash.read_one(query) do
+                case Ash.read_one(query, ash_opts) do
                   {:ok, record} when not is_nil(record) ->
                     handle_success(strip_metadata(record))
 
@@ -62,6 +63,7 @@ defmodule Alva.Dispatcher do
                   []
                 end
 
+              read_opts = Keyword.merge(read_opts, ash_opts)
               query = Ash.Query.for_read(resource, action_name, action_params)
 
               query =
@@ -90,7 +92,7 @@ defmodule Alva.Dispatcher do
           :create ->
             changeset = Ash.Changeset.for_create(resource, action_name, params)
 
-            case Ash.create(changeset) do
+            case Ash.create(changeset, ash_opts) do
               {:ok, record} ->
                 handle_success(strip_metadata(record))
 
@@ -104,9 +106,9 @@ defmodule Alva.Dispatcher do
             lookup_value = Map.get(params, lookup_key)
             update_params = Map.delete(params, lookup_key)
 
-            with {:ok, record} <- Ash.get(resource, [{lookup_field, lookup_value}]),
+            with {:ok, record} <- Ash.get(resource, [{lookup_field, lookup_value}], ash_opts),
                  changeset <- Ash.Changeset.for_update(record, action_name, update_params),
-                 {:ok, updated_record} <- Ash.update(changeset) do
+                 {:ok, updated_record} <- Ash.update(changeset, ash_opts) do
               handle_success(strip_metadata(updated_record))
             else
               {:error, error} -> handle_error(error)
@@ -117,8 +119,8 @@ defmodule Alva.Dispatcher do
             lookup_key = to_string(lookup_field)
             lookup_value = Map.get(params, lookup_key)
 
-            with {:ok, record} <- Ash.get(resource, [{lookup_field, lookup_value}]) do
-              case Ash.destroy(record, action: action_name) do
+            with {:ok, record} <- Ash.get(resource, [{lookup_field, lookup_value}], ash_opts) do
+              case Ash.destroy(record, Keyword.merge([action: action_name], ash_opts)) do
                 result when result in [:ok, {:ok, record}] ->
                   handle_success(strip_metadata(record))
 
@@ -135,7 +137,7 @@ defmodule Alva.Dispatcher do
           :action ->
             input = Ash.ActionInput.for_action(resource, action_name, params)
 
-            case Ash.run_action(input) do
+            case Ash.run_action(input, ash_opts) do
               {:ok, result} ->
                 handle_success(result)
 

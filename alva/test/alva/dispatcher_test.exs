@@ -22,6 +22,18 @@ defmodule Alva.DispatcherTest do
     end
 
     actions do
+      defaults [:update, :destroy]
+
+      read :get do
+        get? true
+      end
+
+      action :get_context, :map do
+        run fn _input, context ->
+          {:ok, %{actor: context.actor, tenant: context.tenant}}
+        end
+      end
+
       read :read do
         primary? true
         pagination offset?: true, required?: false
@@ -52,6 +64,7 @@ defmodule Alva.DispatcherTest do
     live_vue do
       event("test.archive", action: :archive, lookup: :id)
       event("test.say_hello", action: :say_hello)
+      event("test.get_context", action: :get_context)
       event("test.get", action: :read, lookup: :id)
       event("test.list", action: :read)
       event("test.search", action: :search)
@@ -97,6 +110,21 @@ defmodule Alva.DispatcherTest do
 
     assert result.ok == true
     assert result.data == "Hello World"
+  end
+
+  test "dispatch passes actor and tenant from opts to Ash" do
+    result =
+      Alva.Dispatcher.dispatch(
+        "test.get_context",
+        %{},
+        domains: [TestDomain],
+        actor: %{id: 1, name: "Admin"},
+        tenant: "organization_1"
+      )
+
+    assert result.ok == true
+    assert result.data.actor == %{id: 1, name: "Admin"}
+    assert result.data.tenant == "organization_1"
   end
 
   test "dispatch returns error for :action event with invalid args" do
