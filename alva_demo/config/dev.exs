@@ -25,7 +25,7 @@ config :alva_demo, AlvaDemoWeb.Endpoint,
   debug_errors: true,
   secret_key_base: "xQgVBNHUGFFIofvcS3REBnrl4uzZSQN96ycyRAiD3CFGEVHc+IuIa7DB38w3UmcH",
   watchers: [
-    esbuild: {Esbuild, :install_and_run, [:alva_demo, ~w(--sourcemap=inline --watch)]},
+    node: ["run", "dev", cd: Path.expand("../assets", __DIR__)],
     tailwind: {Tailwind, :install_and_run, [:alva_demo, ~w(--watch)]}
   ]
 

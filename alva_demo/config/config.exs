@@ -9,7 +9,8 @@ import Config
 
 config :alva_demo,
   ecto_repos: [AlvaDemo.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  ash_domains: []
 
 # Configure the endpoint
 config :alva_demo, AlvaDemoWeb.Endpoint,
