@@ -4,7 +4,7 @@ defmodule Alva.Dispatcher do
   """
   require Logger
 
-  def dispatch(event_name, _params, opts \\ []) do
+  def dispatch(event_name, params, opts \\ []) do
     domains = Keyword.get(opts, :domains, [])
 
     case find_event(domains, event_name) do
@@ -18,6 +18,15 @@ defmodule Alva.Dispatcher do
                    |> Enum.map(&strip_metadata/1)
 
             %{ok: true, data: data}
+
+          :create ->
+            case Ash.create(resource, params, action: action_name) do
+              {:ok, record} ->
+                %{ok: true, data: strip_metadata(record)}
+
+              {:error, error} ->
+                %{ok: false, error: Alva.Error.format(error)}
+            end
 
           _ ->
             Logger.warning("Alva Dispatcher: Action type #{action.type} not supported yet for event #{event_name}")
