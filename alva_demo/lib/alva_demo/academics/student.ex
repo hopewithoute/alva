@@ -14,12 +14,19 @@ defmodule AlvaDemo.Academics.Student do
     create :create do
       accept [:name]
     end
+
+    update :archive do
+      accept []
+      change set_attribute(:status, :archived)
+    end
   end
 
   code_interface do
     domain AlvaDemo.Academics
     define :read
     define :create
+    define :archive
+    define :by_id, action: :read, get_by: [:id]
   end
 
   attributes do

@@ -1,6 +1,6 @@
 # 04 - Spike: Ash Error Normalization (Validation)
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `docs/prd.md`

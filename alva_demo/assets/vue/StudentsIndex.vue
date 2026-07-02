@@ -28,12 +28,21 @@
     
     <div v-else class="overflow-hidden border border-gray-200 rounded-md">
       <ul class="divide-y divide-gray-200">
-        <li v-for="student in students" :key="student.id" class="p-4 flex justify-between items-center hover:bg-gray-50">
+        <li v-for="student in students" :key="student.id" class="p-4 flex justify-between items-center hover:bg-gray-50" :class="{'opacity-50 line-through': student.status === 'archived'}">
           <span class="font-medium text-gray-900">{{ student.name }}</span>
-          <span class="px-2 py-1 text-xs font-semibold rounded-full" 
-                :class="student.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'">
-            {{ student.status }}
-          </span>
+          <div class="flex items-center gap-3">
+            <span class="px-2 py-1 text-xs font-semibold rounded-full" 
+                  :class="student.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'">
+              {{ student.status }}
+            </span>
+            <button 
+              v-if="student.status === 'active'"
+              @click="archiveStudent(student.id)" 
+              class="text-sm text-red-600 hover:text-red-800"
+            >
+              Archive
+            </button>
+          </div>
         </li>
       </ul>
       <div v-if="students.length === 0" class="p-8 text-center text-gray-500">
@@ -79,6 +88,19 @@ const createStudent = () => {
       } else {
         error.value = reply.error?.message || 'Failed to create student'
       }
+    }
+  })
+}
+
+const archiveStudent = (id: string) => {
+  live.pushEvent('students.archive', { id }, (reply: any) => {
+    if (reply.ok) {
+      const index = students.value.findIndex(s => s.id === id)
+      if (index !== -1) {
+        students.value[index] = reply.data
+      }
+    } else {
+      alert(reply.error?.message || 'Failed to archive student')
     }
   })
 }

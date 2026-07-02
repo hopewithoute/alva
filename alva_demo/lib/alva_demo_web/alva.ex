@@ -19,9 +19,32 @@ defmodule AlvaDemoWeb.Alva do
     end
   end
 
+  def dispatch("students.archive", %{"id" => id}, socket) do
+    case AlvaDemo.Academics.Student.by_id(id) do
+      {:ok, student} ->
+        case AlvaDemo.Academics.Student.archive(student) do
+          {:ok, record} ->
+            {:reply, %{ok: true, data: serialize(record)}, socket}
+
+          {:error, error} ->
+            {:reply, %{ok: false, error: format_error(error)}, socket}
+        end
+
+      {:error, error} ->
+        {:reply, %{ok: false, error: format_error(error)}, socket}
+    end
+  end
+
   def dispatch(event, _params, socket) do
     Logger.warning("Alva Dispatcher: Unknown event #{event}")
     {:reply, %{ok: false, error: %{type: "unknown", message: "Unknown event: #{event}"}}, socket}
+  end
+
+  defp format_error(%Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{} | _]}) do
+    %{
+      type: "not_found",
+      message: "Resource not found"
+    }
   end
 
   defp format_error(%Ash.Error.Invalid{} = error) do

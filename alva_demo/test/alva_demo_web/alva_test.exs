@@ -33,6 +33,26 @@ defmodule AlvaDemoWeb.AlvaTest do
     assert reply.error.fields.name == ["is required"]
   end
 
+  test "dispatch/3 handles students.archive successfully" do
+    student = AlvaDemo.Academics.Student.create!(%{name: "To Be Archived"})
+    
+    params = %{"id" => student.id}
+    assert {:reply, reply, _socket} = AlvaDemoWeb.Alva.dispatch("students.archive", params, %{})
+    
+    assert reply.ok == true
+    assert reply.data.status == :archived
+    assert reply.data.id == student.id
+  end
+
+  test "dispatch/3 handles students.archive not found error" do
+    params = %{"id" => Ash.UUID.generate()}
+    assert {:reply, reply, _socket} = AlvaDemoWeb.Alva.dispatch("students.archive", params, %{})
+
+    assert reply.ok == false
+    assert reply.error.type == "not_found"
+    assert reply.error.message == "Resource not found"
+  end
+
   test "dispatch/3 handles unknown events" do
     {:reply, reply, _socket} = AlvaDemoWeb.Alva.dispatch("unknown", %{}, %{})
     assert reply.ok == false
