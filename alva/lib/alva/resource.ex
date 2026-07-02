@@ -45,5 +45,6 @@ defmodule Alva.Resource do
 
   use Spark.Dsl.Extension,
     sections: [@live_vue],
+    verifiers: [Alva.Resource.Verifiers.VerifyActions],
     transformers: []
 end
