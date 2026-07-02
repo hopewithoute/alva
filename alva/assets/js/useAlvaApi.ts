@@ -57,6 +57,6 @@ export function useAlvaApi<Events extends Record<string, { input: any; output: L
   }
 
   return {
-    ashCall
+    call: ashCall
   }
 }
