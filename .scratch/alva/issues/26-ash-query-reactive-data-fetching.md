@@ -1,6 +1,6 @@
 # 26 - ashQuery (Reactive Data Fetching & Streams)
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `.scratch/alva/PRD.md` (Phase 6)
