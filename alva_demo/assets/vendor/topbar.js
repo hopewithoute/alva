@@ -4,7 +4,7 @@
  * http://buunguyen.github.io/topbar
  * Copyright (c) 2024 Buu Nguyen
  */
-(function (window, document) {
+
   "use strict";
 
   var canvas,
@@ -126,13 +126,4 @@
       },
     };
 
-  if (typeof module === "object" && typeof module.exports === "object") {
-    module.exports = topbar;
-  } else if (typeof define === "function" && define.amd) {
-    define(function () {
-      return topbar;
-    });
-  } else {
-    this.topbar = topbar;
-  }
-}.call(this, window, document));
+export default topbar;
