@@ -14,8 +14,9 @@ defmodule Alva.Dispatcher do
 
         case action.type do
           :read ->
-            data = Ash.read!(resource, action: action_name)
-                   |> Enum.map(&strip_metadata/1)
+            data =
+              Ash.read!(resource, action: action_name)
+              |> Enum.map(&strip_metadata/1)
 
             %{ok: true, data: data}
 

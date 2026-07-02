@@ -3,7 +3,7 @@ defmodule Alva.ErrorTest do
 
   test "formats unknown error" do
     error = %RuntimeError{message: "Something went wrong"}
-    
+
     assert Alva.Error.format(error) == %{
              type: "unknown",
              message: "Something went wrong"
