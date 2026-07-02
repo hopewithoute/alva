@@ -1,6 +1,6 @@
 # 09 - Slice 4: Generic Dispatcher for Update & ID Lookup
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `docs/prd.md` (Phase 1 & Phase 3)

@@ -21,6 +21,7 @@ defmodule Alva.Dispatcher do
 
           :create ->
             changeset = Ash.Changeset.for_create(resource, action_name, params)
+
             case Ash.create(changeset) do
               {:ok, record} ->
                 %{ok: true, data: strip_metadata(record)}
@@ -29,8 +30,30 @@ defmodule Alva.Dispatcher do
                 %{ok: false, error: Alva.Error.format(error)}
             end
 
+          :update ->
+            lookup_field = event_def.lookup || :id
+            lookup_key = to_string(lookup_field)
+            lookup_value = Map.get(params, lookup_key)
+            update_params = Map.delete(params, lookup_key)
+
+            if is_nil(lookup_value) do
+              %{ok: false, error: %{type: "not_found", message: "Resource not found"}}
+            else
+              with {:ok, record} <- Ash.get(resource, [{lookup_field, lookup_value}]),
+                   changeset <- Ash.Changeset.for_update(record, action_name, update_params),
+                   {:ok, updated_record} <- Ash.update(changeset) do
+                %{ok: true, data: strip_metadata(updated_record)}
+              else
+                {:error, error} ->
+                  %{ok: false, error: Alva.Error.format(error)}
+              end
+            end
+
           _ ->
-            Logger.warning("Alva Dispatcher: Action type #{action.type} not supported yet for event #{event_name}")
+            Logger.warning(
+              "Alva Dispatcher: Action type #{action.type} not supported yet for event #{event_name}"
+            )
+
             %{ok: false, error: %{type: "unsupported", message: "Action type not supported yet"}}
         end
 
@@ -48,6 +71,7 @@ defmodule Alva.Dispatcher do
         events = Alva.Resource.Info.events(resource)
 
         event = Enum.find(events, &(&1.name == event_name))
+
         if event do
           {:ok, resource, event}
         end
