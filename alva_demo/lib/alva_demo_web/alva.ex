@@ -7,5 +7,6 @@ defmodule AlvaDemoWeb.Alva do
 
   defp get_strategy("students.create"), do: {:stream_insert, :students}
   defp get_strategy("students.archive"), do: {:stream_delete, :students}
+  defp get_strategy("test.assign"), do: {:assign, :dummy_key}
   defp get_strategy(_), do: {:reply, :data}
 end

@@ -27,4 +27,27 @@ defmodule Alva.ResultTest do
     assert reply == :reply
     assert socket == %{}
   end
+
+  test "apply with {:assign, key} assigns data to socket" do
+    result = %{ok: true, data: %{name: "Test"}}
+    socket = %Phoenix.LiveView.Socket{}
+
+    {reply, ^result, returned_socket} =
+      Alva.Result.apply(result, socket, strategy: {:assign, :current_user})
+
+    assert reply == :reply
+    assert returned_socket.assigns.current_user == %{name: "Test"}
+  end
+
+  test "apply with {:reply, :data} doesn't alter socket state" do
+    result = %{ok: true, data: %{name: "Test"}}
+    socket = %Phoenix.LiveView.Socket{assigns: %{foo: "bar"}}
+
+    {reply, ^result, returned_socket} =
+      Alva.Result.apply(result, socket, strategy: {:reply, :data})
+
+    assert reply == :reply
+    assert returned_socket == socket
+    assert returned_socket.assigns.foo == "bar"
+  end
 end

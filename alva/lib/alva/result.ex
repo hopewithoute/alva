@@ -37,6 +37,10 @@ defmodule Alva.Result do
     Phoenix.LiveView.stream_delete(socket, key, data)
   end
 
+  defp apply_strategy({:assign, key}, socket, data) do
+    Phoenix.Component.assign(socket, key, data)
+  end
+
   defp apply_strategy(_, socket, _data) do
     socket
   end

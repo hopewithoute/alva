@@ -13,6 +13,7 @@ defmodule AlvaDemo.Academics.Student do
     event("students.list", action: :read)
     event("students.create", action: :create)
     event("students.archive", action: :archive, lookup: :id)
+    event("test.assign", action: :read)
   end
 
   actions do

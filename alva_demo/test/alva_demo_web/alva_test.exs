@@ -6,11 +6,16 @@ defmodule AlvaDemoWeb.AlvaTest do
     |> Ash.Changeset.for_create(:create, %{name: "Budi"})
     |> Ash.create!()
 
-    {:reply, reply, _socket} = AlvaDemoWeb.Alva.dispatch("students.list", %{}, %{})
+    socket = %Phoenix.LiveView.Socket{assigns: %{foo: "bar"}}
+    {:reply, reply, returned_socket} = AlvaDemoWeb.Alva.dispatch("students.list", %{}, socket)
 
     assert reply.ok == true
     assert length(reply.data) == 1
     assert hd(reply.data).name == "Budi"
+    
+    # Verify socket is unchanged for default :reply strategy
+    assert returned_socket == socket
+    assert returned_socket.assigns.foo == "bar"
   end
 
   test "dispatch/3 handles students.create event (happy path)" do
@@ -57,5 +62,17 @@ defmodule AlvaDemoWeb.AlvaTest do
     {:reply, reply, _socket} = AlvaDemoWeb.Alva.dispatch("unknown", %{}, %{})
     assert reply.ok == false
     assert reply.error.type == "unknown"
+  end
+
+  test "dispatch/3 handles test.assign updating socket assigns" do
+    # create some data so read action has data
+    student = AlvaDemo.Academics.Student.create!(%{name: "Dummy Assign"})
+
+    socket = %Phoenix.LiveView.Socket{}
+    {:reply, reply, socket} = AlvaDemoWeb.Alva.dispatch("test.assign", %{}, socket)
+
+    assert reply.ok == true
+    assert socket.assigns.dummy_key != nil
+    assert hd(socket.assigns.dummy_key).id == student.id
   end
 end
