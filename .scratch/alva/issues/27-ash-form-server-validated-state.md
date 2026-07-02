@@ -1,6 +1,6 @@
 # 27 - ashForm (Server-Validated Form State)
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `.scratch/alva/PRD.md` (Phase 6)
