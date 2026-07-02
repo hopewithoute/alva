@@ -41,6 +41,26 @@ defmodule Alva.Result do
     Phoenix.Component.assign(socket, key, data)
   end
 
+  defp apply_strategy({:push_event, event_name}, socket, data) do
+    Phoenix.LiveView.push_event(socket, event_name, data)
+  end
+
+  defp apply_strategy({:navigate, to}, socket, _data) when is_binary(to) do
+    Phoenix.LiveView.push_navigate(socket, to: to)
+  end
+
+  defp apply_strategy({:patch, to}, socket, _data) when is_binary(to) do
+    Phoenix.LiveView.push_patch(socket, to: to)
+  end
+
+  defp apply_strategy({:custom, module}, socket, data) do
+    case module.handle_result(socket, data) do
+      %Phoenix.LiveView.Socket{} = returned_socket -> returned_socket
+      {:noreply, returned_socket} -> returned_socket
+      _ -> raise ArgumentError, "Custom module #{inspect(module)}.handle_result/2 must return a Phoenix.LiveView.Socket or {:noreply, socket}"
+    end
+  end
+
   defp apply_strategy(_, socket, _data) do
     socket
   end
