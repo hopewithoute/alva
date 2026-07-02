@@ -1,6 +1,6 @@
 # 22 - Result Strategies: Push Event, Navigate, and Custom Modules
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 

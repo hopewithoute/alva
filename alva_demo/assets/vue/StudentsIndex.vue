@@ -54,7 +54,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useLiveVue } from 'live_vue'
+import { useAlvaApi } from 'alva'
 
 interface Student {
   id: string
@@ -62,7 +62,13 @@ interface Student {
   status: 'active' | 'archived'
 }
 
-const live = useLiveVue()
+type AlvaEvents = {
+  'students.list': { input: {}; output: { ok: true, data: Student[] } | { ok: false, error: any } }
+  'students.create': { input: { name: string | null }; output: { ok: true, data: Student } | { ok: false, error: any } }
+  'students.archive': { input: { id: string }; output: { ok: true, data: Student } | { ok: false, error: any } }
+}
+
+const api = useAlvaApi<AlvaEvents>()
 
 const students = ref<Student[]>([])
 const loading = ref(true)
@@ -72,47 +78,45 @@ const fieldErrors = ref<Record<string, string[]>>({})
 const newName = ref('')
 const isCreating = ref(false)
 
-const createStudent = () => {
+const createStudent = async () => {
   isCreating.value = true
   error.value = null
   fieldErrors.value = {}
   
-  live.pushEvent('students.create', { name: newName.value.trim() ? newName.value : null }, (reply: any) => {
-    isCreating.value = false
-    if (reply.ok) {
-      students.value.push(reply.data)
-      newName.value = ''
+  const reply = await api.call('students.create', { name: newName.value.trim() ? newName.value : null })
+  
+  isCreating.value = false
+  if (reply.ok) {
+    students.value.push(reply.data)
+    newName.value = ''
+  } else {
+    if (reply.error?.type === 'validation') {
+      fieldErrors.value = reply.error.fields || {}
     } else {
-      if (reply.error?.type === 'validation') {
-        fieldErrors.value = reply.error.fields || {}
-      } else {
-        error.value = reply.error?.message || 'Failed to create student'
-      }
+      error.value = reply.error?.message || 'Failed to create student'
     }
-  })
+  }
 }
 
-const archiveStudent = (id: string) => {
-  live.pushEvent('students.archive', { id }, (reply: any) => {
-    if (reply.ok) {
-      const index = students.value.findIndex(s => s.id === id)
-      if (index !== -1) {
-        students.value[index] = reply.data
-      }
-    } else {
-      alert(reply.error?.message || 'Failed to archive student')
+const archiveStudent = async (id: string) => {
+  const reply = await api.call('students.archive', { id })
+  if (reply.ok) {
+    const index = students.value.findIndex(s => s.id === id)
+    if (index !== -1) {
+      students.value[index] = reply.data
     }
-  })
+  } else {
+    alert(reply.error?.message || 'Failed to archive student')
+  }
 }
 
-onMounted(() => {
-  live.pushEvent('students.list', {}, (reply: any) => {
-    loading.value = false
-    if (reply.ok) {
-      students.value = reply.data
-    } else {
-      error.value = reply.error?.message || 'Unknown error'
-    }
-  })
+onMounted(async () => {
+  const reply = await api.call('students.list', {})
+  loading.value = false
+  if (reply.ok) {
+    students.value = reply.data
+  } else {
+    error.value = reply.error?.message || 'Unknown error'
+  }
 })
 </script>

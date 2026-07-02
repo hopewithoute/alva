@@ -1,6 +1,6 @@
 # 19 - Result Strategy: Stream Insert for Create
 
-Status: completed
+Status: done
 
 ## Parent
 

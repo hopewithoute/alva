@@ -1,6 +1,6 @@
 # 21 - Result Strategy: Assign and Reply Only
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 

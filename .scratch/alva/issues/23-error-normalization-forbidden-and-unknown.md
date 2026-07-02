@@ -1,6 +1,6 @@
 # 23 - Error Normalization: Forbidden, Conflict, and Unknown Fallback
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `docs/prd.md` (Phase 5 / Error Normalization)

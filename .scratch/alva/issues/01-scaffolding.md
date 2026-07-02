@@ -1,6 +1,6 @@
 # 01 - Scaffolding Phoenix + Ash + LiveVue Sandbox
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `docs/prd.md`

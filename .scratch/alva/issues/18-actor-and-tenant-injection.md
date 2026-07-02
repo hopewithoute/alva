@@ -1,6 +1,6 @@
 # 18 - Actor and Tenant Injection
 
-Status: completed
+Status: done
 
 ## Parent
 `docs/prd.md` (Phase 3 / Refinement)

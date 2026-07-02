@@ -1,6 +1,6 @@
 # 17 - Sort Support for List Events
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `docs/prd.md` (Phase 3)

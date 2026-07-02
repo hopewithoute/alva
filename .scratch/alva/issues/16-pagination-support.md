@@ -1,6 +1,6 @@
 # 16 - Pagination Support for List Events
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `docs/prd.md` (Phase 3)

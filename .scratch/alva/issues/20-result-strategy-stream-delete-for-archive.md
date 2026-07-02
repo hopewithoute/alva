@@ -1,6 +1,6 @@
 # 20 - Result Strategy: Stream Delete for Archive
 
-Status: completed
+Status: done
 
 ## Parent
 

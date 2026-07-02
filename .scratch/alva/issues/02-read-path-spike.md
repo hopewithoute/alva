@@ -1,6 +1,6 @@
 # 02 - Spike: Read Path (students.list)
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `docs/prd.md`
