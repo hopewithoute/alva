@@ -3,8 +3,7 @@ defmodule AlvaDemoWeb.Alva do
 
   def dispatch("students.list", _params, socket) do
     data = 
-      AlvaDemo.Academics.Student 
-      |> Ash.read!()
+      AlvaDemo.Academics.Student.read!()
       |> Enum.map(&serialize/1)
 
     {:reply, %{ok: true, data: data}, socket}

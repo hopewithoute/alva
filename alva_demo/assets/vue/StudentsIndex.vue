@@ -25,11 +25,19 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
+interface Student {
+  id: string
+  name: string
+  status: 'active' | 'archived'
+}
+
 const props = defineProps<{
-  $live: any
+  $live: {
+    pushEvent: (event: string, payload: any, callback: (reply: any) => void) => void
+  }
 }>()
 
-const students = ref<any[]>([])
+const students = ref<Student[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
