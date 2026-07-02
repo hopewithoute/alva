@@ -18,37 +18,78 @@ defmodule Alva.Error do
   end
 
   def format(%Ash.Error.Invalid{} = error) do
-    fields =
-      error.errors
-      |> Enum.reduce(%{}, fn
-        %{field: field} = sub_error, acc when not is_nil(field) ->
-          clean_error =
-            if Map.has_key?(sub_error, :bread_crumbs),
-              do: %{sub_error | bread_crumbs: []},
-              else: sub_error
+    case find_conflict(error.errors) do
+      nil ->
+        fields =
+          error.errors
+          |> Enum.reduce(%{}, fn
+            %{field: field} = sub_error, acc when not is_nil(field) ->
+              clean_error =
+                if Map.has_key?(sub_error, :bread_crumbs),
+                  do: %{sub_error | bread_crumbs: []},
+                  else: sub_error
 
-          msg = String.trim(Exception.message(clean_error))
+              msg = String.trim(Exception.message(clean_error))
 
-          # clean up "attribute " prefix that Ash sometimes inserts
-          msg = Regex.replace(~r/^(attribute|argument)\s+#{field}\s+/i, msg, "")
+              # clean up "attribute " prefix that Ash sometimes inserts
+              msg = Regex.replace(~r/^(attribute|argument)\s+#{field}\s+/i, msg, "")
 
-          Map.update(acc, field, [msg], &[msg | &1])
+              Map.update(acc, field, [msg], &[msg | &1])
 
-        _, acc ->
-          acc
-      end)
+            _, acc ->
+              acc
+          end)
+
+        %{
+          type: "validation",
+          message: "Validation failed",
+          fields: fields
+        }
+
+      conflict_error ->
+        code =
+          case Map.get(conflict_error, :code) do
+            nil -> "conflict"
+            val -> val
+          end
+
+        message = Exception.message(conflict_error)
+
+        %{
+          type: "conflict",
+          code: code,
+          message: message
+        }
+    end
+  end
+
+  def format(%Ash.Error.Forbidden{} = error) do
+    message =
+      case String.trim(Exception.message(error)) do
+        "" -> "Forbidden"
+        msg -> msg
+      end
 
     %{
-      type: "validation",
-      message: "Validation failed",
-      fields: fields
+      type: "forbidden",
+      message: message
     }
   end
 
   def format(error) do
+    require Logger
+    Logger.error(fn -> "Alva.Error: Unhandled error: #{inspect(error)}" end)
+
     %{
       type: "unknown",
-      message: Exception.message(error)
+      message: "Internal server error"
     }
+  end
+
+  defp find_conflict(errors) do
+    Enum.find(errors, fn sub_error ->
+      # It's a conflict if it doesn't have a field (global error)
+      is_nil(Map.get(sub_error, :field))
+    end)
   end
 end
