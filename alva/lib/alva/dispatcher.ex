@@ -50,6 +50,37 @@ defmodule Alva.Dispatcher do
               end
             end
 
+          :destroy ->
+            lookup_field = event_def.lookup || :id
+            lookup_key = to_string(lookup_field)
+            lookup_value = Map.get(params, lookup_key)
+
+            if is_nil(lookup_value) do
+              %{ok: false, error: %{type: "not_found", message: "Resource not found"}}
+            else
+              with {:ok, record} <- Ash.get(resource, [{lookup_field, lookup_value}]) do
+                case Ash.destroy(record, action: action_name) do
+                  :ok -> %{ok: true, data: strip_metadata(record)}
+                  {:ok, _} -> %{ok: true, data: strip_metadata(record)}
+                  {:error, error} -> %{ok: false, error: Alva.Error.format(error)}
+                end
+              else
+                {:error, error} ->
+                  %{ok: false, error: Alva.Error.format(error)}
+              end
+            end
+
+          :action ->
+            input = Ash.ActionInput.for_action(resource, action_name, params)
+
+            case Ash.run_action(input) do
+              {:ok, result} ->
+                %{ok: true, data: result}
+
+              {:error, error} ->
+                %{ok: false, error: Alva.Error.format(error)}
+            end
+
           _ ->
             Logger.warning(
               "Alva Dispatcher: Action type #{action.type} not supported yet for event #{event_name}"
