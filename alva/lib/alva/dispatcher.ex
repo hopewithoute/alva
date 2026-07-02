@@ -1,0 +1,53 @@
+defmodule Alva.Dispatcher do
+  @moduledoc """
+  Dynamically routes events from Vue to Ash actions based on Spark DSL.
+  """
+  require Logger
+
+  def dispatch(event_name, _params, opts \\ []) do
+    domains = Keyword.get(opts, :domains, [])
+
+    case find_event(domains, event_name) do
+      {:ok, resource, event_def} ->
+        action_name = event_def.action
+        action = Ash.Resource.Info.action(resource, action_name)
+
+        case action.type do
+          :read ->
+            data = Ash.read!(resource, action: action_name)
+                   |> Enum.map(&serialize/1)
+
+            %{ok: true, data: data}
+
+          _ ->
+            Logger.warning("Alva Dispatcher: Action type #{action.type} not supported yet for event #{event_name}")
+            %{ok: false, error: %{type: "unsupported", message: "Action type not supported yet"}}
+        end
+
+      :error ->
+        Logger.warning("Alva Dispatcher: Unknown event #{event_name}")
+        %{ok: false, error: %{type: "unknown", message: "Unknown event: #{event_name}"}}
+    end
+  end
+
+  defp find_event(domains, event_name) do
+    Enum.find_value(domains, :error, fn domain ->
+      resources = Ash.Domain.Info.resources(domain)
+
+      Enum.find_value(resources, nil, fn resource ->
+        events = Alva.Resource.Info.events(resource)
+
+        event = Enum.find(events, &(&1.name == event_name))
+        if event do
+          {:ok, resource, event}
+        end
+      end)
+    end)
+  end
+
+  def serialize(record) do
+    record
+    |> Map.from_struct()
+    |> Map.drop([:__meta__, :__struct__])
+  end
+end

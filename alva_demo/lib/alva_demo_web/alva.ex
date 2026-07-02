@@ -1,13 +1,5 @@
 defmodule AlvaDemoWeb.Alva do
-  require Logger
 
-  def dispatch("students.list", _params, socket) do
-    data =
-      AlvaDemo.Academics.Student.read!()
-      |> Enum.map(&serialize/1)
-
-    {:reply, %{ok: true, data: data}, socket}
-  end
 
   def dispatch("students.create", params, socket) do
     case AlvaDemo.Academics.Student.create(params) do
@@ -35,9 +27,9 @@ defmodule AlvaDemoWeb.Alva do
     end
   end
 
-  def dispatch(event, _params, socket) do
-    Logger.warning("Alva Dispatcher: Unknown event #{event}")
-    {:reply, %{ok: false, error: %{type: "unknown", message: "Unknown event: #{event}"}}, socket}
+  def dispatch(event, params, socket) do
+    result = Alva.Dispatcher.dispatch(event, params, domains: [AlvaDemo.Academics])
+    {:reply, result, socket}
   end
 
   defp format_error(%Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{} | _]}) do
