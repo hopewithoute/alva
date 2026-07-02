@@ -1,6 +1,6 @@
 # 05 - Spike: Action Lookup & Not Found (students.archive)
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `docs/prd.md`

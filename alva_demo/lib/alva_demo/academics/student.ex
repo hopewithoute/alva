@@ -1,11 +1,18 @@
 defmodule AlvaDemo.Academics.Student do
   use Ash.Resource,
     domain: AlvaDemo.Academics,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    extensions: [Alva.Resource]
 
   postgres do
     table "students"
     repo AlvaDemo.Repo
+  end
+
+  live_vue do
+    event "students.list", action: :read
+    event "students.create", action: :create
+    event "students.archive", action: :archive, lookup: :id
   end
 
   actions do

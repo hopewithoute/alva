@@ -67,6 +67,7 @@ defmodule AlvaDemo.MixProject do
       {:ash, "~> 3.0"},
       {:ash_postgres, "~> 2.0"},
       {:ash_phoenix, "~> 2.1"},
+      {:alva, path: "../alva"},
       {:live_vue, "~> 0.3"}
     ]
   end

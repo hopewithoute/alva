@@ -2,7 +2,7 @@ defmodule AlvaDemoWeb.Alva do
   require Logger
 
   def dispatch("students.list", _params, socket) do
-    data = 
+    data =
       AlvaDemo.Academics.Student.read!()
       |> Enum.map(&serialize/1)
 
@@ -52,13 +52,17 @@ defmodule AlvaDemoWeb.Alva do
       error.errors
       |> Enum.reduce(%{}, fn
         %{field: field} = sub_error, acc when not is_nil(field) ->
-          clean_error = if Map.has_key?(sub_error, :bread_crumbs), do: %{sub_error | bread_crumbs: []}, else: sub_error
+          clean_error =
+            if Map.has_key?(sub_error, :bread_crumbs),
+              do: %{sub_error | bread_crumbs: []},
+              else: sub_error
+
           msg = String.trim(Exception.message(clean_error))
-          
+
           # sometimes it prefixes with "attribute " or similar, we can clean it if we want
           # but let's just return the message
           msg = Regex.replace(~r/^(attribute|argument)\s+#{field}\s+/i, msg, "")
-          
+
           Map.update(acc, field, [msg], &[msg | &1])
 
         _, acc ->
