@@ -1,6 +1,6 @@
 # 07 - Slice 2: Generic Dispatcher for Read (Migrate students.list)
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `docs/prd.md` (Phase 1)

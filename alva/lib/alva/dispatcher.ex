@@ -15,7 +15,7 @@ defmodule Alva.Dispatcher do
         case action.type do
           :read ->
             data = Ash.read!(resource, action: action_name)
-                   |> Enum.map(&serialize/1)
+                   |> Enum.map(&strip_metadata/1)
 
             %{ok: true, data: data}
 
@@ -45,9 +45,9 @@ defmodule Alva.Dispatcher do
     end)
   end
 
-  def serialize(record) do
+  def strip_metadata(record) do
     record
     |> Map.from_struct()
-    |> Map.drop([:__meta__, :__struct__])
+    |> Map.drop([:__meta__])
   end
 end
