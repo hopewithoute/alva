@@ -4,6 +4,7 @@ export interface AshFormOptions<FormValues, EventKeys> {
   initialValues: FormValues
   validateEvent?: EventKeys
   debounceMs?: number
+  uploads?: Record<string, { getFileReferences: () => string[] }>
 }
 
 export function ashForm<
@@ -47,7 +48,14 @@ export function ashForm<
     loading.value = true
     errors.value = {}
     
-    const result = await api.call(submitEvent, values as Events[SubmitEventKey]['input'])
+    const payload = { ...values } as Record<string, any>
+    if (options.uploads) {
+      for (const [key, upload] of Object.entries(options.uploads)) {
+        payload[key] = upload.getFileReferences()
+      }
+    }
+    
+    const result = await api.call(submitEvent, payload as Events[SubmitEventKey]['input'])
     
     // Only apply if another submit hasn't superseded this one
     if (currentSubmit === submitCounter) {

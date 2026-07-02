@@ -164,4 +164,27 @@ describe('ashForm', () => {
     expect(values.name).toBe('A')
     expect(errors.value).toEqual({})
   })
+
+  it('should attach uploads to submit payload', async () => {
+    const api = mockApi()
+    api.call.mockResolvedValue({ ok: true })
+    
+    const mockUpload = {
+      getFileReferences: () => ['ref-1', 'ref-2']
+    }
+    
+    const { submit } = ashForm(api as any, 'students.create', {
+      initialValues: { name: 'Test' },
+      uploads: {
+        avatar: mockUpload
+      }
+    })
+    
+    await submit()
+    
+    expect(api.call).toHaveBeenCalledWith('students.create', {
+      name: 'Test',
+      avatar: ['ref-1', 'ref-2']
+    })
+  })
 })
