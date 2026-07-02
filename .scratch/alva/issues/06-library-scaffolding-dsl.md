@@ -1,6 +1,6 @@
 # 06 - Slice 1: Alva Library Scaffolding & Spark DSL Foundation
 
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `docs/prd.md` (Phase 1 & Phase 2)
