@@ -1,28 +1,34 @@
 defmodule AlvaDemoWeb.AlvaTest do
   use AlvaDemo.DataCase
 
-  test "dispatch/3 handles students.list event" do
+  require Alva.Test
+
+  test "dispatch/3 handles students.list event using Alva.Test helper" do
     AlvaDemo.Academics.Student
     |> Ash.Changeset.for_create(:create, %{name: "Budi"})
     |> Ash.create!()
 
     socket = %Phoenix.LiveView.Socket{assigns: %{foo: "bar"}}
-    {:reply, reply, returned_socket} = AlvaDemoWeb.Alva.dispatch("students.list", %{}, socket)
+    
+    # We can use Alva.Test helpers to verify the boundary (Alva.Dispatcher) directly
+    reply = Alva.Test.assert_dispatch_ok(socket, "students.list", %{}, domains: [AlvaDemo.Academics])
 
-    assert reply.ok == true
     assert length(reply.data) == 1
     assert hd(reply.data).name == "Budi"
     
-    # Verify socket is unchanged for default :reply strategy
+    # Verify the demo's custom wrapper still works for the reply strategy
+    {:reply, wrapper_reply, returned_socket} = AlvaDemoWeb.Alva.dispatch("students.list", %{}, socket)
+    assert wrapper_reply.ok == true
     assert returned_socket == socket
     assert returned_socket.assigns.foo == "bar"
   end
 
-  test "dispatch/3 handles students.create event (happy path)" do
+  test "dispatch/3 handles students.create event (happy path) using Alva.Test helper" do
     params = %{"name" => "Siti"}
-    {:reply, reply, _socket} = AlvaDemoWeb.Alva.dispatch("students.create", params, %{})
+    socket = %Phoenix.LiveView.Socket{}
+    
+    reply = Alva.Test.assert_dispatch_ok(socket, "students.create", params, domains: [AlvaDemo.Academics])
 
-    assert reply.ok == true
     assert reply.data.name == "Siti"
     assert reply.data.status == :active
     assert reply.data.id != nil
