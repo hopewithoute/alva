@@ -1,5 +1,5 @@
 defmodule Alva.Resource.Event do
-  defstruct [:name, :action, :lookup, :expose_metadata, :enable_filter, :__spark_metadata__]
+  defstruct [:name, :action, :lookup, :expose_metadata, :enable_filter, :validate_only, :__spark_metadata__]
 end
 
 defmodule Alva.Resource do
@@ -44,6 +44,12 @@ defmodule Alva.Resource do
         required: false,
         default: false,
         doc: "If true, the TypeScript client will accept a strictly typed filter AST."
+      ],
+      validate_only: [
+        type: :boolean,
+        required: false,
+        default: false,
+        doc: "If true, this event strictly runs Ash.Changeset or Ash.ActionInput validation without persisting."
       ]
     ]
   }

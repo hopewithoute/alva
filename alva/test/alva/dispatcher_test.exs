@@ -126,7 +126,9 @@ defmodule Alva.DispatcherTest do
       event("test.list", action: :read)
       event("test.search", action: :search)
       event("test.create", action: :create)
+      event("test.validate_create", action: :create, validate_only: true)
       event("test.update", action: :update, lookup: :id)
+      event("test.validate_update", action: :update, lookup: :id, validate_only: true)
       event("test.read_tenant", action: :read_with_tenant)
       event("test.get_tenant", action: :read_with_tenant, lookup: :id)
       event("test.upload", action: :upload_file)
@@ -164,6 +166,40 @@ defmodule Alva.DispatcherTest do
 
     assert result.ok == false
     assert result.error.type == "not_found"
+  end
+
+  test "validate_only true on create returns early without DB commit" do
+    params = %{"name" => "valid name"}
+    
+    # Should return ok: true, data: %{}
+    result = Alva.Dispatcher.dispatch("test.validate_create", params, domains: [TestDomain])
+    assert result.ok == true
+    assert result.data == %{}
+    
+    # Check DB to ensure it was not created
+    records = Ash.read!(TestResource)
+    assert not Enum.any?(records, fn r -> r.name == "valid name" end)
+  end
+  
+  test "validate_only true on create returns validation error if invalid" do
+    # pass invalid type to force validation error
+    params = %{"name" => %{"invalid" => "type"}}
+    
+    result = Alva.Dispatcher.dispatch("test.validate_create", params, domains: [TestDomain])
+    assert result.ok == false
+    assert result.error.type == "validation"
+  end
+
+  test "validate_only true on update returns early without DB commit", %{record: record} do
+    params = %{"id" => record.id, "name" => "new name"}
+    
+    result = Alva.Dispatcher.dispatch("test.validate_update", params, domains: [TestDomain])
+    assert result.ok == true
+    assert result.data == %{}
+    
+    # Check DB to ensure it was not updated
+    updated_record = Ash.get!(TestResource, record.id)
+    assert updated_record.name == "Test"
   end
 
   test "dispatch handles :action event" do

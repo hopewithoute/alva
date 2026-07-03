@@ -95,12 +95,16 @@ defmodule Alva.Dispatcher do
           :create ->
             changeset = Ash.Changeset.for_create(resource, action_name, params, ash_opts)
 
-            case Ash.create(changeset, ash_opts) do
-              {:ok, record} ->
-                dispatch_success(record, event_def)
+            if event_def.validate_only do
+              handle_dry_run(changeset, event_def)
+            else
+              case Ash.create(changeset, ash_opts) do
+                {:ok, record} ->
+                  dispatch_success(record, event_def)
 
-              {:error, error} ->
-                handle_error(error)
+                {:error, error} ->
+                  handle_error(error)
+              end
             end
 
           :update ->
@@ -109,10 +113,18 @@ defmodule Alva.Dispatcher do
             update_params = Map.delete(params, lookup_key)
 
             with {:ok, record} <- fetch_record(resource, event_def, params, ash_opts),
-                 changeset <-
-                   Ash.Changeset.for_update(record, action_name, update_params, ash_opts),
-                 {:ok, updated_record} <- Ash.update(changeset, ash_opts) do
-              dispatch_success(updated_record, event_def)
+                 changeset <- Ash.Changeset.for_update(record, action_name, update_params, ash_opts) do
+              
+              if event_def.validate_only do
+                handle_dry_run(changeset, event_def)
+              else
+                case Ash.update(changeset, ash_opts) do
+                  {:ok, updated_record} ->
+                    dispatch_success(updated_record, event_def)
+                  {:error, error} -> 
+                    handle_error(error)
+                end
+              end
             else
               {:error, error} -> handle_error(error)
             end
@@ -206,6 +218,14 @@ defmodule Alva.Dispatcher do
     lookup_key = to_string(lookup_field)
     lookup_value = Map.get(params, lookup_key)
     Ash.get(resource, [{lookup_field, lookup_value}], ash_opts)
+  end
+
+  defp handle_dry_run(changeset, _event_def) do
+    if changeset.valid? do
+      %{ok: true, data: %{}}
+    else
+      handle_error(Ash.Error.to_error_class(changeset.errors, changeset: changeset))
+    end
   end
 
   defp dispatch_success(record_or_list, event_def, page \\ nil) do
