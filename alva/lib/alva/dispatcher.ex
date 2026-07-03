@@ -13,6 +13,9 @@ defmodule Alva.Dispatcher do
         action_name = event_def.action
         action = Ash.Resource.Info.action(resource, action_name)
         params = Map.drop(params, ["meta", :meta])
+        
+        socket = Keyword.get(opts, :socket)
+        params = if socket, do: consume_uploads_into_params(socket, action, params, opts), else: params
 
         case action.type do
           :read ->
@@ -160,6 +163,44 @@ defmodule Alva.Dispatcher do
     Map.get(map, string_key, Map.get(map, atom_key))
   end
 
+  defp consume_uploads_into_params(socket, action, params, opts) do
+    consumer = Keyword.get(opts, :upload_consumer, Phoenix.LiveView)
+
+    file_args = Enum.filter(action.arguments || [], fn arg ->
+      arg.type == Ash.Type.File or arg.type == {:array, Ash.Type.File}
+    end)
+
+    Enum.reduce(file_args, params, fn arg, acc_params ->
+      upload_name = arg.name
+      
+      uploads = Map.get(socket.assigns || %{}, :uploads, %{})
+      upload_config = Map.get(uploads, upload_name)
+      entries = if upload_config, do: Map.get(upload_config, :entries, []), else: []
+
+      if upload_config && length(entries) > 0 do
+        consumed_files = consumer.consume_uploaded_entries(socket, upload_name, fn %{path: path}, entry ->
+          # Generate a Plug.Upload representing the file
+          {:ok, %Plug.Upload{
+            path: path,
+            filename: entry.client_name,
+            content_type: entry.client_type
+          }}
+        end)
+
+        value =
+          if arg.type == {:array, Ash.Type.File} do
+            consumed_files
+          else
+            List.first(consumed_files)
+          end
+          
+        Map.put(acc_params, to_string(upload_name), value)
+      else
+        acc_params
+      end
+    end)
+  end
+
   defp fetch_record(resource, event_def, params, ash_opts) do
     lookup_field = event_def.lookup || :id
     lookup_key = to_string(lookup_field)
@@ -188,7 +229,7 @@ defmodule Alva.Dispatcher do
     end)
   end
 
-  def strip_and_extract_metadata(%_module{} = record, event_def) do
+  def strip_and_extract_metadata(record, event_def) when is_map(record) do
     expose_keys = event_def.expose_metadata
     exposed_meta = extract_exposed_metadata(record, expose_keys)
     {strip_metadata(record), exposed_meta}
@@ -208,7 +249,7 @@ defmodule Alva.Dispatcher do
     {strip_metadata(list), exposed_meta}
   end
 
-  # Non-Ash-struct results (strings, maps, etc.) — no metadata to extract
+  # Non-map/list results (strings, etc.) — no metadata to extract
   def strip_and_extract_metadata(result, _event_def) do
     {strip_metadata(result), %{}}
   end
@@ -237,7 +278,7 @@ defmodule Alva.Dispatcher do
     else
       record
       |> Map.from_struct()
-      |> Map.drop([:__meta__])
+      |> drop_metadata()
     end
   end
 
@@ -245,7 +286,15 @@ defmodule Alva.Dispatcher do
     Enum.map(list, &strip_metadata/1)
   end
 
+  def strip_metadata(%{} = map) when not is_struct(map) do
+    drop_metadata(map)
+  end
+
   def strip_metadata(other), do: other
+
+  defp drop_metadata(map) do
+    Map.drop(map, [:__meta__, :__metadata__])
+  end
 
   defp public_fields(resource) do
     attrs = Ash.Resource.Info.public_attributes(resource) |> Enum.map(& &1.name)

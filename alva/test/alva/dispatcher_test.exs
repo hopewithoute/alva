@@ -98,6 +98,24 @@ defmodule Alva.DispatcherTest do
           end
         end
       end
+
+      create :upload_file do
+        accept []
+        argument :file, Ash.Type.File, allow_nil?: false
+        change fn changeset, _context ->
+          file = Ash.Changeset.get_argument(changeset, :file)
+          if is_map(file) do
+            filename = 
+              case file do
+                %Ash.Type.File{source: source} -> Map.get(source, :filename, "unknown")
+                _ -> Map.get(file, :filename, "unknown")
+              end
+            Ash.Changeset.change_attribute(changeset, :name, filename)
+          else
+            changeset
+          end
+        end
+      end
     end
 
     live_vue do
@@ -111,6 +129,7 @@ defmodule Alva.DispatcherTest do
       event("test.update", action: :update, lookup: :id)
       event("test.read_tenant", action: :read_with_tenant)
       event("test.get_tenant", action: :read_with_tenant, lookup: :id)
+      event("test.upload", action: :upload_file)
     end
   end
 
@@ -529,6 +548,44 @@ defmodule Alva.DispatcherTest do
 
       assert length(stripped) == 2
       assert exposed_meta == %{sync_token: "tok_1"}
+    end
+  end
+
+  describe "upload consumption" do
+    defmodule MockUploadConsumer do
+      def consume_uploaded_entries(socket, name, func) do
+        entries = get_in(socket.assigns.uploads, [name, :entries]) || []
+        
+        Enum.map(entries, fn entry ->
+          {:ok, result} = func.(%{path: "/tmp/#{entry.client_name}"}, entry)
+          result
+        end)
+      end
+    end
+
+    test "dispatch consumes uploads and merges them into params" do
+      socket = %Phoenix.LiveView.Socket{
+        assigns: %{
+          uploads: %{
+            file: %{
+              entries: [
+                %{client_name: "test.png", client_type: "image/png"}
+              ]
+            }
+          }
+        }
+      }
+
+      result = Alva.Dispatcher.dispatch(
+        "test.upload",
+        %{},
+        socket: socket,
+        domains: [TestDomain],
+        upload_consumer: MockUploadConsumer
+      )
+
+      assert result.ok == true
+      assert result.data.name == "test.png"
     end
   end
 end
