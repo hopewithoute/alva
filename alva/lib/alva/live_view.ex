@@ -158,19 +158,9 @@ defmodule Alva.LiveView do
         if signals == [] do
           {:halt, sock}
         else
-          push_notification(notification, sock)
+          {:halt, push_signals(sock, notification, events)}
         end
     end
-  end
-
-  defp push_notification(notification, sock) do
-    payload = %{
-      action: notification.action && notification.action.name,
-      resource: to_string(notification.resource),
-      data: Alva.Dispatcher.strip_metadata(notification.data)
-    }
-
-    {:halt, Phoenix.LiveView.push_event(sock, "ash_notification", payload)}
   end
 
   defp endpoint_pubsub!(%{endpoint: endpoint}) when is_atom(endpoint) and not is_nil(endpoint) do
@@ -199,6 +189,34 @@ defmodule Alva.LiveView do
     |> Enum.flat_map(&Alva.Domain.Info.alva_signal_map/1)
     |> Enum.filter(fn {name, _projection} -> MapSet.member?(state.signals, name) end)
   end
+
+  defp push_signals(
+         socket,
+         %Ash.Notifier.Notification{resource: notification_resource, data: data},
+         events
+       ) do
+    socket
+    |> active_signal_projections()
+    |> Enum.filter(fn {_name, {resource, signal}} ->
+      resource == notification_resource and MapSet.member?(events, signal.on)
+    end)
+    |> Enum.reduce(socket, fn {name, {_resource, signal}}, acc_socket ->
+      Phoenix.LiveView.push_event(acc_socket, name, signal_payload(data, signal))
+    end)
+  end
+
+  defp signal_payload(data, signal) do
+    {payload, meta} = Alva.Dispatcher.strip_and_extract_metadata(data, signal)
+
+    if map_size(meta) == 0 do
+      payload
+    else
+      put_signal_meta(payload, meta)
+    end
+  end
+
+  defp put_signal_meta(payload, meta) when is_map(payload), do: Map.put(payload, :meta, meta)
+  defp put_signal_meta(payload, meta), do: %{data: payload, meta: meta}
 
   defp apply_stream_operations(
          socket,

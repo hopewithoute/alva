@@ -58,7 +58,8 @@ defmodule Alva.LiveViewTest do
       end
 
       signal("students.created",
-        on: "student_created"
+        on: "student_created",
+        expose_metadata: [:sync_token]
       )
     end
   end
@@ -234,7 +235,7 @@ defmodule Alva.LiveViewTest do
     assert {:cont, ^socket} = callback.(student_created_notification(), socket)
   end
 
-  test "handle_info pushes active Ash.Notifier.Notification projections" do
+  test "handle_info pushes active signal notifications with semantic event names" do
     socket = %Phoenix.LiveView.Socket{
       assigns: %{__changed__: %{}},
       private: %{
@@ -252,10 +253,78 @@ defmodule Alva.LiveViewTest do
 
     {:halt, final_socket} = callback.(notification, socket)
 
-    events_str = inspect(final_socket.private.live_temp.push_events)
-    assert events_str =~ "ash_notification"
-    assert events_str =~ "upload_file"
-    assert events_str =~ "123"
+    assert [["students.created", %{id: "123", name: "test"}]] =
+             final_socket.private.live_temp.push_events
+
+    refute inspect(final_socket.private.live_temp.push_events) =~ "ash_notification"
+    refute inspect(final_socket.private.live_temp.push_events) =~ "__metadata__"
+  end
+
+  test "signal payload exposes opted metadata under meta without leaking raw Ash internals" do
+    socket =
+      %Phoenix.LiveView.Socket{
+        assigns: %{__changed__: %{}},
+        private: %{
+          lifecycle: %Phoenix.LiveView.Lifecycle{},
+          live_temp: %{push_events: []}
+        }
+      }
+      |> then(fn socket ->
+        {:cont, socket} = Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, socket)
+        socket
+      end)
+      |> Alva.LiveView.activate_signal("students.created")
+
+    [%{function: callback}] = socket.private.lifecycle.handle_info
+
+    {:halt, final_socket} = callback.(student_created_notification_with_metadata(), socket)
+
+    assert [["students.created", %{id: "123", name: "test", meta: %{sync_token: "tok_123"}}]] =
+             final_socket.private.live_temp.push_events
+
+    refute inspect(final_socket.private.live_temp.push_events) =~ "__metadata__"
+  end
+
+  test "signal-only delivery does not mutate a route collection" do
+    socket =
+      %Phoenix.LiveView.Socket{
+        assigns: %{__changed__: %{}},
+        private: %{
+          lifecycle: %Phoenix.LiveView.Lifecycle{},
+          live_temp: %{push_events: []}
+        }
+      }
+      |> then(fn socket ->
+        {:cont, socket} = Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, socket)
+        socket
+      end)
+      |> Phoenix.LiveView.stream(:students, [])
+      |> Alva.LiveView.activate_signal("students.created")
+
+    [%{function: callback}] = socket.private.lifecycle.handle_info
+
+    {:halt, final_socket} = callback.(student_created_notification(), socket)
+
+    assert [["students.created", %{id: "123", name: "test"}]] =
+             final_socket.private.live_temp.push_events
+
+    assert final_socket.assigns.streams.students.inserts == []
+  end
+
+  test "the same occurrence can update a stream and push a signal when both are active" do
+    socket =
+      active_stream_socket()
+      |> Alva.LiveView.activate_signal("students.created")
+
+    [%{function: callback}] = socket.private.lifecycle.handle_info
+
+    {:halt, final_socket} = callback.(student_created_notification(), socket)
+
+    assert [["students.created", %{id: "123", name: "test"}]] =
+             final_socket.private.live_temp.push_events
+
+    assert [{"students-123", -1, %TestResource{id: "123", name: "test"}, nil, false}] =
+             final_socket.assigns.streams.students.inserts
   end
 
   test "handle_info inserts matching active stream notifications into the route collection" do
@@ -351,6 +420,18 @@ defmodule Alva.LiveViewTest do
       resource: TestResource,
       action: %{name: :upload_file},
       data: %TestResource{id: "123", name: "test"}
+    }
+  end
+
+  defp student_created_notification_with_metadata do
+    %Ash.Notifier.Notification{
+      resource: TestResource,
+      action: %{name: :upload_file},
+      data: %TestResource{
+        id: "123",
+        name: "test",
+        __metadata__: %{sync_token: "tok_123", hidden: "nope"}
+      }
     }
   end
 
