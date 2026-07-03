@@ -317,12 +317,7 @@ defmodule Alva.Dispatcher do
   end
 
   defp public_fields(resource) do
-    attrs = Ash.Resource.Info.public_attributes(resource) |> Enum.map(& &1.name)
-    calcs = Ash.Resource.Info.public_calculations(resource) |> Enum.map(& &1.name)
-    rels = Ash.Resource.Info.public_relationships(resource) |> Enum.map(& &1.name)
-    aggs = Ash.Resource.Info.public_aggregates(resource) |> Enum.map(& &1.name)
-
-    attrs ++ calcs ++ rels ++ aggs
+    Alva.Resource.Info.public_fields(resource)
   end
 
   defp not_found_error(resource, lookup_field, lookup_value) do

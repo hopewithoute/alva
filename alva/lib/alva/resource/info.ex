@@ -20,4 +20,16 @@ defmodule Alva.Resource.Info do
     |> Spark.Dsl.Extension.get_entities([:live_vue])
     |> Enum.filter(&match?(%Alva.Resource.Signal{}, &1))
   end
+
+  @doc """
+  Returns a list of all public field names (attributes, calculations, relationships, aggregates) for the resource.
+  """
+  def public_fields(resource) do
+    attrs = Ash.Resource.Info.public_attributes(resource) |> Enum.map(& &1.name)
+    calcs = Ash.Resource.Info.public_calculations(resource) |> Enum.map(& &1.name)
+    rels = Ash.Resource.Info.public_relationships(resource) |> Enum.map(& &1.name)
+    aggs = Ash.Resource.Info.public_aggregates(resource) |> Enum.map(& &1.name)
+
+    attrs ++ calcs ++ rels ++ aggs
+  end
 end

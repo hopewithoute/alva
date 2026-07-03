@@ -86,12 +86,7 @@ defmodule Alva.Resource.Verifiers.VerifyActions do
   end
 
   defp public_fields_count(dsl_state) do
-    attrs = Ash.Resource.Info.public_attributes(dsl_state) |> length()
-    calcs = Ash.Resource.Info.public_calculations(dsl_state) |> length()
-    rels = Ash.Resource.Info.public_relationships(dsl_state) |> length()
-    aggs = Ash.Resource.Info.public_aggregates(dsl_state) |> length()
-
-    attrs + calcs + rels + aggs
+    Alva.Resource.Info.public_fields(dsl_state) |> length()
   end
 
   defp pubsub_publication_names(resource) do
