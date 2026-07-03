@@ -71,7 +71,9 @@ defmodule Mix.Tasks.Alva.CodegenTest do
     assert String.contains?(types_content, "export interface Resource")
     
     client_content = File.read!(client_path)
-    assert String.contains?(client_content, "import type { AlvaEvents } from \"./events\"")
-    assert String.contains?(client_content, "use_alva_api")
+    assert String.contains?(client_content, "const base_api = use_alva_api<AlvaEvents>();")
+    assert String.contains?(client_content, "function create_deep_proxy(path: string[] = []): any {")
+    assert String.contains?(client_content, "export interface AlvaApi {")
+    assert String.contains?(client_content, "test: {")
   end
 end

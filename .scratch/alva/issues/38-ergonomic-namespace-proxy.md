@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 ## Parent
 `docs/prd.md` (Phase 7 - TypeScript Codegen)
