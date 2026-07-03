@@ -1,33 +1,35 @@
 import { ref, onMounted, Ref } from 'vue'
 import type { LiveError } from './useAlvaApi'
 
-export interface AshQueryOptions<T, PubSubEvents> {
+export interface AshQueryOptions<T> {
   initialData?: T[]
   autoFetch?: boolean
-  streamInsertEvent?: keyof PubSubEvents
-  streamDeleteEvent?: keyof PubSubEvents
-  primaryKey?: string
 }
 
+/**
+ * `ashQuery` is designed for ad hoc command/read fetching that is not owned by a route stream.
+ * It fetches data on mount (if autoFetch is true) and manages loading/error states.
+ * 
+ * Note: For Route Collection stream props (canonical list updates via server), 
+ * rely on LiveView stream diffs instead of ashQuery. `ashQuery` does not automatically 
+ * reconcile stream events (insert/delete).
+ */
 export function ashQuery<
   Events extends Record<string, { input: any; output: any }>,
-  PubSubEvents extends Record<string, any>,
   E extends keyof Events,
   T = Events[E]['output'] extends { data: infer D } ? (D extends any[] ? D[number] : D) : any
 >(
   api: { 
-    call: (event: E, params?: Events[E]['input']) => Promise<any>,
-    on: <K extends keyof PubSubEvents>(event: K, cb: (payload: PubSubEvents[K]) => void) => void
+    call: (event: E, params?: Events[E]['input']) => Promise<any>
   },
   event: E,
   params?: Events[E]['input'],
-  options: AshQueryOptions<T, PubSubEvents> = {}
+  options: AshQueryOptions<T> = {}
 ) {
   const data = ref(options.initialData || []) as Ref<T[]>
   const loading = ref(!options.initialData && options.autoFetch !== false)
   const error = ref<LiveError | null>(null)
   const meta = ref<Record<string, unknown> | null>(null)
-  const primaryKey = options.primaryKey || 'id'
 
   const fetch = async () => {
     loading.value = true
@@ -49,37 +51,6 @@ export function ashQuery<
   if (!options.initialData && options.autoFetch !== false) {
     onMounted(() => {
       fetch()
-    })
-  }
-
-  const updateArray = (item: any, isDelete = false) => {
-    const pkValue = typeof item === 'object' && item !== null ? item[primaryKey] : item
-    if (pkValue === undefined || pkValue === null) return
-
-    const index = data.value.findIndex((existing: any) => existing[primaryKey] === pkValue)
-    
-    if (index >= 0) {
-      const newData = [...data.value]
-      if (isDelete) {
-        newData.splice(index, 1)
-      } else {
-        newData.splice(index, 1, item as T)
-      }
-      data.value = newData as any
-    } else if (!isDelete) {
-      data.value = [...data.value, item as T] as any
-    }
-  }
-
-  if (options.streamInsertEvent) {
-    api.on(options.streamInsertEvent, (payload: any) => {
-      updateArray(payload, false)
-    })
-  }
-
-  if (options.streamDeleteEvent) {
-    api.on(options.streamDeleteEvent, (payload: any) => {
-      updateArray(payload, true)
     })
   }
 

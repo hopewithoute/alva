@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Frontend API Cleanup for Collection Ownership
 
@@ -14,12 +14,12 @@ This slice should remove, replace, or clearly deprecate the old mental model whe
 
 ## Acceptance criteria
 
-- [ ] `ashQuery` no longer presents route-owned collection reconciliation as its primary stream behavior.
-- [ ] Vue-side insert/delete/dedupe logic is removed or deprecated for Route Collections.
-- [ ] Signal callback usage through `ash.on` remains supported.
-- [ ] Type names and docs distinguish command/read fetching from Route Collection stream props.
-- [ ] Frontend tests verify ad hoc query behavior without stream insert/delete callback ownership.
-- [ ] Frontend tests verify Signal callback registration and cleanup.
+- [x] `ashQuery` no longer presents route-owned collection reconciliation as its primary stream behavior.
+- [x] Vue-side insert/delete/dedupe logic is removed or deprecated for Route Collections.
+- [x] Signal callback usage through `ash.on` remains supported.
+- [x] Type names and docs distinguish command/read fetching from Route Collection stream props.
+- [x] Frontend tests verify ad hoc query behavior without stream insert/delete callback ownership.
+- [x] Frontend tests verify Signal callback registration and cleanup.
 
 ## Blocked by
 

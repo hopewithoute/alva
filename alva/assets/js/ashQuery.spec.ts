@@ -12,16 +12,8 @@ vi.mock('vue', async () => {
 
 describe('ashQuery', () => {
   const mockApi = () => {
-    const handlers: Record<string, Function> = {}
     return {
-      call: vi.fn(),
-      on: vi.fn((event, cb) => {
-        handlers[event] = cb
-      }),
-      // Helper for tests
-      trigger: (event: string, payload: any) => {
-        if (handlers[event]) handlers[event](payload)
-      }
+      call: vi.fn()
     }
   }
 
@@ -77,57 +69,5 @@ describe('ashQuery', () => {
     
     expect(loading.value).toBe(false)
     expect(error.value).toEqual(mockError)
-  })
-
-  it('should handle stream insertions and updates', () => {
-    const api = mockApi()
-    const { data } = ashQuery(api as any, 'students.list', undefined, {
-      initialData: [{ id: 1, name: 'A' }],
-      streamInsertEvent: 'student_created'
-    })
-    
-    expect(api.on).toHaveBeenCalledWith('student_created', expect.any(Function))
-    
-    // Insert new
-    api.trigger('student_created', { id: 2, name: 'B' })
-    expect(data.value).toEqual([{ id: 1, name: 'A' }, { id: 2, name: 'B' }])
-    
-    // Update existing
-    api.trigger('student_created', { id: 1, name: 'A updated' })
-    expect(data.value).toEqual([{ id: 1, name: 'A updated' }, { id: 2, name: 'B' }])
-  })
-
-  it('should handle stream deletions', () => {
-    const api = mockApi()
-    const { data } = ashQuery(api as any, 'students.list', undefined, {
-      initialData: [{ id: 1, name: 'A' }, { id: 2, name: 'B' }],
-      streamDeleteEvent: 'student_deleted'
-    })
-    
-    expect(api.on).toHaveBeenCalledWith('student_deleted', expect.any(Function))
-    
-    // Delete by object with id
-    api.trigger('student_deleted', { id: 1 })
-    expect(data.value).toEqual([{ id: 2, name: 'B' }])
-    
-    // Delete by raw id (if server sends just the id)
-    api.trigger('student_deleted', 2)
-    expect(data.value).toEqual([])
-  })
-  
-  it('should handle custom primaryKey', () => {
-    const api = mockApi()
-    const { data } = ashQuery(api as any, 'students.list', undefined, {
-      initialData: [{ uuid: 'a', name: 'A' }],
-      streamInsertEvent: 'student_created',
-      streamDeleteEvent: 'student_deleted',
-      primaryKey: 'uuid'
-    })
-    
-    api.trigger('student_created', { uuid: 'b', name: 'B' })
-    expect(data.value).toEqual([{ uuid: 'a', name: 'A' }, { uuid: 'b', name: 'B' }])
-    
-    api.trigger('student_deleted', { uuid: 'a' })
-    expect(data.value).toEqual([{ uuid: 'b', name: 'B' }])
   })
 })

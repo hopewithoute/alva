@@ -30,12 +30,19 @@ export interface AshCallOptions {
   // Future options for optimistic UI, caching, etc. can be added here
 }
 
+/**
+ * Provides the primary client interface for Alva.
+ * It offers request/reply command execution via `call` and semantic Signal delivery via `on`.
+ */
 export function useAlvaApi<
   Events extends Record<string, { input: any; output: LiveResult<any> }> = any,
-  PubSubEvents extends Record<string, any> = any
+  SignalEvents extends Record<string, any> = any
 >(config?: AlvaApiConfig) {
   const live = useLiveVue()
 
+  /**
+   * Execute a remote event (mutation or ad hoc read) and return an immediate promise.
+   */
   const ashCall = <E extends keyof Events>(
     event: E,
     payload: Events[E]['input'],
@@ -59,11 +66,16 @@ export function useAlvaApi<
     })
   }
 
-  const on = <E extends keyof PubSubEvents>(
+  /**
+   * Register a callback for semantic Signal delivery (e.g., async progress, toasts).
+   * Note: This is NOT for canonical collection synchronization. Route collections
+   * should be handled by LiveVue 1.x stream props directly.
+   */
+  const on = <E extends keyof SignalEvents>(
     event: E,
-    callback: (payload: PubSubEvents[E]) => void
+    callback: (payload: SignalEvents[E]) => void
   ): void => {
-    useLiveEvent<PubSubEvents[E]>(event as string, callback)
+    useLiveEvent<SignalEvents[E]>(event as string, callback)
   }
 
   return {
