@@ -35,7 +35,7 @@ defmodule AlvaDemoWeb.AlvaTest do
     assert reply.ok == false
     assert reply.error.type == "validation"
     assert reply.error.message == "Validation failed"
-    assert reply.error.fields.name == ["is required"]
+    assert reply.error.fields["name"] == ["is required"]
   end
 
   test "dispatch/3 handles students.archive successfully" do

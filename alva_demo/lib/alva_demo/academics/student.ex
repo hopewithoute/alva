@@ -2,11 +2,19 @@ defmodule AlvaDemo.Academics.Student do
   use Ash.Resource,
     domain: AlvaDemo.Academics,
     data_layer: AshPostgres.DataLayer,
-    extensions: [Alva.Resource]
+    extensions: [Alva.Resource, Ash.Notifier.PubSub]
 
   postgres do
     table "students"
     repo AlvaDemo.Repo
+  end
+
+  pub_sub do
+    module AlvaDemoWeb.Endpoint
+    prefix "students"
+
+    publish :create, ["all"], event: "student_created"
+    publish :archive, ["all"], event: "student_archived"
   end
 
   live_vue do
@@ -14,6 +22,13 @@ defmodule AlvaDemo.Academics.Student do
     event("students.create", action: :create)
     event("students.archive", action: :archive, lookup: :id)
     event("test.assign", action: :read)
+
+    stream :students do
+      insert on: "student_created"
+      update on: "student_archived"
+    end
+
+    signal "students.created", on: "student_created"
   end
 
   actions do

@@ -2,13 +2,17 @@
   <div class="max-w-2xl mx-auto mt-10 p-6 bg-white shadow rounded-lg">
     <h1 class="text-3xl font-bold mb-6 text-gray-800">Students</h1>
     
+    <div v-if="latestSignal" class="mb-4 p-4 bg-blue-100 text-blue-800 rounded-md">
+      Signal Received: {{ latestSignal }}
+    </div>
+
     <form @submit.prevent="createStudent" class="mb-6">
       <div class="flex gap-4">
         <input 
           v-model="newName" 
           type="text" 
           placeholder="New student name" 
-          class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3"
           :class="{'border-red-500 focus:border-red-500 focus:ring-red-500': fieldErrors.name}"
           :disabled="isCreating"
         />
@@ -68,26 +72,39 @@ type AlvaEvents = {
   'students.archive': { input: { id: string }; output: { ok: true, data: Student } | { ok: false, error: any } }
 }
 
-const api = useAlvaApi<AlvaEvents>()
+type SignalEvents = {
+  'students.created': { data: Student }
+}
 
-const students = ref<Student[]>([])
+const props = defineProps<{
+  students: Student[]
+}>()
+
+const api = useAlvaApi<AlvaEvents, SignalEvents>()
+
 const loading = ref(true)
 const error = ref<string | null>(null)
 const fieldErrors = ref<Record<string, string[]>>({})
 
 const newName = ref('')
 const isCreating = ref(false)
+const latestSignal = ref<string | null>(null)
+
+api.on('students.created', (payload) => {
+  latestSignal.value = `Student '${payload.data.name}' was just added (Signal)`
+  setTimeout(() => { latestSignal.value = null }, 3000)
+})
 
 const createStudent = async () => {
   isCreating.value = true
   error.value = null
   fieldErrors.value = {}
   
-  const reply = await api.ashCall('students.create', { name: newName.value.trim() ? newName.value : null })
+  const reply = await api.call('students.create', { name: newName.value.trim() ? newName.value : null })
   
   isCreating.value = false
   if (reply.ok) {
-    students.value.push(reply.data)
+    // Route Collection is updated via LiveVue stream path.
     newName.value = ''
   } else {
     if (reply.error?.type === 'validation') {
@@ -99,23 +116,16 @@ const createStudent = async () => {
 }
 
 const archiveStudent = async (id: string) => {
-  const reply = await api.ashCall('students.archive', { id })
-  if (reply.ok) {
-    const index = students.value.findIndex(s => s.id === id)
-    if (index !== -1) {
-      students.value[index] = reply.data
-    }
-  } else {
+  const reply = await api.call('students.archive', { id })
+  if (!reply.ok) {
     alert(reply.error?.message || 'Failed to archive student')
   }
 }
 
 onMounted(async () => {
-  const reply = await api.ashCall('students.list', {})
+  const reply = await api.call('students.list', {})
   loading.value = false
-  if (reply.ok) {
-    students.value = reply.data
-  } else {
+  if (!reply.ok) {
     error.value = reply.error?.message || 'Unknown error'
   }
 })

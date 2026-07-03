@@ -35,15 +35,11 @@ defmodule Alva.Error do
               msg = Regex.replace(~r/^(attribute|argument)\s+#{field}\s+/i, msg, "")
 
               path = Map.get(sub_error, :path) || []
-              bread_crumbs = Map.get(sub_error, :bread_crumbs) || []
               
-              resolved_path = 
-                if path == [], do: bread_crumbs, else: path
-                
               field_key = 
-                case resolved_path do
+                case path do
                   [] -> to_string(field)
-                  p -> Enum.map_join(p, ".", &to_string/1)
+                  p -> Enum.map_join(p ++ [field], ".", &to_string/1)
                 end
 
               Map.update(acc, field_key, [msg], &[msg | &1])

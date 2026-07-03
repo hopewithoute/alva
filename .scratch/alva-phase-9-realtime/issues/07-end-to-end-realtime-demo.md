@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # End-to-End Realtime Demo
 
@@ -14,13 +14,13 @@ The demo should make the distinction visible: commands answer the caller, stream
 
 ## Acceptance criteria
 
-- [ ] A command mutation returns immediate normalized feedback to the caller.
-- [ ] The same mutation updates a Route Collection in another subscribed window through the stream path.
-- [ ] A Route Collection is initialized server-side and rendered through LiveVue stream support.
-- [ ] A Stream Query applies a paginated or filtered command result to an active stream server-side.
-- [ ] A Signal is delivered to Vue as a semantic callback event.
-- [ ] The demo does not use Vue-side manual append/delete/dedupe logic for route-owned collections.
-- [ ] The demo can be verified with targeted tests or a documented manual flow.
+- [x] A command mutation returns immediate normalized feedback to the caller.
+- [x] The same mutation updates a Route Collection in another subscribed window through the stream path.
+- [x] A Route Collection is initialized server-side and rendered through LiveVue stream support.
+- [x] A Stream Query applies a paginated or filtered command result to an active stream server-side.
+- [x] A Signal is delivered to Vue as a semantic callback event.
+- [x] The demo does not use Vue-side manual append/delete/dedupe logic for route-owned collections.
+- [x] The demo can be verified with targeted tests or a documented manual flow.
 
 ## Blocked by
 
