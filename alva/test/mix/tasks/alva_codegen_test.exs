@@ -63,6 +63,8 @@ defmodule Mix.Tasks.Alva.CodegenTest do
     assert String.contains?(events_content, "export type AlvaEvents =")
     assert String.contains?(events_content, "test.create")
     assert String.contains?(events_content, "LiveResult<Types.Resource>")
+    # Verify input shape generation is hooked up (the Resource actions have no arguments in test)
+    assert String.contains?(events_content, "input:")
     
     types_content = File.read!(types_path)
     assert String.contains?(types_content, "export type LiveResult")
