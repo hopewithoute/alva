@@ -187,4 +187,65 @@ describe('ashForm', () => {
       avatar: ['ref-1', 'ref-2']
     })
   })
+
+  it('should not overwrite submit errors with stale validate responses (race condition)', async () => {
+    type Resolver = (value: any) => void;
+    let resolve_validate: Resolver | undefined;
+    let resolve_submit: Resolver | undefined;
+    
+    const api_routes = {
+      'students.validate': () => new Promise(r => resolve_validate = r),
+      'students.create': () => new Promise(r => resolve_submit = r)
+    };
+
+    const api_mock = {
+      call: vi.fn().mockImplementation((event: keyof typeof api_routes) => {
+        return api_routes[event]();
+      })
+    };
+
+    const flush_microtasks = async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await nextTick();
+    };
+
+    const { values, submit, validate, errors, loading, isValidating } = ashForm(api_mock as any, 'students.create', {
+      initialValues: { name: '' },
+      validateEvent: 'students.validate',
+      debounceMs: 300
+    })
+
+    // 1. Trigger validation
+    validate()
+    
+    // 2. Wait for debounce to finish so the API call starts
+    vi.advanceTimersByTime(300)
+    await nextTick()
+    
+    // Now validate API call is in-flight (waiting on resolve_validate)
+    
+    // 3. Trigger submit
+    const submit_promise = submit()
+    
+    // Now submit API call is in-flight (waiting on resolve_submit)
+    
+    // 4. Submit API call finishes with errors
+    resolve_submit?.({ ok: false, error: { type: 'validation', fields: { name: ['Submit error'] } } })
+    await submit_promise
+    await nextTick()
+    
+    expect(errors.value.name).toEqual(['Submit error'])
+    expect(loading.value).toBe(false)
+    expect(isValidating.value).toBe(false) // Validation state should be reset by submit
+    
+    // 5. Stale validate API call finishes later
+    resolve_validate?.({ ok: false, error: { type: 'validation', fields: { name: ['Validate error'] } } })
+    
+    // Await pending microtasks
+    await flush_microtasks()
+    
+    // The stale validate response should NOT overwrite the submit errors
+    expect(errors.value.name).toEqual(['Submit error'])
+  })
 })

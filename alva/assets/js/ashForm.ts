@@ -39,7 +39,9 @@ export function ashForm<
     const currentSubmit = submitCounter
     
     // Cancel any pending validations to prevent race conditions
+    validateCounter++ // Ensure any in-flight validation resolves without applying state
     clearTimeout(timeout)
+    isValidating.value = false
     if (pendingResolve) {
       pendingResolve({ ok: false, error: { type: 'cancelled', message: 'Submit started' } })
       pendingResolve = null
