@@ -28,9 +28,18 @@ defmodule Alva.LiveViewTest do
     end
 
     actions do
+      read :read do
+        primary?(true)
+        pagination(offset?: true, required?: false)
+      end
+
       create :upload_file do
         argument(:file, Ash.Type.File, allow_nil?: false)
         accept([])
+      end
+
+      create :create do
+        accept([:name])
       end
 
       update :rename do
@@ -50,6 +59,7 @@ defmodule Alva.LiveViewTest do
 
     live_vue do
       event("upload", action: :upload_file)
+      event("students.list", action: :read)
 
       stream :students do
         insert(on: "student_created")
@@ -340,6 +350,90 @@ defmodule Alva.LiveViewTest do
              final_socket.private.live_temp.push_events
   end
 
+  test "stream query appends command read results into an active route collection" do
+    first = create_student!("Append A")
+    second = create_student!("Append B")
+
+    socket =
+      active_stream_socket()
+      |> Alva.LiveView.bind_stream_query("students.list", :students, mode: :append)
+
+    [%{function: callback}] = socket.private.lifecycle.handle_event
+
+    {:halt, reply, final_socket} =
+      callback.(student_list_event(), %{"page" => %{"limit" => 2, "offset" => 0}}, socket)
+
+    assert reply.ok == true
+    assert reply.meta.pagination.limit == 2
+    assert reply.meta.pagination.offset == 0
+
+    inserted_ids = Enum.map(final_socket.assigns.streams.students.inserts, &elem(&1, 0))
+    assert "students-#{first.id}" in inserted_ids
+    assert "students-#{second.id}" in inserted_ids
+  end
+
+  test "stream query prepends command read results into an active route collection" do
+    create_student!("Prepend A")
+
+    socket =
+      active_stream_socket()
+      |> Alva.LiveView.bind_stream_query("students.list", :students, mode: :prepend)
+
+    [%{function: callback}] = socket.private.lifecycle.handle_event
+
+    {:halt, reply, final_socket} =
+      callback.(student_list_event(), %{"page" => %{"limit" => 1, "offset" => 0}}, socket)
+
+    assert reply.ok == true
+    assert [{_dom_id, 0, _item, _limit, false}] = final_socket.assigns.streams.students.inserts
+  end
+
+  test "stream query passes collection limits to Phoenix stream operations" do
+    create_student!("Limit A")
+
+    socket =
+      active_stream_socket()
+      |> Alva.LiveView.bind_stream_query("students.list", :students, mode: :append, limit: -10)
+
+    [%{function: callback}] = socket.private.lifecycle.handle_event
+
+    {:halt, reply, final_socket} =
+      callback.(student_list_event(), %{"page" => %{"limit" => 1, "offset" => 0}}, socket)
+
+    assert reply.ok == true
+    assert [{_dom_id, -1, _item, -10, false}] = final_socket.assigns.streams.students.inserts
+  end
+
+  test "stream query resets an active route collection for refresh flows" do
+    create_student!("Refresh A")
+
+    socket =
+      active_stream_socket()
+      |> Alva.LiveView.bind_stream_query("students.list", :students, mode: :reset)
+
+    [%{function: callback}] = socket.private.lifecycle.handle_event
+
+    {:halt, reply, final_socket} =
+      callback.(student_list_event(), %{"page" => %{"limit" => 1, "offset" => 0}}, socket)
+
+    assert reply.ok == true
+    assert final_socket.assigns.streams.students.reset? == true
+    assert [_] = final_socket.assigns.streams.students.inserts
+  end
+
+  test "unbound command read results behave as normal replies without stream mutation" do
+    create_student!("Unbound A")
+
+    socket = active_stream_socket()
+    [%{function: callback}] = socket.private.lifecycle.handle_event
+
+    {:halt, reply, final_socket} =
+      callback.(student_list_event(), %{"page" => %{"limit" => 1, "offset" => 0}}, socket)
+
+    assert reply.ok == true
+    assert final_socket.assigns.streams.students.inserts == []
+  end
+
   test "signal-only delivery does not mutate a route collection" do
     socket =
       %Phoenix.LiveView.Socket{
@@ -495,6 +589,14 @@ defmodule Alva.LiveViewTest do
       )
 
     final_socket
+  end
+
+  defp create_student!(name) do
+    Ash.create!(Ash.Changeset.for_create(TestResource, :create, %{name: name}))
+  end
+
+  defp student_list_event do
+    "students.list"
   end
 
   defp student_created_notification do

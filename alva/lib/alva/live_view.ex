@@ -39,6 +39,26 @@ defmodule Alva.LiveView do
     end)
   end
 
+  def bind_stream_query(socket, event_name, stream_name, opts \\ [])
+      when is_binary(event_name) and is_atom(stream_name) do
+    ensure_projection!(socket, :stream, stream_name)
+
+    binding = %{
+      stream: stream_name,
+      mode: Keyword.get(opts, :mode, :append),
+      limit: Keyword.get(opts, :limit)
+    }
+
+    unless binding.mode in [:append, :prepend, :reset] do
+      raise ArgumentError,
+            "Unknown Alva stream query mode #{inspect(binding.mode)} for event #{inspect(event_name)}"
+    end
+
+    update_alva(socket, fn state ->
+      update_in(state.stream_queries, &Map.put(&1, event_name, binding))
+    end)
+  end
+
   def route_subscriptions(socket) do
     socket
     |> alva_state()
@@ -123,6 +143,7 @@ defmodule Alva.LiveView do
             {:cont, sock}
 
           _ ->
+            sock = apply_stream_query(sock, event_name, res)
             {:halt, res, sock}
         end
       end)
@@ -189,6 +210,49 @@ defmodule Alva.LiveView do
     |> Enum.flat_map(&Alva.Domain.Info.alva_signal_map/1)
     |> Enum.filter(fn {name, _projection} -> MapSet.member?(state.signals, name) end)
   end
+
+  defp apply_stream_query(socket, event_name, %{ok: true, data: data}) do
+    state = alva_state(socket)
+
+    case Map.fetch(state.stream_queries, event_name) do
+      {:ok, %{stream: stream_name} = binding} ->
+        if MapSet.member?(state.streams, stream_name) do
+          apply_stream_query_binding(socket, binding, data)
+        else
+          socket
+        end
+
+      :error ->
+        socket
+    end
+  end
+
+  defp apply_stream_query(socket, _event_name, _result), do: socket
+
+  defp apply_stream_query_binding(socket, %{stream: stream_name, mode: :reset} = binding, data) do
+    Phoenix.LiveView.stream(socket, stream_name, stream_query_items(data),
+      reset: true,
+      limit: binding.limit
+    )
+  end
+
+  defp apply_stream_query_binding(socket, binding, data) do
+    data
+    |> stream_query_items()
+    |> Enum.reduce(socket, fn item, acc_socket ->
+      Phoenix.LiveView.stream_insert(acc_socket, binding.stream, item,
+        at: stream_query_at(binding.mode),
+        limit: binding.limit
+      )
+    end)
+  end
+
+  defp stream_query_items(nil), do: []
+  defp stream_query_items(items) when is_list(items), do: items
+  defp stream_query_items(item), do: [item]
+
+  defp stream_query_at(:prepend), do: 0
+  defp stream_query_at(:append), do: -1
 
   defp push_signals(
          socket,
@@ -328,7 +392,8 @@ defmodule Alva.LiveView do
       domains: [],
       route_subscriptions: MapSet.new(),
       streams: MapSet.new(),
-      signals: MapSet.new()
+      signals: MapSet.new(),
+      stream_queries: %{}
     })
   end
 end
