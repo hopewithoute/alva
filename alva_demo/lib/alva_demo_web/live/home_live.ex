@@ -8,12 +8,14 @@ defmodule AlvaDemoWeb.HomeLive do
       Alva.LiveView.subscribe(socket, "students:all")
     end
 
+    %{ok: true, data: students} = Alva.Dispatcher.dispatch("students.list", %{}, domains: [AlvaDemo.Academics])
+
     socket =
       socket
       |> Alva.LiveView.activate_stream(:students)
       |> Alva.LiveView.activate_signal("students.created")
       |> Alva.LiveView.bind_stream_query("students.list", :students, mode: :reset)
-      |> stream(:students, [])
+      |> stream(:students, students)
 
     {:ok, socket}
   end

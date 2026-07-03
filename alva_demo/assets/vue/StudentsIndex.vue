@@ -82,7 +82,7 @@ const props = defineProps<{
 
 const api = useAlvaApi<AlvaEvents, SignalEvents>()
 
-const loading = ref(true)
+const loading = ref(false)
 const error = ref<string | null>(null)
 const fieldErrors = ref<Record<string, string[]>>({})
 
@@ -100,7 +100,7 @@ const createStudent = async () => {
   error.value = null
   fieldErrors.value = {}
   
-  const reply = await api.call('students.create', { name: newName.value.trim() ? newName.value : null })
+  const reply = await api.ashCall('students.create', { name: newName.value.trim() ? newName.value : null })
   
   isCreating.value = false
   if (reply.ok) {
@@ -116,17 +116,9 @@ const createStudent = async () => {
 }
 
 const archiveStudent = async (id: string) => {
-  const reply = await api.call('students.archive', { id })
+  const reply = await api.ashCall('students.archive', { id })
   if (!reply.ok) {
     alert(reply.error?.message || 'Failed to archive student')
   }
 }
-
-onMounted(async () => {
-  const reply = await api.call('students.list', {})
-  loading.value = false
-  if (!reply.ok) {
-    error.value = reply.error?.message || 'Unknown error'
-  }
-})
 </script>
