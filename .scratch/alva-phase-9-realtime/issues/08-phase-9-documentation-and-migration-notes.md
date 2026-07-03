@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Phase 9 Documentation and Migration Notes
 
@@ -14,13 +14,13 @@ The migration notes should call out that route-owned collections should use Phoe
 
 ## Acceptance criteria
 
-- [ ] Documentation explains the Command, Stream, Signal, Route Subscription, and Page Projection split.
-- [ ] Documentation shows a Stream Block with `on:` mappings for Ash PubSub published event names.
-- [ ] Documentation shows page-level Route Subscription and projection activation.
-- [ ] Documentation shows Stream Query pagination/refresh behavior without resource-level load-more DSL.
-- [ ] Documentation shows Signal usage for a non-collection callback.
-- [ ] Migration notes explain how the old `ashQuery` streamInsert/streamDelete pattern is replaced for Route Collections.
-- [ ] Documentation references ADR 0002 or mirrors its decision clearly.
+- [x] Documentation explains the Command, Stream, Signal, Route Subscription, and Page Projection split.
+- [x] Documentation shows a Stream Block with `on:` mappings for Ash PubSub published event names.
+- [x] Documentation shows page-level Route Subscription and projection activation.
+- [x] Documentation shows Stream Query pagination/refresh behavior without resource-level load-more DSL.
+- [x] Documentation shows Signal usage for a non-collection callback.
+- [x] Migration notes explain how the old `ashQuery` streamInsert/streamDelete pattern is replaced for Route Collections.
+- [x] Documentation references ADR 0002 or mirrors its decision clearly.
 
 ## Blocked by
 
