@@ -39,7 +39,12 @@ defmodule Alva.Error do
               field_key = 
                 case path do
                   [] -> to_string(field)
-                  p -> Enum.map_join(p ++ [field], ".", &to_string/1)
+                  p -> 
+                    if List.last(p) == field do
+                      Enum.map_join(p, ".", &to_string/1)
+                    else
+                      Enum.map_join(p ++ [field], ".", &to_string/1)
+                    end
                 end
 
               Map.update(acc, field_key, [msg], &[msg | &1])
