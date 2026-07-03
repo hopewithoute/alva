@@ -34,7 +34,7 @@ defmodule Alva.Dispatcher do
 
                 case Ash.read_one(query, ash_opts) do
                   {:ok, record} when not is_nil(record) ->
-                    handle_success(strip_metadata(record))
+                    dispatch_success(record, event_def)
 
                   {:ok, nil} ->
                     handle_error(not_found_error(resource, lookup_field, lookup_value))
@@ -79,10 +79,10 @@ defmodule Alva.Dispatcher do
               case Ash.read(query, read_opts) do
                 {:ok, %{results: records} = page}
                 when is_struct(page, Ash.Page.Offset) or is_struct(page, Ash.Page.Keyset) ->
-                  handle_success(Enum.map(records, &strip_metadata/1), page)
+                  dispatch_success(records, event_def, page)
 
                 {:ok, records} ->
-                  handle_success(Enum.map(records, &strip_metadata/1))
+                  dispatch_success(records, event_def)
 
                 {:error, error} ->
                   handle_error(error)
@@ -94,7 +94,7 @@ defmodule Alva.Dispatcher do
 
             case Ash.create(changeset, ash_opts) do
               {:ok, record} ->
-                handle_success(strip_metadata(record))
+                dispatch_success(record, event_def)
 
               {:error, error} ->
                 handle_error(error)
@@ -109,7 +109,7 @@ defmodule Alva.Dispatcher do
                  changeset <-
                    Ash.Changeset.for_update(record, action_name, update_params, ash_opts),
                  {:ok, updated_record} <- Ash.update(changeset, ash_opts) do
-              handle_success(strip_metadata(updated_record))
+              dispatch_success(updated_record, event_def)
             else
               {:error, error} -> handle_error(error)
             end
@@ -119,10 +119,10 @@ defmodule Alva.Dispatcher do
                  changeset <- Ash.Changeset.for_destroy(record, action_name, %{}, ash_opts) do
               case Ash.destroy(changeset, Keyword.merge([return_destroyed?: true], ash_opts)) do
                 {:ok, destroyed_record} ->
-                  handle_success(strip_metadata(destroyed_record))
+                  dispatch_success(destroyed_record, event_def)
 
                 :ok ->
-                  handle_success(strip_metadata(record))
+                  dispatch_success(record, event_def)
 
                 {:error, error} ->
                   handle_error(error)
@@ -136,7 +136,7 @@ defmodule Alva.Dispatcher do
 
             case Ash.run_action(input, ash_opts) do
               {:ok, result} ->
-                handle_success(result)
+                dispatch_success(result, event_def)
 
               {:error, error} ->
                 handle_error(error)
@@ -167,6 +167,16 @@ defmodule Alva.Dispatcher do
     Ash.get(resource, [{lookup_field, lookup_value}], ash_opts)
   end
 
+  defp dispatch_success(record_or_list, event_def, page \\ nil) do
+    {stripped, exposed_meta} = strip_and_extract_metadata(record_or_list, event_def)
+
+    if page do
+      handle_success(stripped, exposed_meta, page)
+    else
+      handle_success(stripped, exposed_meta)
+    end
+  end
+
   defp find_event(domains, event_name) do
     Enum.find_value(domains, :error, fn domain ->
       map = Alva.Domain.Info.alva_event_map(domain)
@@ -177,6 +187,41 @@ defmodule Alva.Dispatcher do
       end
     end)
   end
+
+  def strip_and_extract_metadata(%_module{} = record, event_def) do
+    expose_keys = event_def.expose_metadata
+    exposed_meta = extract_exposed_metadata(record, expose_keys)
+    {strip_metadata(record), exposed_meta}
+  end
+
+  # For lists, extract metadata from the first record only.
+  # All records in a query share the same execution metadata.
+  def strip_and_extract_metadata(list, event_def) when is_list(list) do
+    expose_keys = event_def.expose_metadata
+
+    exposed_meta =
+      case list do
+        [first | _] -> extract_exposed_metadata(first, expose_keys)
+        [] -> %{}
+      end
+
+    {strip_metadata(list), exposed_meta}
+  end
+
+  # Non-Ash-struct results (strings, maps, etc.) — no metadata to extract
+  def strip_and_extract_metadata(result, _event_def) do
+    {strip_metadata(result), %{}}
+  end
+
+  defp extract_exposed_metadata(_record, []), do: %{}
+
+  defp extract_exposed_metadata(%{__metadata__: metadata}, keys) when is_map(metadata) do
+    metadata
+    |> Map.take(keys)
+    |> Enum.into(%{})
+  end
+
+  defp extract_exposed_metadata(_, _), do: %{}
 
   def strip_metadata(%module{} = record) do
     if Ash.Resource.Info.resource?(module) do
@@ -218,17 +263,18 @@ defmodule Alva.Dispatcher do
     )
   end
 
-  defp handle_success(data) do
+  defp handle_success(data, exposed_meta) do
     {permissions, cleaned_data} = extract_and_remove_permissions(data)
-    
-    if map_size(permissions) > 0 do
-      %{ok: true, data: cleaned_data, meta: %{_permissions: permissions}}
+    meta = build_meta(permissions, exposed_meta)
+
+    if map_size(meta) > 0 do
+      %{ok: true, data: cleaned_data, meta: meta}
     else
       %{ok: true, data: cleaned_data}
     end
   end
 
-  defp handle_success(data, page) do
+  defp handle_success(data, exposed_meta, page) do
     {permissions, cleaned_data} = extract_and_remove_permissions(data)
 
     meta_pagination =
@@ -241,14 +287,13 @@ defmodule Alva.Dispatcher do
       |> Enum.reject(fn {_, v} -> is_nil(v) end)
       |> Enum.into(%{})
 
-    meta = %{pagination: meta_pagination}
-    meta = if map_size(permissions) > 0 do
-      Map.put(meta, :_permissions, permissions)
-    else
-      meta
-    end
-
+    meta = Map.merge(%{pagination: meta_pagination}, build_meta(permissions, exposed_meta))
     %{ok: true, data: cleaned_data, meta: meta}
+  end
+
+  defp build_meta(permissions, exposed_meta) do
+    meta = if map_size(permissions) > 0, do: %{_permissions: permissions}, else: %{}
+    Map.merge(meta, exposed_meta)
   end
 
   defp extract_and_remove_permissions(data) when is_list(data) do
@@ -256,7 +301,7 @@ defmodule Alva.Dispatcher do
       {%{}, []}
     else
       {permissions, _} = extract_permissions_from_map(hd(data))
-      new_data = Enum.map(data, fn item -> 
+      new_data = Enum.map(data, fn item ->
         {_, cleaned} = extract_permissions_from_map(item)
         cleaned
       end)
@@ -271,8 +316,8 @@ defmodule Alva.Dispatcher do
   defp extract_and_remove_permissions(other), do: {%{}, other}
 
   defp extract_permissions_from_map(map) when is_map(map) do
-    {perms, rest} = Map.split_with(map, fn {k, _v} -> 
-      String.starts_with?(to_string(k), "can_") 
+    {perms, rest} = Map.split_with(map, fn {k, _v} ->
+      String.starts_with?(to_string(k), "can_")
     end)
     {Map.new(perms), Map.new(rest)}
   end

@@ -379,4 +379,156 @@ defmodule Alva.DispatcherTest do
     refute Map.has_key?(result.data, :can_archive)
     assert result.meta._permissions.can_archive == true
   end
+
+  defmodule MetadataResource do
+    use Ash.Resource,
+      domain: Alva.DispatcherTest.MetadataDomain,
+      validate_domain_inclusion?: false,
+      data_layer: Ash.DataLayer.Ets,
+      extensions: [Alva.Resource]
+
+    ets do
+      private?(true)
+    end
+
+    resource do
+      require_primary_key?(false)
+    end
+
+    attributes do
+      uuid_primary_key(:id)
+      attribute(:name, :string, public?: true)
+    end
+
+    actions do
+      read :read do
+        primary?(true)
+        pagination(offset?: true, required?: false)
+      end
+
+      create :create do
+        accept([:name])
+      end
+
+      update :update do
+        require_atomic?(false)
+        accept([:name])
+      end
+    end
+
+    live_vue do
+      event("meta.get", action: :read, lookup: :id, expose_metadata: [:sync_token])
+      event("meta.list", action: :read, expose_metadata: [:sync_token])
+      event("meta.create", action: :create, expose_metadata: [:sync_token])
+      event("meta.update", action: :update, lookup: :id, expose_metadata: [:sync_token])
+      event("meta.none", action: :read, lookup: :id)
+    end
+  end
+
+  defmodule MetadataDomain do
+    use Ash.Domain, validate_config_inclusion?: false, extensions: [Alva.Domain]
+
+    resources do
+      resource(Alva.DispatcherTest.MetadataResource)
+    end
+  end
+
+  describe "expose_metadata" do
+    test "exposes specified metadata keys in meta for single record" do
+      record = Ash.create!(Ash.Changeset.for_create(MetadataResource, :create, %{name: "Test"}))
+      result = Alva.Dispatcher.dispatch("meta.get", %{"id" => record.id}, domains: [MetadataDomain])
+
+      assert result.ok == true
+      # __metadata__ from ETS is empty by default, so no exposed keys in meta
+      refute Map.has_key?(result, :meta)
+    end
+
+    test "exposes metadata when present on record" do
+      record = Ash.create!(Ash.Changeset.for_create(MetadataResource, :create, %{name: "Test"}))
+
+      # Simulate a record with __metadata__ set (as Ash would in production)
+      record_with_meta = %{record | __metadata__: Map.put(record.__metadata__, :sync_token, "tok_abc123")}
+
+      event_def = %Alva.Resource.Event{expose_metadata: [:sync_token]}
+      {stripped, exposed_meta} = Alva.Dispatcher.strip_and_extract_metadata(record_with_meta, event_def)
+
+      assert stripped == %{id: record.id, name: "Test"}
+      assert exposed_meta == %{sync_token: "tok_abc123"}
+    end
+
+    test "strips unexposed metadata keys" do
+      record = Ash.create!(Ash.Changeset.for_create(MetadataResource, :create, %{name: "Test"}))
+
+      record_with_meta = %{record | __metadata__: %{
+        sync_token: "tok_abc123",
+        internal_secret: "hidden",
+        other: "also_hidden"
+      }}
+
+      event_def = %Alva.Resource.Event{expose_metadata: [:sync_token]}
+      {_stripped, exposed_meta} = Alva.Dispatcher.strip_and_extract_metadata(record_with_meta, event_def)
+
+      assert exposed_meta == %{sync_token: "tok_abc123"}
+      refute Map.has_key?(exposed_meta, :internal_secret)
+      refute Map.has_key?(exposed_meta, :other)
+    end
+
+    test "expose_metadata DSL field is parsed correctly" do
+      events = Alva.Resource.Info.events(MetadataResource)
+      event = Enum.find(events, &(&1.name == "meta.get"))
+
+      assert event.expose_metadata == [:sync_token]
+    end
+
+    test "expose_metadata defaults to empty list" do
+      events = Alva.Resource.Info.events(MetadataResource)
+      event = Enum.find(events, &(&1.name == "meta.none"))
+
+      assert event.expose_metadata == []
+    end
+
+    test "strip_and_extract_metadata extracts specified keys" do
+      record = %MetadataResource{
+        id: "test-id",
+        name: "Test",
+        __metadata__: %{sync_token: "tok_123", internal: "hidden"}
+      }
+
+      event_def = %Alva.Resource.Event{expose_metadata: [:sync_token]}
+
+      {stripped, exposed_meta} = Alva.Dispatcher.strip_and_extract_metadata(record, event_def)
+
+      assert stripped == %{id: "test-id", name: "Test"}
+      assert exposed_meta == %{sync_token: "tok_123"}
+    end
+
+    test "strip_and_extract_metadata returns empty meta when no keys exposed" do
+      record = %MetadataResource{
+        id: "test-id",
+        name: "Test",
+        __metadata__: %{sync_token: "tok_123"}
+      }
+
+      event_def = %Alva.Resource.Event{expose_metadata: []}
+
+      {stripped, exposed_meta} = Alva.Dispatcher.strip_and_extract_metadata(record, event_def)
+
+      assert stripped == %{id: "test-id", name: "Test"}
+      assert exposed_meta == %{}
+    end
+
+    test "strip_and_extract_metadata handles list of records" do
+      records = [
+        %MetadataResource{id: "1", name: "A", __metadata__: %{sync_token: "tok_1"}},
+        %MetadataResource{id: "2", name: "B", __metadata__: %{sync_token: "tok_2"}}
+      ]
+
+      event_def = %Alva.Resource.Event{expose_metadata: [:sync_token]}
+
+      {stripped, exposed_meta} = Alva.Dispatcher.strip_and_extract_metadata(records, event_def)
+
+      assert length(stripped) == 2
+      assert exposed_meta == %{sync_token: "tok_1"}
+    end
+  end
 end

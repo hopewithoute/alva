@@ -1,5 +1,5 @@
 defmodule Alva.Resource.Event do
-  defstruct [:name, :action, :lookup, :__spark_metadata__]
+  defstruct [:name, :action, :lookup, :expose_metadata, :__spark_metadata__]
 end
 
 defmodule Alva.Resource do
@@ -32,6 +32,12 @@ defmodule Alva.Resource do
         type: :atom,
         required: false,
         doc: "The field to use for lookups (e.g. :id)."
+      ],
+      expose_metadata: [
+        type: {:list, :atom},
+        required: false,
+        default: [],
+        doc: "List of __metadata__ keys to expose in the response meta object."
       ]
     ]
   }
