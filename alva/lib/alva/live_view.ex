@@ -74,20 +74,25 @@ defmodule Alva.LiveView do
     active_projections(socket, notification, MapSet.new([to_string(event)]))
   end
 
-  defp active_projections(socket, %Ash.Notifier.Notification{}, events) do
+  defp active_projections(
+         socket,
+         %Ash.Notifier.Notification{resource: notification_resource},
+         events
+       ) do
     %{
       streams:
         socket
         |> active_stream_projections()
-        |> Enum.filter(fn {_name, {_resource, stream}} ->
-          Enum.any?(stream.operations, &MapSet.member?(events, &1.on))
+        |> Enum.filter(fn {_name, {resource, stream}} ->
+          resource == notification_resource and
+            Enum.any?(stream.operations, &MapSet.member?(events, &1.on))
         end)
         |> Enum.map(fn {name, _projection} -> name end),
       signals:
         socket
         |> active_signal_projections()
-        |> Enum.filter(fn {_name, {_resource, signal}} ->
-          MapSet.member?(events, signal.on)
+        |> Enum.filter(fn {_name, {resource, signal}} ->
+          resource == notification_resource and MapSet.member?(events, signal.on)
         end)
         |> Enum.map(fn {name, _projection} -> name end)
     }

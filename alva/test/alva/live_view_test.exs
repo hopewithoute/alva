@@ -53,6 +53,50 @@ defmodule Alva.LiveViewTest do
     end
   end
 
+  defmodule OtherResource do
+    use Ash.Resource,
+      domain: Alva.LiveViewTest.TestDomain,
+      validate_domain_inclusion?: false,
+      data_layer: Ash.DataLayer.Ets,
+      extensions: [Alva.Resource],
+      notifiers: [Ash.Notifier.PubSub]
+
+    ets do
+      private?(true)
+    end
+
+    resource do
+      require_primary_key?(false)
+    end
+
+    attributes do
+      uuid_primary_key(:id)
+      attribute(:name, :string, public?: true)
+    end
+
+    actions do
+      create :create do
+        accept([])
+      end
+    end
+
+    pub_sub do
+      module(Alva.LiveViewTest.Endpoint)
+
+      publish("student_created", :create, "other_students")
+    end
+
+    live_vue do
+      stream :other_students do
+        insert(on: "student_created")
+      end
+
+      signal("other_students.created",
+        on: "student_created"
+      )
+    end
+  end
+
   defmodule DummyLive do
     use Phoenix.LiveView
     use Alva.LiveView, domains: [Alva.LiveViewTest.TestDomain]
@@ -71,6 +115,7 @@ defmodule Alva.LiveViewTest do
 
     resources do
       resource(TestResource)
+      resource(OtherResource)
     end
   end
 
@@ -148,6 +193,19 @@ defmodule Alva.LiveViewTest do
 
     assert %{streams: [], signals: ["students.created"]} =
              Alva.LiveView.active_projections(notice_socket, notification)
+  end
+
+  test "active projections only match notifications from the projection resource" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, base_socket())
+
+    socket =
+      socket
+      |> Alva.LiveView.activate_stream(:other_students)
+      |> Alva.LiveView.activate_signal("other_students.created")
+
+    assert %{streams: [], signals: []} =
+             Alva.LiveView.active_projections(socket, student_created_notification())
   end
 
   test "handle_info ignores inactive Ash.Notifier.Notification projections" do
