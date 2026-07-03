@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Route Subscription and Page Projection Activation
 
@@ -14,15 +14,14 @@ The same Resource Projection should remain inactive unless the page explicitly a
 
 ## Acceptance criteria
 
-- [ ] A LiveView page can use a thin Alva helper to subscribe to a concrete PubSub topic.
-- [ ] Raw Phoenix PubSub subscription remains compatible with Alva projection handling.
-- [ ] A LiveView page can activate a Stream projection by its domain-unique stream name.
-- [ ] A LiveView page can activate a Signal projection by its domain-unique signal name.
-- [ ] Inactive projections do not handle incoming notifications.
-- [ ] Activation state is scoped to the LiveView socket/page, not global.
-- [ ] Tests cover activating different projections for the same incoming occurrence on different pages.
+- [x] A LiveView page can use a thin Alva helper to subscribe to a concrete PubSub topic.
+- [x] Raw Phoenix PubSub subscription remains compatible with Alva projection handling.
+- [x] A LiveView page can activate a Stream projection by its domain-unique stream name.
+- [x] A LiveView page can activate a Signal projection by its domain-unique signal name.
+- [x] Inactive projections do not handle incoming notifications.
+- [x] Activation state is scoped to the LiveView socket/page, not global.
+- [x] Tests cover activating different projections for the same incoming occurrence on different pages.
 
 ## Blocked by
 
 - .scratch/alva-phase-9-realtime/issues/01-dsl-contract-for-stream-and-signal-projections.md
-
