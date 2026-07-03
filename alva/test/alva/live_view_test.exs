@@ -108,6 +108,41 @@ defmodule Alva.LiveViewTest do
     end
   end
 
+  defmodule JobResource do
+    use Ash.Resource,
+      domain: Alva.LiveViewTest.TestDomain,
+      validate_domain_inclusion?: false,
+      data_layer: Ash.DataLayer.Ets,
+      extensions: [Alva.Resource],
+      notifiers: [Ash.Notifier.PubSub]
+
+    ets do
+      private?(true)
+    end
+
+    resource do
+      require_primary_key?(false)
+    end
+
+    actions do
+      create :complete do
+        accept([])
+      end
+    end
+
+    pub_sub do
+      module(Alva.LiveViewTest.Endpoint)
+
+      publish("job_completed", :complete, "jobs")
+    end
+
+    live_vue do
+      signal("jobs.completed",
+        on: "job_completed"
+      )
+    end
+  end
+
   defmodule DummyLive do
     use Phoenix.LiveView
     use Alva.LiveView, domains: [Alva.LiveViewTest.TestDomain]
@@ -127,6 +162,7 @@ defmodule Alva.LiveViewTest do
     resources do
       resource(TestResource)
       resource(OtherResource)
+      resource(JobResource)
     end
   end
 
@@ -285,6 +321,25 @@ defmodule Alva.LiveViewTest do
     refute inspect(final_socket.private.live_temp.push_events) =~ "__metadata__"
   end
 
+  test "signal delivery wraps nil payloads for async completion callbacks" do
+    final_socket = push_job_signal(nil)
+
+    assert [["jobs.completed", %{}]] = final_socket.private.live_temp.push_events
+  end
+
+  test "signal delivery wraps scalar payloads before pushing to LiveView" do
+    final_socket = push_job_signal("done")
+
+    assert [["jobs.completed", %{data: "done"}]] = final_socket.private.live_temp.push_events
+  end
+
+  test "signal delivery wraps list payloads before pushing to LiveView" do
+    final_socket = push_job_signal([%{id: "a"}, %{id: "b"}])
+
+    assert [["jobs.completed", %{data: [%{id: "a"}, %{id: "b"}]}]] =
+             final_socket.private.live_temp.push_events
+  end
+
   test "signal-only delivery does not mutate a route collection" do
     socket =
       %Phoenix.LiveView.Socket{
@@ -413,6 +468,33 @@ defmodule Alva.LiveViewTest do
     socket = active_stream_socket()
     [%{function: callback}] = socket.private.lifecycle.handle_info
     callback
+  end
+
+  defp push_job_signal(data) do
+    socket = %Phoenix.LiveView.Socket{
+      assigns: %{__changed__: %{}},
+      private: %{
+        lifecycle: %Phoenix.LiveView.Lifecycle{},
+        live_temp: %{push_events: []}
+      }
+    }
+
+    {:cont, socket} = Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, socket)
+    socket = Alva.LiveView.activate_signal(socket, "jobs.completed")
+
+    [%{function: callback}] = socket.private.lifecycle.handle_info
+
+    {:halt, final_socket} =
+      callback.(
+        %Ash.Notifier.Notification{
+          resource: JobResource,
+          action: %{name: :complete},
+          data: data
+        },
+        socket
+      )
+
+    final_socket
   end
 
   defp student_created_notification do

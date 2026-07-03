@@ -209,11 +209,15 @@ defmodule Alva.LiveView do
     {payload, meta} = Alva.Dispatcher.strip_and_extract_metadata(data, signal)
 
     if map_size(meta) == 0 do
-      payload
+      normalize_signal_payload(payload)
     else
       put_signal_meta(payload, meta)
     end
   end
+
+  defp normalize_signal_payload(nil), do: %{}
+  defp normalize_signal_payload(payload) when is_map(payload), do: payload
+  defp normalize_signal_payload(payload), do: %{data: payload}
 
   defp put_signal_meta(payload, meta) when is_map(payload), do: Map.put(payload, :meta, meta)
   defp put_signal_meta(payload, meta), do: %{data: payload, meta: meta}
