@@ -225,6 +225,77 @@ defmodule Alva.DispatcherTest do
     assert result.data.tenant == "organization_1"
   end
 
+  describe "telemetry and auth logging" do
+    import ExUnit.CaptureLog
+
+    test "emits telemetry event on dispatch" do
+      # Attach a telemetry handler for this test
+      test_pid = self()
+      handler_id = "test-telemetry-handler-#{System.unique_integer()}"
+      
+      :telemetry.attach(
+        handler_id,
+        [:alva, :dispatch, :stop],
+        fn _event, measurements, metadata, _config ->
+          send(test_pid, {:telemetry_event, measurements, metadata})
+        end,
+        nil
+      )
+
+      # Dispatch action
+      Alva.Dispatcher.dispatch(
+        "test.say_hello",
+        %{"name" => "Telemetry"},
+        domains: [TestDomain],
+        actor: %{id: 2},
+        tenant: "org_2"
+      )
+
+      # Assert telemetry was received
+      assert_receive {:telemetry_event, measurements, metadata}, 1000
+      assert Map.has_key?(measurements, :duration)
+      assert metadata.event_name == "test.say_hello"
+      assert metadata.actor == %{id: 2}
+      assert metadata.tenant == "org_2"
+      assert metadata.result.ok == true
+      
+      :telemetry.detach(handler_id)
+    end
+
+    test "logs warnings when actor and tenant are missing" do
+      log = capture_log(fn ->
+        Alva.Dispatcher.dispatch(
+          "test.say_hello",
+          %{"name" => "Warnings"},
+          domains: [TestDomain],
+          socket: %{assigns: %{}}
+        )
+      end)
+      
+      assert log =~ "Alva Extension: Dispatching event \"test.say_hello\" without an actor. Expected socket.assigns.current_user to be set."
+      assert log =~ "Alva Extension: Dispatching event \"test.say_hello\" without a tenant. Expected socket.assigns.current_tenant to be set."
+    end
+    
+    test "extracts actor and tenant from socket.assigns" do
+      # Configure fake keys just in case
+      Application.put_env(:alva, :actor_assign_key, :current_user)
+      Application.put_env(:alva, :tenant_assign_key, :current_tenant)
+      
+      socket = %{assigns: %{current_user: %{id: 99}, current_tenant: "org_99"}}
+      
+      result = Alva.Dispatcher.dispatch(
+        "test.get_context",
+        %{},
+        domains: [TestDomain],
+        socket: socket
+      )
+      
+      assert result.ok == true
+      assert result.data.actor == %{id: 99}
+      assert result.data.tenant == "org_99"
+    end
+  end
+
   test "dispatch returns error for :action event with invalid args" do
     result = Alva.Dispatcher.dispatch("test.say_hello", %{}, domains: [TestDomain])
 

@@ -5,6 +5,19 @@ defmodule Alva.Dispatcher do
   require Logger
 
   def dispatch(event_name, params, opts \\ []) do
+    start_time = System.monotonic_time()
+    
+    socket = Keyword.get(opts, :socket)
+    opts = resolve_auth_opts(event_name, opts, socket)
+    
+    result = do_dispatch(event_name, params, opts)
+    
+    emit_telemetry(event_name, params, opts, result, start_time)
+    
+    result
+  end
+
+  defp do_dispatch(event_name, params, opts) do
     domains = Keyword.get(opts, :domains, [])
     ash_opts = Keyword.take(opts, [:actor, :tenant])
 
@@ -389,5 +402,45 @@ defmodule Alva.Dispatcher do
 
   defp handle_error(error) do
     %{ok: false, error: Alva.Error.format(error)}
+  end
+
+  defp resolve_auth_opts(event_name, opts, socket) do
+    if is_nil(socket) do
+      opts
+    else
+      user_key = Application.get_env(:alva, :actor_assign_key, :current_user)
+      tenant_key = Application.get_env(:alva, :tenant_assign_key, :current_tenant)
+      
+      actor = Map.get(socket.assigns, user_key)
+      tenant = Map.get(socket.assigns, tenant_key)
+      
+      if is_nil(actor) and not Keyword.has_key?(opts, :actor) do
+        Logger.warning("Alva Extension: Dispatching event #{inspect(event_name)} without an actor. Expected socket.assigns.#{user_key} to be set.")
+      end
+      
+      if is_nil(tenant) and not Keyword.has_key?(opts, :tenant) do
+        Logger.warning("Alva Extension: Dispatching event #{inspect(event_name)} without a tenant. Expected socket.assigns.#{tenant_key} to be set.")
+      end
+
+      opts
+      |> (fn o -> if actor, do: Keyword.put_new(o, :actor, actor), else: o end).()
+      |> (fn o -> if tenant, do: Keyword.put_new(o, :tenant, tenant), else: o end).()
+    end
+  end
+  
+  defp emit_telemetry(event_name, params, opts, result, start_time) do
+    duration = System.monotonic_time() - start_time
+    actor = Keyword.get(opts, :actor)
+    tenant = Keyword.get(opts, :tenant)
+    
+    metadata = %{
+      event_name: event_name,
+      params: params,
+      actor: actor,
+      tenant: tenant,
+      result: result
+    }
+    
+    :telemetry.execute([:alva, :dispatch, :stop], %{duration: duration}, metadata)
   end
 end
