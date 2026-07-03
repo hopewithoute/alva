@@ -19,6 +19,31 @@ defmodule Alva.Codegen.DtoGenerator do
       | { ok: true; data: T; meta?: Record<string, any> }
       | { ok: false; error: any; meta?: Record<string, any> };
 
+    export type FilterOps<V> = {
+      eq?: V;
+      not_eq?: V;
+      in?: V[];
+      is_nil?: boolean;
+      less_than?: V;
+      greater_than?: V;
+      less_than_or_equal?: V;
+      greater_than_or_equal?: V;
+      lt?: V;
+      gt?: V;
+      lte?: V;
+      gte?: V;
+      contains?: string;
+      ilike?: string;
+      like?: string;
+    };
+
+    export type AshFilter<T> =
+      | boolean
+      | { and?: AshFilter<T>[] }
+      | { or?: AshFilter<T>[] }
+      | { not?: AshFilter<T> }
+      | { [K in keyof T]?: T[K] | FilterOps<T[K]> | AshFilter<T[K]> };
+
     #{interfaces}
     """
   end
@@ -63,7 +88,7 @@ defmodule Alva.Codegen.DtoGenerator do
       (attrs ++ calcs ++ aggs)
       |> Enum.map(fn field ->
         optional? = is_optional?(field, policy_fields)
-        ts_type = TypeMapper.map_type(field.type)
+        ts_type = TypeMapper.map_type(field.type, Map.get(field, :constraints, []))
         format_field(field.name, ts_type, optional?)
       end)
       

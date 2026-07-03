@@ -34,7 +34,19 @@ defmodule Alva.Error do
               # clean up "attribute " prefix that Ash sometimes inserts
               msg = Regex.replace(~r/^(attribute|argument)\s+#{field}\s+/i, msg, "")
 
-              Map.update(acc, field, [msg], &[msg | &1])
+              path = Map.get(sub_error, :path) || []
+              bread_crumbs = Map.get(sub_error, :bread_crumbs) || []
+              
+              resolved_path = 
+                if path == [], do: bread_crumbs, else: path
+                
+              field_key = 
+                case resolved_path do
+                  [] -> to_string(field)
+                  p -> Enum.map_join(p, ".", &to_string/1)
+                end
+
+              Map.update(acc, field_key, [msg], &[msg | &1])
 
             _, acc ->
               acc

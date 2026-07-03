@@ -5,8 +5,11 @@ defmodule Alva.Codegen.InputContract do
 
   alias Alva.Codegen.TypeMapper
 
-  def generate_input_shape(resource, action, indent \\ "") do
-    if action.type not in [:create, :update, :action] do
+  def generate_input_shape(resource, event_def, action, indent \\ "") do
+    is_read = action.type == :read
+    enable_filter? = Map.get(event_def, :enable_filter, false)
+
+    if not is_read and action.type not in [:create, :update, :action] do
       "any"
     else
       arguments = Map.get(action, :arguments, [])
@@ -30,7 +33,7 @@ defmodule Alva.Codegen.InputContract do
         arguments
         |> Enum.map(fn arg ->
           optional? = arg_optional?(arg)
-          ts_type = TypeMapper.map_type(arg.type)
+          ts_type = TypeMapper.map_type(arg.type, Map.get(arg, :constraints, []))
           format_field(arg.name, ts_type, optional?, indent)
         end)
 
@@ -41,7 +44,7 @@ defmodule Alva.Codegen.InputContract do
           
           if attr do
             optional? = attr_optional?(attr, action.type, require_attributes, policy_fields, allow_nil_input)
-            ts_type = TypeMapper.map_type(attr.type)
+            ts_type = TypeMapper.map_type(attr.type, Map.get(attr, :constraints, []))
             format_field(attr.name, ts_type, optional?, indent)
           else
             nil
@@ -49,7 +52,15 @@ defmodule Alva.Codegen.InputContract do
         end)
         |> Enum.reject(&is_nil/1)
 
-      all_fields = (args_ts ++ attrs_ts) |> Enum.join("\n")
+      filter_ts = 
+        if enable_filter? do
+          resource_name = resource |> Module.split() |> List.last()
+          ["#{indent}  filter?: Types.AshFilter<Types.#{resource_name}>;"]
+        else
+          []
+        end
+
+      all_fields = (args_ts ++ attrs_ts ++ filter_ts) |> Enum.join("\n")
 
       if all_fields == "" do
         "Record<string, never>"

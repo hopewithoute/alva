@@ -61,7 +61,7 @@ defmodule Mix.Tasks.Alva.Codegen do
       |> Enum.map(fn {event_name, {resource, event_def}} ->
         output_type = Alva.Codegen.DtoGenerator.output_type(resource, event_def)
         action = Ash.Resource.Info.action(resource, event_def.action)
-        input_shape = Alva.Codegen.InputContract.generate_input_shape(resource, action, "            ")
+        input_shape = Alva.Codegen.InputContract.generate_input_shape(resource, event_def, action, "            ")
         
         """
           "#{event_name}": {

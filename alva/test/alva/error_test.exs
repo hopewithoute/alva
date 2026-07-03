@@ -49,8 +49,32 @@ defmodule Alva.ErrorTest do
 
     result = Alva.Error.format(error)
     assert result.type == "validation"
-    assert Map.has_key?(result.fields, :name)
-    assert Enum.any?(result.fields[:name], &String.contains?(&1, "is required"))
+    assert Map.has_key?(result.fields, "name")
+    assert Enum.any?(result.fields["name"], &String.contains?(&1, "is required"))
+  end
+
+  test "formats nested validation error using path" do
+    error = %Ash.Error.Invalid{
+      errors: [
+        %Ash.Error.Changes.InvalidAttribute{
+          field: :city,
+          path: [:addresses, 0, :city],
+          message: "is required"
+        },
+        %Ash.Error.Changes.InvalidAttribute{
+          field: :age,
+          path: [:profile, :age],
+          message: "must be positive"
+        }
+      ]
+    }
+
+    result = Alva.Error.format(error)
+    assert result.type == "validation"
+    assert Map.has_key?(result.fields, "addresses.0.city")
+    assert Map.has_key?(result.fields, "profile.age")
+    assert Enum.any?(result.fields["addresses.0.city"], &String.contains?(&1, "is required"))
+    assert Enum.any?(result.fields["profile.age"], &String.contains?(&1, "must be positive"))
   end
 
   defmodule DummyDomainError do
