@@ -1,4 +1,4 @@
-Status: IMPLEMENTATION
+Status: DONE
 
 # Runtime Authentication Warnings & Telemetry
 

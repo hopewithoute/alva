@@ -91,12 +91,28 @@ defmodule Alva.Error do
 
   def format(error) do
     require Logger
-    Logger.error(fn -> "Alva.Error: Unhandled error: #{inspect(error)}" end)
+    
+    formatted_error = Exception.format(:error, error, [])
+    Logger.error("Alva.Error: Unhandled error:\n#{formatted_error}")
 
-    %{
-      type: "unknown",
-      message: "Internal server error"
-    }
+    expose? = 
+      case Application.fetch_env(:alva, :expose_unknown_errors) do
+        {:ok, val} -> val
+        :error -> Code.ensure_loaded?(Mix) && function_exported?(Mix, :env, 0) && Mix.env() in [:dev, :test]
+      end
+
+    if expose? do
+      %{
+        type: "unknown",
+        message: Exception.message(error),
+        details: formatted_error
+      }
+    else
+      %{
+        type: "unknown",
+        message: "An unexpected error occurred"
+      }
+    end
   end
 
   defp find_conflict(errors) do

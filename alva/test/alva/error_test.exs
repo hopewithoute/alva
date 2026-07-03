@@ -3,18 +3,40 @@ defmodule Alva.ErrorTest do
 
   import ExUnit.CaptureLog
 
-  test "formats unknown error and logs it" do
+  test "formats unknown error and exposes details when configured to do so" do
+    Application.put_env(:alva, :expose_unknown_errors, true)
     error = %RuntimeError{message: "Something went wrong"}
 
     log =
       capture_log(fn ->
-        assert Alva.Error.format(error) == %{
+        result = Alva.Error.format(error)
+        assert result.type == "unknown"
+        assert result.message == "Something went wrong"
+        assert Map.has_key?(result, :details)
+      end)
+
+    assert log =~ "Unhandled error:"
+    assert log =~ "Something went wrong"
+  end
+
+  test "formats unknown error and redacts details when not configured" do
+    Application.put_env(:alva, :expose_unknown_errors, false)
+    error = %RuntimeError{message: "Something went wrong"}
+
+    log =
+      capture_log(fn ->
+        result = Alva.Error.format(error)
+        assert result == %{
                  type: "unknown",
-                 message: "Internal server error"
+                 message: "An unexpected error occurred"
                }
       end)
 
-    assert log =~ "Unhandled error: %RuntimeError{message: \"Something went wrong\"}"
+    assert log =~ "Unhandled error:"
+    assert log =~ "Something went wrong"
+    
+    # Restore env to nil so that the fallback (Mix.env) can be tested or won't interfere
+    Application.delete_env(:alva, :expose_unknown_errors)
   end
 
   test "formats forbidden error" do
