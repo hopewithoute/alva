@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # PubSub Notification to Active Route Collection
 
@@ -14,16 +14,15 @@ Vue must not manually append, replace, delete, or dedupe records for stream-owne
 
 ## Acceptance criteria
 
-- [ ] An incoming notification matching an active Stream insert mapping inserts into the configured Phoenix stream.
-- [ ] An incoming notification matching an active Stream update mapping updates/re-inserts into the configured Phoenix stream.
-- [ ] An incoming notification matching an active Stream delete mapping deletes from the configured Phoenix stream.
-- [ ] Notifications for inactive Stream projections are ignored by that page.
-- [ ] The command caller still receives immediate command feedback independently of stream propagation.
-- [ ] Tests demonstrate that two subscribed pages can receive the same collection update through the stream path.
-- [ ] No Vue-side list reconciliation is required for the route-owned collection.
+- [x] An incoming notification matching an active Stream insert mapping inserts into the configured Phoenix stream.
+- [x] An incoming notification matching an active Stream update mapping updates/re-inserts into the configured Phoenix stream.
+- [x] An incoming notification matching an active Stream delete mapping deletes from the configured Phoenix stream.
+- [x] Notifications for inactive Stream projections are ignored by that page.
+- [x] The command caller still receives immediate command feedback independently of stream propagation.
+- [x] Tests demonstrate that two subscribed pages can receive the same collection update through the stream path.
+- [x] No Vue-side list reconciliation is required for the route-owned collection.
 
 ## Blocked by
 
 - .scratch/alva-phase-9-realtime/issues/01-dsl-contract-for-stream-and-signal-projections.md
 - .scratch/alva-phase-9-realtime/issues/02-route-subscription-and-page-projection-activation.md
-

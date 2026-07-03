@@ -83,10 +83,7 @@ defmodule Alva.LiveView do
       streams:
         socket
         |> active_stream_projections()
-        |> Enum.filter(fn {_name, {resource, stream}} ->
-          resource == notification_resource and
-            Enum.any?(stream.operations, &MapSet.member?(events, &1.on))
-        end)
+        |> Enum.filter(&stream_projection_matches?(&1, notification_resource, events))
         |> Enum.map(fn {name, _projection} -> name end),
       signals:
         socket
@@ -134,12 +131,12 @@ defmodule Alva.LiveView do
     socket =
       Phoenix.LiveView.attach_hook(socket, :alva_handle_info, :handle_info, fn
         %Ash.Notifier.Notification{} = notification, sock ->
-          handle_notification(notification, sock)
+          handle_notification(notification, sock, notification_events(notification))
 
         %Phoenix.Socket.Broadcast{payload: %Ash.Notifier.Notification{} = notification} =
             broadcast,
         sock ->
-          handle_notification(notification, sock, active_projections(sock, broadcast))
+          handle_notification(notification, sock, broadcast_events(broadcast))
 
         _msg, sock ->
           {:cont, sock}
@@ -148,22 +145,32 @@ defmodule Alva.LiveView do
     {:cont, socket}
   end
 
-  defp handle_notification(notification, sock, projections \\ nil) do
-    projections = projections || active_projections(sock, notification)
+  defp handle_notification(notification, sock, events) do
+    projections = active_projections(sock, notification, events)
 
     case projections do
       %{streams: [], signals: []} ->
         {:cont, sock}
 
-      _projections ->
-        payload = %{
-          action: notification.action && notification.action.name,
-          resource: to_string(notification.resource),
-          data: Alva.Dispatcher.strip_metadata(notification.data)
-        }
+      %{signals: signals} ->
+        sock = apply_stream_operations(sock, notification, events)
 
-        {:halt, Phoenix.LiveView.push_event(sock, "ash_notification", payload)}
+        if signals == [] do
+          {:halt, sock}
+        else
+          push_notification(notification, sock)
+        end
     end
+  end
+
+  defp push_notification(notification, sock) do
+    payload = %{
+      action: notification.action && notification.action.name,
+      resource: to_string(notification.resource),
+      data: Alva.Dispatcher.strip_metadata(notification.data)
+    }
+
+    {:halt, Phoenix.LiveView.push_event(sock, "ash_notification", payload)}
   end
 
   defp endpoint_pubsub!(%{endpoint: endpoint}) when is_atom(endpoint) and not is_nil(endpoint) do
@@ -191,6 +198,43 @@ defmodule Alva.LiveView do
     state.domains
     |> Enum.flat_map(&Alva.Domain.Info.alva_signal_map/1)
     |> Enum.filter(fn {name, _projection} -> MapSet.member?(state.signals, name) end)
+  end
+
+  defp apply_stream_operations(
+         socket,
+         %Ash.Notifier.Notification{resource: notification_resource, data: data},
+         events
+       ) do
+    socket
+    |> active_stream_projections()
+    |> Enum.flat_map(fn {name, {resource, stream}} ->
+      if resource == notification_resource do
+        stream.operations
+        |> Enum.filter(&MapSet.member?(events, &1.on))
+        |> Enum.map(&{name, &1.op})
+      else
+        []
+      end
+    end)
+    |> Enum.reduce(socket, fn
+      {name, :insert}, acc_socket ->
+        Phoenix.LiveView.stream_insert(acc_socket, name, data)
+
+      {name, :update}, acc_socket ->
+        Phoenix.LiveView.stream_insert(acc_socket, name, data)
+
+      {name, :delete}, acc_socket ->
+        Phoenix.LiveView.stream_delete(acc_socket, name, data)
+    end)
+  end
+
+  defp stream_projection_matches?(
+         {_name, {resource, stream}},
+         notification_resource,
+         events
+       ) do
+    resource == notification_resource and
+      Enum.any?(stream.operations, &MapSet.member?(events, &1.on))
   end
 
   defp ensure_projection!(socket, kind, name) do
@@ -230,6 +274,10 @@ defmodule Alva.LiveView do
   end
 
   defp notification_events(_notification), do: MapSet.new()
+
+  defp broadcast_events(%Phoenix.Socket.Broadcast{event: event}) do
+    MapSet.new([to_string(event)])
+  end
 
   defp publication_matches?(%{action: action}, %{name: action}) when not is_nil(action), do: true
 

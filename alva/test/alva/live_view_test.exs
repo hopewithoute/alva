@@ -32,12 +32,20 @@ defmodule Alva.LiveViewTest do
         argument(:file, Ash.Type.File, allow_nil?: false)
         accept([])
       end
+
+      update :rename do
+        accept([:name])
+      end
+
+      destroy(:destroy)
     end
 
     pub_sub do
       module(Alva.LiveViewTest.Endpoint)
 
       publish("student_created", :upload_file, "students")
+      publish("student_updated", :rename, "students")
+      publish("student_deleted", :destroy, "students")
     end
 
     live_vue do
@@ -45,6 +53,8 @@ defmodule Alva.LiveViewTest do
 
       stream :students do
         insert(on: "student_created")
+        update(on: "student_updated")
+        delete(on: "student_deleted")
       end
 
       signal("students.created",
@@ -248,18 +258,47 @@ defmodule Alva.LiveViewTest do
     assert events_str =~ "123"
   end
 
+  test "handle_info inserts matching active stream notifications into the route collection" do
+    {:halt, final_socket} =
+      stream_callback().(student_created_notification(), active_stream_socket())
+
+    assert [{"students-123", -1, %TestResource{id: "123", name: "test"}, nil, false}] =
+             final_socket.assigns.streams.students.inserts
+  end
+
+  test "handle_info updates matching active stream notifications through stream_insert" do
+    {:halt, final_socket} =
+      stream_callback().(student_updated_notification(), active_stream_socket())
+
+    assert [{"students-123", -1, %TestResource{id: "123", name: "renamed"}, nil, false}] =
+             final_socket.assigns.streams.students.inserts
+  end
+
+  test "handle_info deletes matching active stream notifications from the route collection" do
+    {:halt, final_socket} =
+      stream_callback().(student_deleted_notification(), active_stream_socket())
+
+    assert final_socket.assigns.streams.students.deletes == ["students-123"]
+  end
+
+  test "two activated pages receive the same collection update through the stream path" do
+    callback = stream_callback()
+    page_one = active_stream_socket()
+    page_two = active_stream_socket()
+    notification = student_created_notification()
+
+    {:halt, page_one} = callback.(notification, page_one)
+    {:halt, page_two} = callback.(notification, page_two)
+
+    assert [{"students-123", -1, %TestResource{id: "123", name: "test"}, nil, false}] =
+             page_one.assigns.streams.students.inserts
+
+    assert [{"students-123", -1, %TestResource{id: "123", name: "test"}, nil, false}] =
+             page_two.assigns.streams.students.inserts
+  end
+
   test "handle_info accepts Phoenix PubSub broadcasts carrying Ash.Notifier.Notification payloads" do
-    socket = %Phoenix.LiveView.Socket{
-      assigns: %{__changed__: %{}},
-      private: %{
-        lifecycle: %Phoenix.LiveView.Lifecycle{},
-        live_temp: %{push_events: []}
-      }
-    }
-
-    {:cont, socket} = Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, socket)
-    socket = Alva.LiveView.activate_stream(socket, :students)
-
+    socket = active_stream_socket()
     [%{function: callback}] = socket.private.lifecycle.handle_info
 
     broadcast = %Phoenix.Socket.Broadcast{
@@ -270,9 +309,8 @@ defmodule Alva.LiveViewTest do
 
     {:halt, final_socket} = callback.(broadcast, socket)
 
-    events_str = inspect(final_socket.private.live_temp.push_events)
-    assert events_str =~ "ash_notification"
-    assert events_str =~ "upload_file"
+    assert [{"students-123", -1, %TestResource{id: "123", name: "test"}, nil, false}] =
+             final_socket.assigns.streams.students.inserts
   end
 
   defp base_socket do
@@ -282,10 +320,52 @@ defmodule Alva.LiveViewTest do
     }
   end
 
+  defp active_stream_socket do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        [Alva.LiveViewTest.TestDomain],
+        %{},
+        %{},
+        %Phoenix.LiveView.Socket{
+          assigns: %{__changed__: %{}},
+          private: %{
+            lifecycle: %Phoenix.LiveView.Lifecycle{},
+            live_temp: %{push_events: []}
+          }
+        }
+      )
+
+    socket
+    |> Phoenix.LiveView.stream(:students, [])
+    |> Alva.LiveView.activate_stream(:students)
+  end
+
+  defp stream_callback do
+    socket = active_stream_socket()
+    [%{function: callback}] = socket.private.lifecycle.handle_info
+    callback
+  end
+
   defp student_created_notification do
     %Ash.Notifier.Notification{
       resource: TestResource,
       action: %{name: :upload_file},
+      data: %TestResource{id: "123", name: "test"}
+    }
+  end
+
+  defp student_updated_notification do
+    %Ash.Notifier.Notification{
+      resource: TestResource,
+      action: %{name: :rename},
+      data: %TestResource{id: "123", name: "renamed"}
+    }
+  end
+
+  defp student_deleted_notification do
+    %Ash.Notifier.Notification{
+      resource: TestResource,
+      action: %{name: :destroy},
       data: %TestResource{id: "123", name: "test"}
     }
   end
