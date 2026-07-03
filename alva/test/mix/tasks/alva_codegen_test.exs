@@ -53,14 +53,20 @@ defmodule Mix.Tasks.Alva.CodegenTest do
     events_path = Path.join(tmp_dir, "events.ts")
     client_path = Path.join(tmp_dir, "client.ts")
     
+    types_path = Path.join(tmp_dir, "types.ts")
     assert File.exists?(events_path)
     assert File.exists?(client_path)
+    assert File.exists?(types_path)
     
     events_content = File.read!(events_path)
     # Verify the structure rather than exact string formatting
     assert String.contains?(events_content, "export type AlvaEvents =")
     assert String.contains?(events_content, "test.create")
-    assert String.contains?(events_content, "test.read")
+    assert String.contains?(events_content, "LiveResult<Types.Resource>")
+    
+    types_content = File.read!(types_path)
+    assert String.contains?(types_content, "export type LiveResult")
+    assert String.contains?(types_content, "export interface Resource")
     
     client_content = File.read!(client_path)
     assert String.contains?(client_content, "import type { AlvaEvents } from \"./events\"")
