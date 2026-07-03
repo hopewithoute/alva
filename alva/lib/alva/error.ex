@@ -89,10 +89,15 @@ defmodule Alva.Error do
     }
   end
 
-  def format(error) do
+  def format(error, stacktrace \\ nil) do
     require Logger
     
-    formatted_error = Exception.format(:error, error, [])
+    stacktrace = stacktrace || (case Process.info(self(), :current_stacktrace) do
+      {:current_stacktrace, trace} -> trace
+      _ -> []
+    end)
+    
+    formatted_error = Exception.format(:error, error, stacktrace)
     Logger.error("Alva.Error: Unhandled error:\n#{formatted_error}")
 
     expose? = 
