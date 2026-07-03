@@ -143,6 +143,37 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
     assert stderr =~ "Action :missing does not exist"
   end
 
+  test "emits a warning when action returns an empty DTO" do
+    import ExUnit.CaptureLog
+
+    log = capture_log(fn ->
+      compile_module("""
+      defmodule TestResource.EmptyDtoAction do
+        use Ash.Resource,
+          domain: TestDomain,
+          validate_domain_inclusion?: false,
+          extensions: [Alva.Resource]
+
+        resource do
+          require_primary_key? false
+        end
+
+        actions do
+          read :empty_read do
+            # No attributes defined in resource, so returns empty DTO
+          end
+        end
+
+        live_vue do
+          event "empty", action: :empty_read
+        end
+      end
+      """)
+    end)
+
+    assert log =~ "Alva Extension: Event \"empty\" maps to action :empty_read which returns an empty DTO. Vue will receive an empty payload."
+  end
+
   test "fails to compile when action is not public" do
     stderr =
       capture_io(:stderr, fn ->

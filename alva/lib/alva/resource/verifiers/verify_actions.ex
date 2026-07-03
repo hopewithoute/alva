@@ -25,6 +25,14 @@ defmodule Alva.Resource.Verifiers.VerifyActions do
           "Action #{inspect(event.action)} must be public? true to be exposed via live_vue."
         )
       end
+
+      if empty_dto?(dsl_state, action) do
+        require Logger
+
+        Logger.warning(
+          "Alva Extension: Event #{inspect(event.name)} maps to action #{inspect(event.action)} which returns an empty DTO. Vue will receive an empty payload."
+        )
+      end
     end)
 
     Enum.each(streams, fn stream ->
@@ -68,6 +76,23 @@ defmodule Alva.Resource.Verifiers.VerifyActions do
 
   defp non_empty_string?(value) when is_binary(value), do: String.trim(value) != ""
   defp non_empty_string?(_), do: false
+
+  defp empty_dto?(dsl_state, action) do
+    if action.type == :action do
+      is_nil(action.returns)
+    else
+      public_fields_count(dsl_state) == 0
+    end
+  end
+
+  defp public_fields_count(dsl_state) do
+    attrs = Ash.Resource.Info.public_attributes(dsl_state) |> length()
+    calcs = Ash.Resource.Info.public_calculations(dsl_state) |> length()
+    rels = Ash.Resource.Info.public_relationships(dsl_state) |> length()
+    aggs = Ash.Resource.Info.public_aggregates(dsl_state) |> length()
+
+    attrs + calcs + rels + aggs
+  end
 
   defp pubsub_publication_names(resource) do
     if Code.ensure_loaded?(Ash.Notifier.PubSub.Info) and
