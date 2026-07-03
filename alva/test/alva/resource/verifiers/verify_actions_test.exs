@@ -34,6 +34,87 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
     """)
   end
 
+  test "compiles successfully with stream and signal projections" do
+    assert_compile("""
+    defmodule TestResource.RealtimeValid do
+      use Ash.Resource,
+        domain: TestDomain,
+        validate_domain_inclusion?: false,
+        extensions: [Alva.Resource]
+
+      resource do
+        require_primary_key? false
+      end
+
+      actions do
+        defaults [:read]
+      end
+
+      live_vue do
+        event "valid.realtime.read", action: :read
+
+        stream :students do
+          insert on: "student_created"
+          update on: "student_updated"
+          delete on: "student_deleted"
+        end
+
+        signal "students.import_completed",
+          on: "student_import_completed"
+      end
+    end
+    """)
+
+    assert [%Alva.Resource.Stream{name: :students}] =
+             Alva.Resource.Info.streams(TestResource.RealtimeValid)
+
+    assert [%Alva.Resource.Signal{name: "students.import_completed"}] =
+             Alva.Resource.Info.signals(TestResource.RealtimeValid)
+  end
+
+  test "compiles successfully when projections reference declared pubsub publications" do
+    assert_compile("""
+    defmodule TestResource.PubSubRealtimeValid do
+      use Ash.Resource,
+        domain: TestDomain,
+        validate_domain_inclusion?: false,
+        extensions: [Alva.Resource],
+        notifiers: [Ash.Notifier.PubSub]
+
+      resource do
+        require_primary_key? false
+      end
+
+      actions do
+        defaults [:read]
+
+        create :create do
+          accept []
+        end
+      end
+
+      pub_sub do
+        module TestPubSub
+
+        publish "student_created", :create, "students"
+        publish :read, "students_read"
+      end
+
+      live_vue do
+        event "valid.pubsub.read", action: :read
+
+        stream :students do
+          insert on: "student_created"
+          update on: "read"
+        end
+
+        signal "students.read",
+          on: "read"
+      end
+    end
+    """)
+  end
+
   test "fails to compile when action does not exist" do
     stderr =
       capture_io(:stderr, fn ->
@@ -92,6 +173,146 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
     assert stderr =~ "must be public? true"
   end
 
+  test "fails to compile when stream projection trigger is blank" do
+    stderr =
+      capture_io(:stderr, fn ->
+        compile_module("""
+        defmodule TestResource.BlankStreamTrigger do
+          use Ash.Resource,
+            domain: TestDomain,
+            validate_domain_inclusion?: false,
+            extensions: [Alva.Resource]
+
+          resource do
+            require_primary_key? false
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          live_vue do
+            stream :students do
+              insert on: ""
+            end
+          end
+        end
+        """)
+      end)
+
+    assert stderr =~ "Stream projection trigger must be a non-empty string"
+  end
+
+  test "fails to compile when signal projection trigger is blank" do
+    stderr =
+      capture_io(:stderr, fn ->
+        compile_module("""
+        defmodule TestResource.BlankSignalTrigger do
+          use Ash.Resource,
+            domain: TestDomain,
+            validate_domain_inclusion?: false,
+            extensions: [Alva.Resource]
+
+          resource do
+            require_primary_key? false
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          live_vue do
+            signal "students.import_completed",
+              on: ""
+          end
+        end
+        """)
+      end)
+
+    assert stderr =~ "Signal projection trigger must be a non-empty string"
+  end
+
+  test "fails to compile when stream trigger does not match a declared pubsub publication" do
+    stderr =
+      capture_io(:stderr, fn ->
+        compile_module("""
+        defmodule TestResource.UnknownStreamPublication do
+          use Ash.Resource,
+            domain: TestDomain,
+            validate_domain_inclusion?: false,
+            extensions: [Alva.Resource],
+            notifiers: [Ash.Notifier.PubSub]
+
+          resource do
+            require_primary_key? false
+          end
+
+          actions do
+            defaults [:read]
+
+            create :create do
+              accept []
+            end
+          end
+
+          pub_sub do
+            module TestPubSub
+
+            publish "student_created", :create, "students"
+          end
+
+          live_vue do
+            stream :students do
+              insert on: "student_cretaed"
+            end
+          end
+        end
+        """)
+      end)
+
+    assert stderr =~ "Stream projection trigger"
+    assert stderr =~ "does not match a declared Ash PubSub publication"
+    assert stderr =~ "student_created"
+  end
+
+  test "fails to compile when signal trigger does not match a declared pubsub publication" do
+    stderr =
+      capture_io(:stderr, fn ->
+        compile_module("""
+        defmodule TestResource.UnknownSignalPublication do
+          use Ash.Resource,
+            domain: TestDomain,
+            validate_domain_inclusion?: false,
+            extensions: [Alva.Resource],
+            notifiers: [Ash.Notifier.PubSub]
+
+          resource do
+            require_primary_key? false
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          pub_sub do
+            module TestPubSub
+
+            publish :read, "students_read"
+          end
+
+          live_vue do
+            signal "students.import_completed",
+              on: "student_import_completed"
+          end
+        end
+        """)
+      end)
+
+    assert stderr =~ "Signal projection trigger"
+    assert stderr =~ "does not match a declared Ash PubSub publication"
+    assert stderr =~ "read"
+  end
+
   setup_all do
     Code.compiler_options(ignore_module_conflict: true)
     :ok
@@ -107,7 +328,17 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
   after
     # Clean up compiled modules if any
     Enum.each(
-      [TestResource.Valid, TestResource.MissingAction, TestResource.PrivateAction],
+      [
+        TestResource.Valid,
+        TestResource.RealtimeValid,
+        TestResource.PubSubRealtimeValid,
+        TestResource.MissingAction,
+        TestResource.PrivateAction,
+        TestResource.BlankStreamTrigger,
+        TestResource.BlankSignalTrigger,
+        TestResource.UnknownStreamPublication,
+        TestResource.UnknownSignalPublication
+      ],
       fn mod ->
         :code.purge(mod)
         :code.delete(mod)

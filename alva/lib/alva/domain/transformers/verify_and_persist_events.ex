@@ -10,27 +10,61 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEvents do
     resources = Ash.Domain.Info.resources(dsl_state)
     module = Spark.Dsl.Extension.get_persisted(dsl_state, :module)
 
-    events_map =
+    event_map =
       Enum.reduce(resources, %{}, fn resource, acc ->
-        events = Spark.Dsl.Extension.get_entities(resource, [:live_vue])
-
-        Enum.reduce(events, acc, fn event, map_acc ->
-          if Map.has_key?(map_acc, event.name) do
-            {existing_resource, _} = map_acc[event.name]
-
-            raise Spark.Error.DslError,
-              module: module,
-              path: [:resources],
-              message:
-                "Duplicate event name #{inspect(event.name)} found in resource #{inspect(resource)} (already defined in #{inspect(existing_resource)})"
-          else
-            Map.put(map_acc, event.name, {resource, event})
-          end
-        end)
+        persist_unique(
+          acc,
+          Alva.Resource.Info.events(resource),
+          resource,
+          module,
+          :event
+        )
       end)
 
-    dsl_state = Spark.Dsl.Transformer.persist(dsl_state, :alva_event_map, events_map)
+    stream_map =
+      Enum.reduce(resources, %{}, fn resource, acc ->
+        persist_unique(
+          acc,
+          Alva.Resource.Info.streams(resource),
+          resource,
+          module,
+          :stream
+        )
+      end)
+
+    signal_map =
+      Enum.reduce(resources, %{}, fn resource, acc ->
+        persist_unique(
+          acc,
+          Alva.Resource.Info.signals(resource),
+          resource,
+          module,
+          :signal
+        )
+      end)
+
+    dsl_state =
+      dsl_state
+      |> Spark.Dsl.Transformer.persist(:alva_event_map, event_map)
+      |> Spark.Dsl.Transformer.persist(:alva_stream_map, stream_map)
+      |> Spark.Dsl.Transformer.persist(:alva_signal_map, signal_map)
 
     {:ok, dsl_state}
+  end
+
+  defp persist_unique(map, projections, resource, module, kind) do
+    Enum.reduce(projections, map, fn projection, acc ->
+      if Map.has_key?(acc, projection.name) do
+        {existing_resource, _} = acc[projection.name]
+
+        raise Spark.Error.DslError,
+          module: module,
+          path: [:resources],
+          message:
+            "Duplicate #{kind} name #{inspect(projection.name)} found in resource #{inspect(resource)} (already defined in #{inspect(existing_resource)})"
+      else
+        Map.put(acc, projection.name, {resource, projection})
+      end
+    end)
   end
 end

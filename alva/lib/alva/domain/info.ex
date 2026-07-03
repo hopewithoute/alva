@@ -12,6 +12,22 @@ defmodule Alva.Domain.Info do
   end
 
   @doc """
+  Returns a static O(1) map of all LiveVue stream projections registered across all resources in the domain.
+  The map structure is: %{ :stream_name => {ResourceModule, StreamStruct} }
+  """
+  def alva_stream_map(domain) do
+    Spark.Dsl.Extension.get_persisted(domain, :alva_stream_map, %{})
+  end
+
+  @doc """
+  Returns a static O(1) map of all LiveVue signal projections registered across all resources in the domain.
+  The map structure is: %{ "signal_name" => {ResourceModule, SignalStruct} }
+  """
+  def alva_signal_map(domain) do
+    Spark.Dsl.Extension.get_persisted(domain, :alva_signal_map, %{})
+  end
+
+  @doc """
   Returns a flat list of Ash action arguments configured as Ash.Type.File.
   """
   def file_upload_arguments(domain) do
@@ -19,7 +35,7 @@ defmodule Alva.Domain.Info do
     |> alva_event_map()
     |> Enum.flat_map(fn {_event_name, {resource, event_def}} ->
       action = Ash.Resource.Info.action(resource, event_def.action)
-      
+
       if action do
         Enum.filter(action.arguments, fn arg ->
           case arg.type do
