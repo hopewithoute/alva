@@ -11,6 +11,9 @@ export function useChatMessages(
     
     const mergedMap = new Map<string, SupportMessage>();
     
+    // Historical messages come from support.list_messages for the selected
+    // conversation. Live messages are global route stream props and must be
+    // scoped here so other chats do not bleed into the active transcript.
     historical_messages.value.forEach((m: SupportMessage) => mergedMap.set(m.id, m));
     
     if (live_messages.value) {

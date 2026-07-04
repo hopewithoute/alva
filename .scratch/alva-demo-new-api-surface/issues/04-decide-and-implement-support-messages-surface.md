@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Decide And Implement Support Messages Surface
 
@@ -12,11 +12,11 @@ Make the support message list strategy explicit and implement it end to end. Bec
 
 ## Acceptance criteria
 
-- [ ] The chosen ownership model for support messages is documented in code comments, docs, or issue notes.
-- [ ] Shopper and merchant chat still load historical messages for the selected conversation.
-- [ ] New shopper and merchant messages appear live in the active conversation without page refresh.
-- [ ] Messages for other conversations do not appear in the active chat transcript.
-- [ ] Tests cover the selected support message behavior on both Storefront and Merchant Console surfaces.
+- [x] The chosen ownership model for support messages is documented in code comments, docs, or issue notes.
+- [x] Shopper and merchant chat still load historical messages for the selected conversation.
+- [x] New shopper and merchant messages appear live in the active conversation without page refresh.
+- [x] Messages for other conversations do not appear in the active chat transcript.
+- [x] Tests cover the selected support message behavior on both Storefront and Merchant Console surfaces.
 
 ## Blocked by
 

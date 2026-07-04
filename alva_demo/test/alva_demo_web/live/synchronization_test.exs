@@ -1,8 +1,12 @@
 defmodule AlvaDemoWeb.SynchronizationTest do
   use AlvaDemoWeb.ConnCase
+  import Alva.Test
   import Phoenix.LiveViewTest
   alias AlvaDemo.Catalog.Product
   alias AlvaDemo.Sales.Order
+  alias AlvaDemo.Support.Conversation
+  alias AlvaDemo.Support.SupportMessage
+  alias Phoenix.LiveView.Socket
 
   setup do
     product =
@@ -147,7 +151,7 @@ defmodule AlvaDemoWeb.SynchronizationTest do
     AlvaDemoWeb.Endpoint.subscribe("conversation:created")
 
     _conversation =
-      AlvaDemo.Support.Conversation
+      Conversation
       |> Ash.Changeset.for_create(:create, %{customer_name: "Collection Support"})
       |> Ash.create!()
 
@@ -156,5 +160,70 @@ defmodule AlvaDemoWeb.SynchronizationTest do
     :timer.sleep(50)
 
     assert render(console_live) =~ "Collection Support"
+  end
+
+  test "support message history and live updates stay route-scoped for both chat surfaces", %{
+    conn: conn
+  } do
+    active_conversation = seed_conversation!("Active Chat")
+    other_conversation = seed_conversation!("Other Chat")
+
+    seed_message!(active_conversation, "Active history", :shopper)
+    seed_message!(other_conversation, "Other history", :shopper)
+
+    {:ok, storefront_live, _html} = live(conn, "/storefront")
+    {:ok, console_live, _html} = live(conn, "/console")
+
+    storefront_history = list_messages_for(active_conversation)
+    console_history = list_messages_for(active_conversation)
+
+    assert Enum.any?(storefront_history, &(&1.text == "Active history"))
+    refute Enum.any?(storefront_history, &(&1.text == "Other history"))
+    assert Enum.any?(console_history, &(&1.text == "Active history"))
+    refute Enum.any?(console_history, &(&1.text == "Other history"))
+
+    AlvaDemoWeb.Endpoint.subscribe("support_message:created")
+
+    _message =
+      SupportMessage
+      |> Ash.Changeset.for_create(:create, %{
+        conversation_id: active_conversation.id,
+        sender: :merchant,
+        text: "Live route message"
+      })
+      |> Ash.create!()
+
+    assert_receive %Phoenix.Socket.Broadcast{event: "create"}
+
+    :timer.sleep(50)
+
+    assert render(storefront_live) =~ "Live route message"
+    assert render(console_live) =~ "Live route message"
+  end
+
+  defp seed_conversation!(customer_name) do
+    Ash.Seed.seed!(%Conversation{customer_name: customer_name})
+  end
+
+  defp seed_message!(conversation, text, sender) do
+    Ash.Seed.seed!(%SupportMessage{
+      conversation_id: conversation.id,
+      text: text,
+      sender: sender
+    })
+  end
+
+  defp list_messages_for(conversation) do
+    socket = %Socket{
+      private: %{alva: %{domains: [AlvaDemo.Support]}},
+      assigns: %{}
+    }
+
+    result =
+      assert_dispatch_ok(socket, "support.list_messages", %{
+        "conversation_id" => conversation.id
+      })
+
+    result.data
   end
 end
