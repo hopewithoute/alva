@@ -33,6 +33,7 @@ defmodule MyApp.Academics.Student do
     prefix "students"
     publish :create, ["all"], event: "student_created"
     publish :archive, ["all"], event: "student_archived"
+    publish :destroy, ["all"], event: "student_deleted"
   end
 
   live_vue do
