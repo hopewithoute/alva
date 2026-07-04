@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Showcase Validation Gate
 
@@ -8,12 +8,12 @@ Add the final validation gate for the Alva Commerce Showcase. This issue should 
 
 ## Acceptance criteria
 
-- [ ] `mix precommit` passes for the completed showcase.
-- [ ] `mix assets.build` passes for the LiveVue/shadcn-vue frontend integration.
-- [ ] Route-level tests cover Customer Storefront catalog rendering, Customer Name capture, simple Order creation, Order Lifecycle visibility, and customer-side Support Chat.
-- [ ] Route-level tests cover Merchant Console order visibility, lifecycle advancement, invalid transition prevention, Product Media upload controls, Inventory Snapshot behavior, and merchant-side Support Chat.
-- [ ] The implementation does not reintroduce old Student, Academics, Communication, primitive demo routes, or PostgreSQL migrations.
-- [ ] The completed showcase remains within the PRD's out-of-scope boundaries.
+- [x] `mix precommit` passes for the completed showcase.
+- [x] `mix assets.build` passes for the LiveVue/shadcn-vue frontend integration.
+- [x] Route-level tests cover Customer Storefront catalog rendering, Customer Name capture, simple Order creation, Order Lifecycle visibility, and customer-side Support Chat.
+- [x] Route-level tests cover Merchant Console order visibility, lifecycle advancement, invalid transition prevention, Product Media upload controls, Inventory Snapshot behavior, and merchant-side Support Chat.
+- [x] The implementation does not reintroduce old Student, Academics, Communication, primitive demo routes, or PostgreSQL migrations.
+- [x] The completed showcase remains within the PRD's out-of-scope boundaries.
 
 ## Blocked by
 
