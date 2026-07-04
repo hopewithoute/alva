@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Document Demo API Surface Pattern
 
@@ -12,11 +12,11 @@ Document the final demo API surface pattern so future showcase changes follow th
 
 ## Acceptance criteria
 
-- [ ] Documentation states that route-owned orders, products, and conversations use Alva Collections.
-- [ ] Documentation shows that LiveViews pass Collection data to Vue through explicit `@streams.*` props.
-- [ ] Documentation states when plain assigns are still appropriate for non-Collection props.
-- [ ] Documentation captures the support message ownership decision from the implementation slice.
-- [ ] Documentation warns against reintroducing plain assign plus stream-query workarounds for route-owned lists.
+- [x] Documentation states that route-owned orders, products, and conversations use Alva Collections.
+- [x] Documentation shows that LiveViews pass Collection data to Vue through explicit `@streams.*` props.
+- [x] Documentation states when plain assigns are still appropriate for non-Collection props.
+- [x] Documentation captures the support message ownership decision from the implementation slice.
+- [x] Documentation warns against reintroducing plain assign plus stream-query workarounds for route-owned lists.
 
 ## Blocked by
 
