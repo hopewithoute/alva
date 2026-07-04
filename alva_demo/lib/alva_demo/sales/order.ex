@@ -28,26 +28,14 @@ defmodule AlvaDemo.Sales.Order do
     update :begin_processing do
       public? true
       require_atomic? false
-      validate fn changeset, _context ->
-        if changeset.data.lifecycle_status == :new do
-          :ok
-        else
-          {:error, Ash.Error.Changes.InvalidAttribute.exception(field: :lifecycle_status, message: "Order must be in new state to begin processing")}
-        end
-      end
+      validate {AlvaDemo.Sales.Validations.TransitionFrom, state: :new}
       change set_attribute(:lifecycle_status, :processing)
     end
 
     update :fulfill do
       public? true
       require_atomic? false
-      validate fn changeset, _context ->
-        if changeset.data.lifecycle_status == :processing do
-          :ok
-        else
-          {:error, Ash.Error.Changes.InvalidAttribute.exception(field: :lifecycle_status, message: "Order must be in processing state to be fulfilled")}
-        end
-      end
+      validate {AlvaDemo.Sales.Validations.TransitionFrom, state: :processing}
       change set_attribute(:lifecycle_status, :fulfilled)
     end
   end

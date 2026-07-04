@@ -9,8 +9,10 @@ const { data: orders, loading: ordersLoading, error: ordersError, fetch: fetchOr
 const { data: products, loading: productsLoading, error: productsError } = ashQuery(api as any, "catalog.list_products");
 
 const transitioningOrderId = ref<string | null>(null);
+const operationError = ref<string | null>(null);
 
 const beginProcessing = async (orderId: string) => {
+  operationError.value = null;
   transitioningOrderId.value = orderId;
   const result = await api.call("sales.begin_processing" as any, { id: orderId });
   transitioningOrderId.value = null;
@@ -18,11 +20,12 @@ const beginProcessing = async (orderId: string) => {
   if (result.ok) {
     fetchOrders();
   } else {
-    alert(`Failed to begin processing: ${result.error.message}`);
+    operationError.value = `Failed to begin processing: ${result.error.message}`;
   }
 };
 
 const fulfill = async (orderId: string) => {
+  operationError.value = null;
   transitioningOrderId.value = orderId;
   const result = await api.call("sales.fulfill" as any, { id: orderId });
   transitioningOrderId.value = null;
@@ -30,23 +33,28 @@ const fulfill = async (orderId: string) => {
   if (result.ok) {
     fetchOrders();
   } else {
-    alert(`Failed to fulfill order: ${result.error.message}`);
+    operationError.value = `Failed to fulfill order: ${result.error.message}`;
   }
 };
 
+const STATUS_COLORS: Record<string, string> = {
+  'new': 'bg-blue-50 text-blue-700 border-blue-200',
+  'processing': 'bg-amber-50 text-amber-700 border-amber-200',
+  'fulfilled': 'bg-green-50 text-green-700 border-green-200',
+  'cancelled': 'bg-red-50 text-red-700 border-red-200'
+};
+
 const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'new': return 'bg-blue-50 text-blue-700 border-blue-200';
-    case 'processing': return 'bg-amber-50 text-amber-700 border-amber-200';
-    case 'fulfilled': return 'bg-green-50 text-green-700 border-green-200';
-    case 'cancelled': return 'bg-red-50 text-red-700 border-red-200';
-    default: return 'bg-zinc-50 text-zinc-700 border-zinc-200';
-  }
+  return STATUS_COLORS[status] || 'bg-zinc-50 text-zinc-700 border-zinc-200';
 };
 </script>
 
 <template>
   <div class="space-y-8" data-testid="merchant-console-vue">
+    <div v-if="operationError" class="rounded-md bg-red-50 p-4 border border-red-200">
+      <p class="text-sm text-red-700">{{ operationError }}</p>
+    </div>
+
     <!-- Orders Section -->
     <div class="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
       <h2 class="text-xl font-semibold text-zinc-900 mb-4">Orders</h2>
