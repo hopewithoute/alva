@@ -13,12 +13,9 @@ defmodule AlvaDemoWeb.DataSync do
 
     socket =
       socket
-      |> assign(:sales_orders, load_collection(socket, "sales.list_orders"))
       |> assign(:products, load_collection(socket, "catalog.list_products"))
       |> assign(:conversations, load_collection(socket, "support.list_conversations"))
       |> assign(:support_messages, nil)
-      |> Alva.LiveView.activate_stream(:sales_orders)
-      |> Alva.LiveView.bind_stream_query("sales.list_orders", :sales_orders, mode: :reset)
       |> Alva.LiveView.activate_stream(:products)
       |> Alva.LiveView.bind_stream_query("catalog.list_products", :products, mode: :reset)
       |> Alva.LiveView.activate_stream(:conversations)

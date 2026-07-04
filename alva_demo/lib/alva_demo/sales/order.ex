@@ -19,7 +19,8 @@ defmodule AlvaDemo.Sales.Order do
     event("sales.begin_processing", action: :begin_processing)
     event("sales.fulfill", action: :fulfill)
 
-    stream :sales_orders do
+    collection :sales_orders do
+      source(event: "sales.list_orders", mode: :reset)
       insert(on: "create")
       update(on: "begin_processing")
       update(on: "fulfill")

@@ -1,6 +1,9 @@
 defmodule AlvaDemoWeb.MerchantConsoleLive do
   use AlvaDemoWeb, :live_view
-  use Alva.LiveView, domains: [AlvaDemo.Sales, AlvaDemo.Catalog, AlvaDemo.Support]
+
+  use Alva.LiveView,
+    domains: [AlvaDemo.Sales, AlvaDemo.Catalog, AlvaDemo.Support],
+    collections: [:sales_orders]
 
   on_mount AlvaDemoWeb.DataSync
 
@@ -21,8 +24,7 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
         </div>
         <.vue
           v-component="MerchantConsolePage"
-          v-diff={false}
-          sales_orders={@sales_orders}
+          sales_orders={@streams.sales_orders}
           products={@products}
           conversations={@conversations}
           support_messages={@support_messages}

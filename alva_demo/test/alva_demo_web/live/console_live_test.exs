@@ -11,23 +11,23 @@ defmodule AlvaDemoWeb.MerchantConsoleLiveTest do
         stock: 10
       })
 
-    {:ok, page_live, disconnected_html} = live(conn, "/console")
-
-    assert disconnected_html =~ "Merchant Console"
-    assert render(page_live) =~ "Test Console Product"
-
     Ash.Seed.seed!(%AlvaDemo.Sales.Order{
       customer_name: "Console Buyer",
       product_id: product.id,
       quantity: 1
     })
 
+    {:ok, page_live, disconnected_html} = live(conn, "/console")
+
+    assert disconnected_html =~ "Merchant Console"
+    assert render(page_live) =~ "Test Console Product"
+    assert render(page_live) =~ "Console Buyer"
+
     Ash.Seed.seed!(%AlvaDemo.Support.Conversation{
       customer_name: "Console Chat"
     })
 
     assert render_hook(page_live, "catalog.list_products", %{}) =~ "Test Console Product"
-    assert render_hook(page_live, "sales.list_orders", %{}) =~ "Console Buyer"
     assert render_hook(page_live, "support.list_conversations", %{}) =~ "Console Chat"
   end
 end

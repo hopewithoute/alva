@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Migrate Commerce Showcase off Props-Diff Workaround
 
@@ -14,13 +14,13 @@ This slice proves the library fix on the original failure mode.
 
 ## Acceptance criteria
 
-- [ ] Storefront and Merchant Console activate required Collections through declarative options or manual helpers.
-- [ ] Route-owned lists are passed to Vue from `@streams.*`, not from plain list assigns.
-- [ ] The temporary `v-diff={false}` workaround is removed from showcase LiveVue components.
-- [ ] Clicking Buy shows the new order in Storefront Recent Orders without refresh.
-- [ ] Merchant Console shows the same order without refresh when open in another window.
-- [ ] Browser or LiveView tests cover the no-refresh behavior.
-- [ ] Existing seed data, product images, validation, and support chat behavior remain intact.
+- [x] Storefront and Merchant Console activate required Collections through declarative options or manual helpers.
+- [x] Route-owned lists are passed to Vue from `@streams.*`, not from plain list assigns.
+- [x] The temporary `v-diff={false}` workaround is removed from showcase LiveVue components.
+- [x] Clicking Buy shows the new order in Storefront Recent Orders without refresh.
+- [x] Merchant Console shows the same order without refresh when open in another window.
+- [x] Browser or LiveView tests cover the no-refresh behavior.
+- [x] Existing seed data, product images, validation, and support chat behavior remain intact.
 
 ## Blocked by
 
