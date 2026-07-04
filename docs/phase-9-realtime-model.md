@@ -39,8 +39,9 @@ defmodule MyApp.Academics.Student do
     # Collection Block (Resource Projection)
     collection :students do
       source event: "students.list", mode: :reset
-      insert on: "student_created", at: 0
-      update on: "student_archived"
+      insert on: "student_created", at: 0, limit: -20
+      update on: "student_archived", update_only: true
+      delete on: "student_deleted"
     end
 
     # Subscribe Block (Resource Projection)
@@ -85,7 +86,7 @@ Collection activation supports source parameters from the start. If no params ar
 
 Activation callbacks may return a raw value or `{:ok, value}`. Returning `{:error, reason}` raises an activation error because declarative activation is a fail-loud page setup path, not user-facing validation. If a route needs graceful 404, redirect, or conditional behavior, use manual `mount` branching before activating the Collection.
 
-Collection sources do not declare result shape. Alva reads the source event's Auto-DTO/projection contract to determine the records to stream. Standard resource lists and Ash page-like results should be inferred automatically; custom DTO envelopes used as Collection sources must declare their collection records field in the DTO/projection layer. If Alva cannot determine records from that contract, compilation should fail with a message pointing at the source event projection.
+Collection sources do not declare result shape. Alva uses the source event's Auto-DTO/projection contract as the source of truth for the records to stream. Standard resource lists and supported Ash page-like results stream their records automatically; custom DTO envelopes used as Collection sources must make their record field clear in the DTO/projection layer. If Alva cannot determine records, Collection activation fails with an actionable message naming the collection and source event.
 
 Collections lean on Phoenix LiveView stream semantics instead of reimplementing list reconciliation. Identity is handled by LiveView `dom_id`, defaulting to `item.id`; custom DTO projections may use stream configuration if they need a custom DOM identity. Duplicate handling is handled by `stream_insert` plus LiveVue upsert, so the caller's immediate command update and the later PubSub echo do not create duplicate DOM records.
 
@@ -147,6 +148,13 @@ When migrating older components to the Phase 9 architecture, observe the followi
    Route-owned collections must use Phoenix stream operations plus LiveVue stream diffs. Do **not** use `ashQuery` stream insert/delete callback reconciliation. The `updateArray` logic and stream callbacks in `ashQuery` have been completely removed.
 2. **Move Collection State to Props.**
    Instead of holding an array in `ref<Student[]>([])` and querying it `onMounted`, declare a `defineProps<{ students: Student[] }>()` and let LiveVue supply the stream data initialized by the LiveView.
+   In the LiveView render, pass the server-owned stream explicitly:
+
+   ```elixir
+   <.vue v-component="StudentsPage" students={@streams.students} />
+   ```
+
+   Remove temporary `v-diff={false}` workarounds and plain list assigns such as `assign(:students, ...)` once the route-owned list is an Alva Collection. Plain assigns are still fine for non-Collection props.
 3. **Use Explicit Collection Sources.**
    Every Collection must declare its initial load/reset path with `source event: ...`. If you need refresh, pagination, or filtering, route that command result through the explicit source and let Alva apply it natively to the active server-owned Collection.
 4. **Use Signals for Everything Else.**

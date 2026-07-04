@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Document Collection Migration and Native LiveView Semantics
 
@@ -12,13 +12,13 @@ Update the project docs so future contributors understand that Alva Collections 
 
 ## Acceptance criteria
 
-- [ ] Docs show `collection`, `source event:`, `insert/update/delete on:`, and native LiveView options such as `at`, `limit`, and `update_only`.
-- [ ] Docs show `collections: [...]` and `subscriptions: [...]` as declarative page options.
-- [ ] Docs show local callback names for DB-backed or route-dependent params/topics.
-- [ ] Docs state that render still explicitly passes `@streams.collection_name` to Vue.
-- [ ] Docs state that Alva does not implement a custom list reconciliation engine.
-- [ ] Migration notes explain when to remove `v-diff={false}` and plain assign route collections.
-- [ ] Existing ADR and Phase 9 docs remain consistent with the implemented behavior.
+- [x] Docs show `collection`, `source event:`, `insert/update/delete on:`, and native LiveView options such as `at`, `limit`, and `update_only`.
+- [x] Docs show `collections: [...]` and `subscriptions: [...]` as declarative page options.
+- [x] Docs show local callback names for DB-backed or route-dependent params/topics.
+- [x] Docs state that render still explicitly passes `@streams.collection_name` to Vue.
+- [x] Docs state that Alva does not implement a custom list reconciliation engine.
+- [x] Migration notes explain when to remove `v-diff={false}` and plain assign route collections.
+- [x] Existing ADR and Phase 9 docs remain consistent with the implemented behavior.
 
 ## Blocked by
 
