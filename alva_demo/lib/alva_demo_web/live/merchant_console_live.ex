@@ -1,5 +1,21 @@
 defmodule AlvaDemoWeb.MerchantConsoleLive do
   use AlvaDemoWeb, :live_view
+  use Alva.LiveView, domains: [AlvaDemo.Sales, AlvaDemo.Catalog]
+
+  def mount(_params, _session, socket) do
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(AlvaDemo.PubSub, "order:created")
+      Phoenix.PubSub.subscribe(AlvaDemo.PubSub, "order:updated")
+    end
+
+    socket =
+      socket
+      |> assign(:sales_orders, nil)
+      |> Alva.LiveView.activate_stream(:sales_orders)
+      |> Alva.LiveView.bind_stream_query("sales.list_orders", :sales_orders)
+
+    {:ok, socket}
+  end
 
   def render(assigns) do
     ~H"""
@@ -12,7 +28,7 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
             Order Lifecycle, Inventory Snapshot, Product Media, and Support Chat controls arrive in follow-up slices.
           </p>
         </div>
-        <.vue v-component="MerchantConsolePage" />
+        <.vue v-component="MerchantConsolePage" sales_orders={assigns[:sales_orders]} />
       </section>
     </Layouts.app>
     """

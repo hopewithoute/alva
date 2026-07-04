@@ -1,5 +1,5 @@
 defmodule AlvaDemo.Sales.OrderLifecycleTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias AlvaDemo.Sales.Order
   alias AlvaDemo.Catalog.Product

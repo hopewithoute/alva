@@ -2,13 +2,28 @@ defmodule AlvaDemo.Sales.Order do
   use Ash.Resource,
     domain: AlvaDemo.Sales,
     data_layer: Ash.DataLayer.Ets,
+    notifiers: [Ash.Notifier.PubSub],
     extensions: [Alva.Resource]
+
+  pub_sub do
+    module AlvaDemoWeb.Endpoint
+    prefix "order"
+    publish :create, ["created"]
+    publish :begin_processing, ["updated"]
+    publish :fulfill, ["updated"]
+  end
 
   live_vue do
     event "sales.create_order", action: :create
     event "sales.list_orders", action: :read
     event "sales.begin_processing", action: :begin_processing
     event "sales.fulfill", action: :fulfill
+
+    stream :sales_orders do
+      insert on: "create"
+      update on: "begin_processing"
+      update on: "fulfill"
+    end
   end
 
   actions do

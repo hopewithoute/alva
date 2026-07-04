@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, defineProps } from "vue";
 import { useAlvaApi, ashQuery } from "alva";
 import Button from "./components/ui/button/Button.vue";
 
+const props = defineProps<{
+  salesOrders?: any[];
+}>();
+
 const api = useAlvaApi();
 const { data: products, loading, error } = ashQuery(api as any, "catalog.list_products");
-
-const session_orders = ref<any[]>([]);
 
 const customer_name = ref("");
 const ordering_product_id = ref<string | null>(null);
@@ -31,8 +33,8 @@ const buyProduct = async (productId: string) => {
   ordering_product_id.value = null;
   
   if (result.ok) {
-    alert("Order placed successfully!");
-    session_orders.value.push(result.data);
+    // Rely on server stream to update UI
+    customer_name.value = "";
   } else {
     alert(`Failed to place order: ${result.error.message}`);
   }
@@ -87,8 +89,9 @@ const buyProduct = async (productId: string) => {
     <!-- Orders Section -->
     <div class="mt-10 border-t border-zinc-200 pt-6">
       <h2 class="text-xl font-semibold text-zinc-900">Recent Orders</h2>
-      <div v-if="session_orders && session_orders.length > 0" class="mt-4 space-y-4">
-        <div v-for="order in session_orders" :key="order.id" class="rounded-lg border border-zinc-200 p-4">
+      <div v-if="!props.salesOrders" class="text-sm text-zinc-500">Loading orders...</div>
+      <div v-else-if="props.salesOrders && props.salesOrders.length > 0" class="mt-4 space-y-4">
+        <div v-for="order in props.salesOrders" :key="order.id" class="rounded-lg border border-zinc-200 p-4">
           <div class="flex justify-between items-center">
             <div>
               <p class="font-medium text-zinc-900">Order by {{ order.customer_name }}</p>

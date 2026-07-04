@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, defineProps } from "vue";
 import { useAlvaApi, ashQuery } from "alva";
 import Button from "./components/ui/button/Button.vue";
 
+const props = defineProps<{
+  salesOrders?: any[];
+}>();
+
 const api = useAlvaApi();
 
-const { data: orders, loading: ordersLoading, error: ordersError, fetch: fetchOrders } = ashQuery(api as any, "sales.list_orders");
 const { data: products, loading: productsLoading, error: productsError } = ashQuery(api as any, "catalog.list_products");
 
 const transitioningOrderId = ref<string | null>(null);
@@ -17,9 +20,7 @@ const beginProcessing = async (orderId: string) => {
   const result = await api.call("sales.begin_processing" as any, { id: orderId });
   transitioningOrderId.value = null;
 
-  if (result.ok) {
-    fetchOrders();
-  } else {
+  if (!result.ok) {
     operationError.value = `Failed to begin processing: ${result.error.message}`;
   }
 };
@@ -30,9 +31,7 @@ const fulfill = async (orderId: string) => {
   const result = await api.call("sales.fulfill" as any, { id: orderId });
   transitioningOrderId.value = null;
 
-  if (result.ok) {
-    fetchOrders();
-  } else {
+  if (!result.ok) {
     operationError.value = `Failed to fulfill order: ${result.error.message}`;
   }
 };
@@ -59,11 +58,10 @@ const getStatusColor = (status: string) => {
     <div class="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
       <h2 class="text-xl font-semibold text-zinc-900 mb-4">Orders</h2>
       
-      <div v-if="ordersLoading" class="text-sm text-zinc-500">Loading orders...</div>
-      <div v-else-if="ordersError" class="text-sm text-red-500">{{ ordersError.message }}</div>
-      <div v-else-if="orders && orders.length === 0" class="text-sm text-zinc-500">No orders found.</div>
+      <div v-if="!props.salesOrders" class="text-sm text-zinc-500">Loading orders...</div>
+      <div v-else-if="props.salesOrders && props.salesOrders.length === 0" class="text-sm text-zinc-500">No orders found.</div>
       <div v-else class="space-y-4">
-        <div v-for="order in orders" :key="order.id" class="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border border-zinc-200 p-4 gap-4">
+        <div v-for="order in props.salesOrders" :key="order.id" class="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border border-zinc-200 p-4 gap-4">
           <div>
             <p class="font-medium text-zinc-900">Order by {{ order.customer_name }}</p>
             <p class="text-sm text-zinc-500">Quantity: {{ order.quantity }} &middot; Product ID: {{ order.product_id }}</p>
