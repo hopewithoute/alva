@@ -3,6 +3,7 @@ import { ref, computed, watch, defineProps } from "vue";
 import { ashUpload as ash_upload } from "alva";
 import { api } from "../js/alva/client";
 import { useChatMessages } from "./composables/useChatMessages";
+import { getStatusColor } from "./utils/ui";
 import Button from "./components/ui/button/Button.vue";
 
 import type { Order, Product, Conversation, SupportMessage } from "../js/alva/types";
@@ -29,8 +30,8 @@ const active_conversation_id = ref<string | null>(null);
 const historical_messages = ref<SupportMessage[]>([]);
 const new_message_text = ref("");
 
-const triggerMediaUpload = (productId: string) => {
-  uploading_media_product_id.value = productId;
+const triggerMediaUpload = (product_id: string) => {
+  uploading_media_product_id.value = product_id;
   upload_error.value = null;
   media_upload.showFilePicker();
 };
@@ -39,9 +40,9 @@ watch(media_upload.progress, async (newProgress: number) => {
   if (newProgress === 100 && media_upload.files.value.length > 0 && uploading_media_product_id.value) {
     const refs = media_upload.getFileReferences();
     if (refs.length > 0) {
-      const productId = uploading_media_product_id.value;
+      const product_id = uploading_media_product_id.value;
       const result = await api.call("catalog.upload_media", { 
-        id: productId, 
+        id: product_id, 
         media: refs[0] as unknown as File 
       });
       
@@ -49,65 +50,65 @@ watch(media_upload.progress, async (newProgress: number) => {
       uploading_media_product_id.value = null;
       
       if (!result.ok) {
-        upload_error.value = `Failed to upload media: ${result.error.message}`;
+        upload_error.value = `Failed to upload media: ${result.error?.message || "Unknown error"}`;
       }
     }
   }
 });
 
-const beginProcessing = async (orderId: string) => {
-  transitioning_order_id.value = orderId;
+const beginProcessing = async (order_id: string) => {
+  transitioning_order_id.value = order_id;
   operation_error.value = null;
   
-  const result = await api.call("sales.begin_processing", { id: orderId });
+  const result = await api.call("sales.begin_processing", { id: order_id });
   transitioning_order_id.value = null;
   
   if (!result.ok) {
-    operation_error.value = `Failed to begin processing: ${result.error.message}`;
+    operation_error.value = `Failed to begin processing: ${result.error?.message || "Unknown error"}`;
   }
 };
 
-const fulfill = async (orderId: string) => {
-  transitioning_order_id.value = orderId;
+const fulfill = async (order_id: string) => {
+  transitioning_order_id.value = order_id;
   operation_error.value = null;
   
-  const result = await api.call("sales.fulfill", { id: orderId });
+  const result = await api.call("sales.fulfill", { id: order_id });
   transitioning_order_id.value = null;
   
   if (!result.ok) {
-    operation_error.value = `Failed to fulfill order: ${result.error.message}`;
+    operation_error.value = `Failed to fulfill order: ${result.error?.message || "Unknown error"}`;
   }
 };
 
-const adjustStock = async (productId: string) => {
-  let newStock = stock_input.value[productId];
+const adjustStock = async (product_id: string) => {
+  let newStock = stock_input.value[product_id];
   if (newStock === undefined) {
-    const p = props.products?.find((p: Product) => p.id === productId);
+    const p = props.products?.find((p: Product) => p.id === product_id);
     if (p) newStock = p.stock;
   }
   if (newStock === undefined || newStock < 0) return;
 
-  adjusting_product_id.value = productId;
+  adjusting_product_id.value = product_id;
   adjustment_error.value = null;
   
   const result = await api.call("catalog.adjust_stock", { 
-    id: productId,
+    id: product_id,
     stock: newStock 
   });
   
   adjusting_product_id.value = null;
   
   if (!result.ok) {
-    adjustment_error.value = `Failed to adjust stock: ${result.error.message}`;
+    adjustment_error.value = `Failed to adjust stock: ${result.error?.message || "Unknown error"}`;
   }
 };
 
-const selectConversation = async (conversationId: string) => {
-  active_conversation_id.value = conversationId;
+const selectConversation = async (conversation_id: string) => {
+  active_conversation_id.value = conversation_id;
   historical_messages.value = [];
   
   const messagesRes = await api.call("support.list_messages", {
-    conversation_id: conversationId
+    conversation_id: conversation_id
   });
   
   if (messagesRes.ok) {
@@ -134,20 +135,12 @@ const chat_messages = useChatMessages(
   computed(() => props.support_messages)
 );
 
-const getProductName = (productId: string) => {
-  if (!props.products) return productId;
-  const p = props.products.find((p: any) => p.id === productId);
-  return p ? p.name : productId;
+const getProductName = (product_id: string) => {
+  if (!props.products) return product_id;
+  const p = props.products.find((p: any) => p.id === product_id);
+  return p ? p.name : product_id;
 };
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'new': return 'bg-blue-50 text-blue-700 border-blue-200';
-    case 'processing': return 'bg-amber-50 text-amber-700 border-amber-200';
-    case 'fulfilled': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-    default: return 'bg-zinc-50 text-zinc-700 border-zinc-200';
-  }
-};
 </script>
 
 <template>

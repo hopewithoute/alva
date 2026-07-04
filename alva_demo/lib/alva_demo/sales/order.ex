@@ -71,7 +71,7 @@ defmodule AlvaDemo.Sales.Order do
     end
 
     attribute :lifecycle_status, :atom do
-      constraints(one_of: [:new, :processing, :fulfilled, :cancelled])
+      constraints(one_of: [:new, :processing, :fulfilled])
       default(:new)
       allow_nil?(false)
       public?(true)

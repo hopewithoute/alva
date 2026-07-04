@@ -2,6 +2,7 @@
 import { ref, computed, watch, defineProps } from "vue";
 import { api } from "../js/alva/client";
 import { useChatMessages } from "./composables/useChatMessages";
+import { getStatusColor } from "./utils/ui";
 import Button from "./components/ui/button/Button.vue";
 
 import type { Order, Product, Conversation, SupportMessage } from "../js/alva/types";
@@ -24,16 +25,11 @@ const formatPrice = (cents: number) => {
   return `$${(cents / 100).toFixed(2)}`;
 };
 
-const buyProduct = async (productId: string) => {
-  if (!customer_name.value) {
-    alert("Please enter your name first!");
-    return;
-  }
-  
-  ordering_product_id.value = productId;
+const buyProduct = async (product_id: string) => {
+  ordering_product_id.value = product_id;
   const result = await api.call("sales.create_order", {
     customer_name: customer_name.value,
-    product_id: productId,
+    product_id: product_id,
     quantity: 1
   });
   
@@ -42,16 +38,11 @@ const buyProduct = async (productId: string) => {
   if (result.ok) {
     alert("Order created successfully!");
   } else {
-    alert(`Failed to create order: ${result.error.message}`);
+    alert(`Failed to create order: ${result.error?.message || "Unknown error"}`);
   }
 };
 
 const joinChat = async () => {
-  if (!customer_name.value) {
-    alert("Please enter your name to chat.");
-    return;
-  }
-  
   const result = await api.call("support.create", {
     customer_name: customer_name.value
   });
@@ -68,7 +59,7 @@ const joinChat = async () => {
       historical_messages.value = messagesRes.data as SupportMessage[];
     }
   } else {
-    alert(`Failed to join chat: ${result.error.message}`);
+    alert(`Failed to join chat: ${result.error?.message || "Unknown error"}`);
   }
 };
 
@@ -184,7 +175,7 @@ const chat_messages = useChatMessages(
               <p class="font-medium text-zinc-900">Order by {{ order.customer_name }}</p>
               <p class="text-sm text-zinc-500">Quantity: {{ order.quantity }}</p>
             </div>
-            <div class="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700 capitalize">
+            <div :class="['rounded-full px-3 py-1 text-sm font-medium capitalize', getStatusColor(order.lifecycle_status)]">
               {{ order.lifecycle_status }}
             </div>
           </div>
