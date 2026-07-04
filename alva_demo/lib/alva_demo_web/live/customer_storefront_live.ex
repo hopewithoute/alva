@@ -1,6 +1,6 @@
 defmodule AlvaDemoWeb.CustomerStorefrontLive do
   use AlvaDemoWeb, :live_view
-  use Alva.LiveView, domains: [AlvaDemo.Sales, AlvaDemo.Catalog]
+  use Alva.LiveView, domains: [AlvaDemo.Sales, AlvaDemo.Catalog, AlvaDemo.Support]
 
   on_mount AlvaDemoWeb.DataSync
 
@@ -19,7 +19,7 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
             Product catalog, Customer Name capture, ordering, and Support Chat arrive in the next slices.
           </p>
         </div>
-        <.vue v-component="CustomerStorefrontPage" sales_orders={assigns[:sales_orders]} products={assigns[:products]} />
+        <.vue v-component="CustomerStorefrontPage" sales_orders={assigns[:sales_orders]} products={assigns[:products]} support_messages={assigns[:support_messages]} />
       </section>
     </Layouts.app>
     """

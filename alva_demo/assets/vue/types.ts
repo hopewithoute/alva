@@ -14,3 +14,16 @@ export interface Product {
   stock: number;
   media_reference: string;
 }
+
+export interface Conversation {
+  id: string;
+  customer_name: string;
+}
+
+export interface SupportMessage {
+  id: string;
+  text: string;
+  sender: 'shopper' | 'merchant';
+  conversation_id: string;
+  created_at: string;
+}

@@ -1,6 +1,6 @@
 defmodule AlvaDemoWeb.MerchantConsoleLive do
   use AlvaDemoWeb, :live_view
-  use Alva.LiveView, domains: [AlvaDemo.Sales, AlvaDemo.Catalog]
+  use Alva.LiveView, domains: [AlvaDemo.Sales, AlvaDemo.Catalog, AlvaDemo.Support]
 
   on_mount AlvaDemoWeb.DataSync
 
@@ -19,7 +19,7 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
             Order Lifecycle, Inventory Snapshot, Product Media, and Support Chat controls arrive in follow-up slices.
           </p>
         </div>
-        <.vue v-component="MerchantConsolePage" sales_orders={assigns[:sales_orders]} products={assigns[:products]} />
+        <.vue v-component="MerchantConsolePage" sales_orders={assigns[:sales_orders]} products={assigns[:products]} conversations={assigns[:conversations]} support_messages={assigns[:support_messages]} />
       </section>
     </Layouts.app>
     """
