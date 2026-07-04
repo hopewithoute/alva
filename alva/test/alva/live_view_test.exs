@@ -53,6 +53,7 @@ defmodule Alva.LiveViewTest do
       module(Alva.LiveViewTest.Endpoint)
 
       publish("student_created", :upload_file, "students")
+      publish("student_created", :create, "students")
       publish("student_updated", :rename, "students")
       publish("student_deleted", :destroy, "students")
     end
@@ -60,6 +61,9 @@ defmodule Alva.LiveViewTest do
     live_vue do
       event("upload", action: :upload_file)
       event("students.list", action: :read)
+      event("students.create", action: :create)
+      event("students.rename", action: :rename)
+      event("students.destroy", action: :destroy)
 
       stream :students do
         insert(on: "student_created")
@@ -676,6 +680,91 @@ defmodule Alva.LiveViewTest do
 
     assert reply.ok == true
     assert final_socket.assigns.students == []
+  end
+
+  test "successful create commands update active collections immediately" do
+    socket = active_collection_socket()
+    [%{function: callback}] = socket.private.lifecycle.handle_event
+
+    {:halt, reply, final_socket} =
+      callback.("students.create", %{"name" => "Buy no refresh"}, socket)
+
+    assert reply.ok == true
+    assert %{name: "Buy no refresh"} = reply.data
+
+    assert [{_dom_id, 0, %{name: "Buy no refresh"}, -10, false}] =
+             stream_inserts(final_socket, :sales_orders)
+
+    refute Map.has_key?(final_socket.assigns, :sales_orders)
+  end
+
+  test "successful update commands update active collection items immediately" do
+    student = create_student!("Before Rename")
+    socket = active_collection_socket()
+    [%{function: callback}] = socket.private.lifecycle.handle_event
+
+    {:halt, reply, final_socket} =
+      callback.("students.rename", %{"id" => student.id, "name" => "After Rename"}, socket)
+
+    assert reply.ok == true
+
+    assert Enum.any?(stream_inserts(final_socket, :sales_orders), fn
+             {_dom_id, -1, %{id: id, name: "After Rename"}, nil, true} ->
+               id == student.id
+
+             _other ->
+               false
+           end)
+  end
+
+  test "successful destroy commands remove active collection items immediately" do
+    student = create_student!("Destroy Me")
+    socket = active_collection_socket()
+    [%{function: callback}] = socket.private.lifecycle.handle_event
+
+    {:halt, reply, final_socket} =
+      callback.("students.destroy", %{"id" => student.id}, socket)
+
+    assert reply.ok == true
+    assert ["sales_orders-#{student.id}"] == stream_deletes(final_socket, :sales_orders)
+  end
+
+  test "PubSub echo after an immediate collection insert does not create duplicate stream records" do
+    socket = active_collection_socket()
+    [%{function: event_callback}] = socket.private.lifecycle.handle_event
+    [%{function: info_callback}] = socket.private.lifecycle.handle_info
+
+    {:halt, reply, socket} =
+      event_callback.("students.create", %{"name" => "Echo Safe"}, socket)
+
+    {:halt, final_socket} =
+      info_callback.(
+        %Ash.Notifier.Notification{
+          resource: TestResource,
+          action: %{name: :create},
+          data: reply.data
+        },
+        socket
+      )
+
+    inserted_ids =
+      final_socket
+      |> stream_inserts(:sales_orders)
+      |> Enum.map(fn {dom_id, _at, _item, _limit, _update_only} -> dom_id end)
+
+    assert length(inserted_ids) == length(Enum.uniq(inserted_ids))
+  end
+
+  test "failed command results do not mutate active collections" do
+    socket = active_collection_socket()
+    [%{function: callback}] = socket.private.lifecycle.handle_event
+
+    {:halt, reply, final_socket} =
+      callback.("students.rename", %{"id" => Ash.UUID.generate(), "name" => "Missing"}, socket)
+
+    assert reply.ok == false
+    assert stream_inserts(final_socket, :sales_orders) == []
+    assert stream_deletes(final_socket, :sales_orders) == []
   end
 
   test "signal-only delivery does not mutate a route collection" do

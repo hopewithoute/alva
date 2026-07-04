@@ -304,7 +304,7 @@ defmodule Alva.LiveView do
 
     case event_projection do
       {resource, %{action: action_name}} ->
-        apply_stream_operations(socket, resource, to_string(action_name), data)
+        apply_stream_operations(socket, resource, action_events(resource, action_name), data)
 
       _ ->
         socket
@@ -547,13 +547,29 @@ defmodule Alva.LiveView do
   end
 
   defp apply_collection_operation(socket, name, %{op: :insert} = operation, data) do
-    Phoenix.LiveView.stream_insert(
-      socket,
-      name,
-      Alva.Dispatcher.strip_metadata(data),
-      collection_operation_opts(operation)
-    )
+    item = Alva.Dispatcher.strip_metadata(data)
+
+    if pending_collection_insert?(socket, name, item) do
+      socket
+    else
+      Phoenix.LiveView.stream_insert(socket, name, item, collection_operation_opts(operation))
+    end
   end
+
+  defp pending_collection_insert?(socket, name, %{id: id}) do
+    dom_id = "#{name}-#{id}"
+
+    socket.assigns
+    |> Map.get(:streams, %{})
+    |> Map.get(name, %{})
+    |> Map.get(:inserts, [])
+    |> Enum.any?(fn
+      {^dom_id, _at, _item, _limit, _update_only} -> true
+      _other -> false
+    end)
+  end
+
+  defp pending_collection_insert?(_socket, _name, _item), do: false
 
   defp collection_operation_opts(operation, defaults \\ []) do
     defaults
@@ -637,15 +653,7 @@ defmodule Alva.LiveView do
 
   defp notification_events(%Ash.Notifier.Notification{resource: resource, action: action})
        when is_atom(resource) and not is_nil(action) do
-    resource
-    |> Ash.Notifier.PubSub.Info.publications()
-    |> Enum.filter(&publication_matches?(&1, action))
-    |> Enum.map(&publication_identity/1)
-    |> case do
-      [] -> [to_string(action.name)]
-      events -> events
-    end
-    |> MapSet.new()
+    publication_events(resource, action)
   end
 
   defp notification_events(%Ash.Notifier.Notification{action: %{name: name}}) do
@@ -656,6 +664,28 @@ defmodule Alva.LiveView do
 
   defp broadcast_events(%Phoenix.Socket.Broadcast{event: event}) do
     MapSet.new([to_string(event)])
+  end
+
+  defp action_events(resource, action_name) when is_atom(resource) do
+    case Ash.Resource.Info.action(resource, action_name) do
+      nil ->
+        MapSet.new([to_string(action_name)])
+
+      action ->
+        publication_events(resource, action)
+    end
+  end
+
+  defp publication_events(resource, action) do
+    resource
+    |> Ash.Notifier.PubSub.Info.publications()
+    |> Enum.filter(&publication_matches?(&1, action))
+    |> Enum.map(&publication_identity/1)
+    |> case do
+      [] -> [to_string(action.name)]
+      events -> events
+    end
+    |> MapSet.new()
   end
 
   defp publication_matches?(%{action: action}, %{name: action}) when not is_nil(action), do: true
