@@ -5,9 +5,11 @@ defmodule AlvaDemo.Catalog.ProductTest do
 
   describe "product resource" do
     test "is ETS-backed and seeded on startup" do
+      AlvaDemo.Catalog.Seeder.seed()
+
       products = Ash.read!(Product)
 
-      assert length(products) > 0
+      assert length(products) >= 9
 
       product = hd(products)
       assert %Product{} = product
@@ -16,6 +18,19 @@ defmodule AlvaDemo.Catalog.ProductTest do
       assert is_integer(product.price)
       assert is_integer(product.stock)
       assert is_binary(product.media_reference)
+
+      seeded_media =
+        products
+        |> Enum.map(& &1.media_reference)
+        |> Enum.filter(&String.starts_with?(&1, "alva-"))
+
+      assert length(seeded_media) >= 9
+
+      Enum.each(seeded_media, fn media_reference ->
+        assert File.exists?(
+                 Path.join(:code.priv_dir(:alva_demo), "static/images/#{media_reference}")
+               )
+      end)
     end
 
     test "upload_media action updates media_reference" do
