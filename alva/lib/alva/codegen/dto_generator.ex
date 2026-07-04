@@ -5,14 +5,27 @@ defmodule Alva.Codegen.DtoGenerator do
 
   alias Alva.Codegen.TypeMapper
 
-  def generate_types_ts(resources) do
+  def generate_types_ts(resources, events_map \\ nil) do
     interfaces = 
       resources
       |> Enum.map(&generate_interface/1)
       |> Enum.join("\n\n")
 
+    filter_resources = 
+      if events_map do
+        involved = 
+          events_map
+          |> Enum.filter(fn {_name, {_res, event_def}} -> Map.get(event_def, :enable_filter, false) end)
+          |> Enum.map(fn {_name, {res, _event}} -> res end)
+          
+        gather_related_resources(involved, MapSet.new(involved))
+        |> Enum.to_list()
+      else
+        resources
+      end
+
     filter_interfaces = 
-      resources
+      filter_resources
       |> Enum.map(&generate_filter_interface/1)
       |> Enum.join("\n\n")
 
@@ -24,38 +37,7 @@ defmodule Alva.Codegen.DtoGenerator do
       | { ok: true; data: T; meta?: Record<string, any> }
       | { ok: false; error: any; meta?: Record<string, any> };
 
-    export interface StringFieldFilter {
-      eq?: string | null;
-      not_eq?: string | null;
-      in?: string[] | null;
-      is_nil?: boolean | null;
-      less_than?: string | null;
-      greater_than?: string | null;
-      less_than_or_equal?: string | null;
-      greater_than_or_equal?: string | null;
-      contains?: string | null;
-      ilike?: string | null;
-      like?: string | null;
-    }
-
-    export interface NumberFieldFilter {
-      eq?: number | null;
-      not_eq?: number | null;
-      in?: number[] | null;
-      is_nil?: boolean | null;
-      less_than?: number | null;
-      greater_than?: number | null;
-      less_than_or_equal?: number | null;
-      greater_than_or_equal?: number | null;
-    }
-
-    export interface BooleanFieldFilter {
-      eq?: boolean | null;
-      not_eq?: boolean | null;
-      is_nil?: boolean | null;
-    }
-
-    export type GenericFieldFilter<T> = {
+    export interface BaseFieldFilter<T> {
       eq?: T | null;
       not_eq?: T | null;
       in?: T[] | null;
@@ -64,12 +46,36 @@ defmodule Alva.Codegen.DtoGenerator do
       greater_than?: T | null;
       less_than_or_equal?: T | null;
       greater_than_or_equal?: T | null;
-    };
+    }
+
+    export interface StringFieldFilter extends BaseFieldFilter<string> {
+      contains?: string | null;
+      ilike?: string | null;
+      like?: string | null;
+    }
+
+    export interface IntFieldFilter extends BaseFieldFilter<number> {}
+
+    export interface BooleanFieldFilter {
+      eq?: boolean | null;
+      not_eq?: boolean | null;
+      is_nil?: boolean | null;
+    }
 
     #{filter_interfaces}
 
     #{interfaces}
     """
+  end
+
+  defp gather_related_resources([], visited), do: visited
+  defp gather_related_resources([resource | rest], visited) do
+    related = 
+      Ash.Resource.Info.public_relationships(resource)
+      |> Enum.map(& &1.destination)
+      |> Enum.reject(&MapSet.member?(visited, &1))
+      
+    gather_related_resources(rest ++ related, MapSet.union(visited, MapSet.new(related)))
   end
 
   def output_type(resource, event_def) do
@@ -163,11 +169,11 @@ defmodule Alva.Codegen.DtoGenerator do
         filter_op_type =
           case ts_type do
             "string" -> "StringFieldFilter"
-            "number" -> "NumberFieldFilter"
+            "number" -> "IntFieldFilter"
             "boolean" -> "BooleanFieldFilter"
-            _ -> "GenericFieldFilter<#{ts_type}>"
+            _ -> "BaseFieldFilter<#{ts_type}>"
           end
-        "  #{field.name}?: #{filter_op_type} | #{ts_type} | null;"
+        "  #{field.name}?: #{filter_op_type} | null;"
       end)
       
     rels_ts = 

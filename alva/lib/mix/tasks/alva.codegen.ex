@@ -35,7 +35,7 @@ defmodule Mix.Tasks.Alva.Codegen do
         |> Enum.map(fn {resource, _event} -> resource end)
         |> Enum.uniq()
       
-      generate_types_ts(resources, output_dir)
+      generate_types_ts(resources, events_map, output_dir)
       generate_events_ts(events_map, output_dir)
       generate_client_ts(events_map, output_dir)
       
@@ -50,8 +50,8 @@ defmodule Mix.Tasks.Alva.Codegen do
     end)
   end
 
-  defp generate_types_ts(resources, output_dir) do
-    content = Alva.Codegen.DtoGenerator.generate_types_ts(resources)
+  defp generate_types_ts(resources, events_map, output_dir) do
+    content = Alva.Codegen.DtoGenerator.generate_types_ts(resources, events_map)
     write_file!(output_dir, "types.ts", content)
   end
 
