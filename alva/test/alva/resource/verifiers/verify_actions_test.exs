@@ -114,7 +114,9 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
              %Alva.Resource.Collection{
                name: :students,
                source: %Alva.Resource.CollectionSource{event: "students.list", mode: :reset},
-               operations: [%Alva.Resource.CollectionOperation{op: :insert, on: "student_created"}]
+               operations: [
+                 %Alva.Resource.CollectionOperation{op: :insert, on: "student_created"}
+               ]
              }
            ] = Alva.Resource.Info.collections(TestResource.CollectionValid)
   end
