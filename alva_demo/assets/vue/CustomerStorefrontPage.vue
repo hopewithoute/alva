@@ -3,6 +3,10 @@ import { useAlvaApi, ashQuery } from "alva";
 
 const api = useAlvaApi();
 const { data: products, loading, error } = ashQuery(api as any, "catalog.list_products");
+
+const formatPrice = (cents: number) => {
+  return `$${(cents / 100).toFixed(2)}`;
+};
 </script>
 
 <template>
@@ -25,7 +29,7 @@ const { data: products, loading, error } = ashQuery(api as any, "catalog.list_pr
           <h3 class="text-lg font-medium text-zinc-900">{{ product.name }}</h3>
           <p class="mt-1 text-sm text-zinc-500">{{ product.description }}</p>
           <div class="mt-auto pt-4 flex items-center justify-between">
-            <span class="text-lg font-semibold text-zinc-900">${{ (product.price / 100).toFixed(2) }}</span>
+            <span class="text-lg font-semibold text-zinc-900">{{ formatPrice(product.price) }}</span>
             <span class="text-sm text-zinc-500">{{ product.stock }} in stock</span>
           </div>
         </div>

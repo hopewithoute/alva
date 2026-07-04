@@ -14,7 +14,7 @@ defmodule AlvaDemoWeb.Router do
     pipe_through :browser
 
     live "/", HomeLive
-    live "/shop", CustomerStorefrontLive
+    live "/storefront", CustomerStorefrontLive
     live "/console", MerchantConsoleLive
   end
 end

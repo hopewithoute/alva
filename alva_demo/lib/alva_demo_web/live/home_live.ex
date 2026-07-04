@@ -11,9 +11,9 @@ defmodule AlvaDemoWeb.HomeLive do
           <p class="max-w-2xl text-base text-zinc-600">
             Start from either side of the sample: the Customer Storefront for shopper activity, or the Merchant Console for operational work.
           </p>
-          <div class="flex flex-wrap gap-3">
-            <.link navigate={~p"/shop"} class="rounded-md bg-zinc-950 px-4 py-2 text-sm font-medium text-white">
-              Open Customer Storefront
+          <div class="flex items-center gap-4">
+            <.link navigate={~p"/storefront"} class="rounded-md bg-zinc-950 px-4 py-2 text-sm font-medium text-white">
+              View Storefront
             </.link>
             <.link navigate={~p"/console"} class="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium">
               Open Merchant Console

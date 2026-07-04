@@ -7,12 +7,12 @@ defmodule AlvaDemoWeb.ShowcaseShellTest do
     assert html =~ "commerce-showcase-entry"
     assert html =~ "Customer Storefront"
     assert html =~ "Merchant Console"
-    assert html =~ ~s(href="/shop")
+    assert html =~ ~s(href="/storefront")
     assert html =~ ~s(href="/console")
   end
 
   test "Customer Storefront route renders the LiveVue host page", %{conn: conn} do
-    {:ok, _view, html} = live(conn, ~p"/shop")
+    {:ok, _view, html} = live(conn, ~p"/storefront")
 
     assert html =~ "customer-storefront"
     assert html =~ "Customer Storefront"

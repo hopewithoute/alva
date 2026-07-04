@@ -14,14 +14,7 @@ defmodule AlvaDemo.Catalog.Product do
     read :read do
       primary? true
       # Must be public to expose via Alva
-    end
-
-    create :create do
-      accept [:name, :description, :price, :stock, :media_reference]
-    end
-
-    update :update do
-      accept [:name, :description, :price, :stock, :media_reference]
+      public? true
     end
   end
 

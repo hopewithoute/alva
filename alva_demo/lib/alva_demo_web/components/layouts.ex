@@ -23,7 +23,7 @@ defmodule AlvaDemoWeb.Layouts do
             Alva Commerce Showcase
           </.link>
           <div class="flex items-center gap-2 text-sm">
-            <.link navigate={~p"/shop"} class="rounded-md px-3 py-2 hover:bg-zinc-100">
+            <.link navigate={~p"/storefront"} class="rounded-md px-3 py-2 hover:bg-zinc-100">
               Customer Storefront
             </.link>
             <.link navigate={~p"/console"} class="rounded-md px-3 py-2 hover:bg-zinc-100">
