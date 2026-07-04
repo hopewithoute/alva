@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Seed Product Catalog Through Alva
 
