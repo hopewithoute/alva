@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Activate Collections Declaratively in LiveViews
 
@@ -14,13 +14,13 @@ This slice should load the Collection source event, initialize the Phoenix LiveV
 
 ## Acceptance criteria
 
-- [ ] `use Alva.LiveView, collections: [:sales_orders]` activates only the allowlisted Collections.
-- [ ] `Alva.LiveView.collection(socket, :sales_orders)` activates the same Collection manually.
-- [ ] Activating a Collection dispatches its explicit source event with `%{}` by default.
-- [ ] Source records are streamed with `stream(socket, name, records, reset: true)` rather than assigned as a plain prop.
-- [ ] No Collection is activated merely because its domain is mounted.
-- [ ] Unknown Collection activation fails with an actionable error.
-- [ ] A LiveView test can render a Vue component with `sales_orders={@streams.sales_orders}` after activation.
+- [x] `use Alva.LiveView, collections: [:sales_orders]` activates only the allowlisted Collections.
+- [x] `Alva.LiveView.collection(socket, :sales_orders)` activates the same Collection manually.
+- [x] Activating a Collection dispatches its explicit source event with `%{}` by default.
+- [x] Source records are streamed with `stream(socket, name, records, reset: true)` rather than assigned as a plain prop.
+- [x] No Collection is activated merely because its domain is mounted.
+- [x] Unknown Collection activation fails with an actionable error.
+- [x] A LiveView test can render a Vue component with `sales_orders={@streams.sales_orders}` after activation.
 
 ## Blocked by
 

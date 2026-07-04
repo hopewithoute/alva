@@ -9,7 +9,8 @@ defmodule Alva.LiveView do
     quote do
       import Alva.LiveView
       @alva_domains Keyword.get(unquote(opts), :domains, [])
-      on_mount({Alva.LiveView, @alva_domains})
+      @alva_collections Keyword.get(unquote(opts), :collections, [])
+      on_mount({Alva.LiveView, {@alva_domains, @alva_collections}})
     end
   end
 
@@ -29,6 +30,31 @@ defmodule Alva.LiveView do
     update_alva(socket, fn state ->
       update_in(state.streams, &MapSet.put(&1, name))
     end)
+  end
+
+  def collection(socket, name) when is_atom(name) do
+    {_resource, collection} = find_projection!(socket, :collection, name)
+
+    result =
+      Alva.Dispatcher.dispatch(collection.source.event, %{},
+        domains: alva_state(socket).domains,
+        socket: socket
+      )
+
+    case result do
+      %{ok: true, data: data} ->
+        socket
+        |> Phoenix.LiveView.stream(name, stream_query_items(data),
+          reset: collection.source.mode == :reset
+        )
+        |> update_alva(fn state ->
+          update_in(state.collections, &MapSet.put(&1, name))
+        end)
+
+      %{ok: false, error: error} ->
+        raise ArgumentError,
+              "Alva collection #{inspect(name)} source event #{inspect(collection.source.event)} failed: #{inspect(error)}"
+    end
   end
 
   def activate_signal(socket, name) when is_binary(name) do
@@ -70,6 +96,13 @@ defmodule Alva.LiveView do
     socket
     |> alva_state()
     |> Map.fetch!(:streams)
+    |> MapSet.member?(name)
+  end
+
+  def projection_active?(socket, :collection, name) do
+    socket
+    |> alva_state()
+    |> Map.fetch!(:collections)
     |> MapSet.member?(name)
   end
 
@@ -115,7 +148,9 @@ defmodule Alva.LiveView do
     }
   end
 
-  def on_mount(domains, _params, _session, socket) do
+  def on_mount(config, _params, _session, socket) do
+    {domains, collections} = normalize_mount_config(config)
+
     socket =
       update_alva(socket, fn state ->
         %{state | domains: domains}
@@ -165,6 +200,11 @@ defmodule Alva.LiveView do
 
         _msg, sock ->
           {:cont, sock}
+      end)
+
+    socket =
+      Enum.reduce(collections, socket, fn collection_name, acc_socket ->
+        collection(acc_socket, collection_name)
       end)
 
     {:cont, socket}
@@ -384,23 +424,42 @@ defmodule Alva.LiveView do
   end
 
   defp ensure_projection!(socket, kind, name) do
+    find_projection!(socket, kind, name)
+    :ok
+  end
+
+  defp find_projection!(socket, kind, name) do
     domains = alva_state(socket).domains
 
-    exists? =
-      Enum.any?(domains, fn domain ->
+    projection =
+      Enum.find_value(domains, fn domain ->
         domain
         |> projection_map(kind)
-        |> Map.has_key?(name)
+        |> Map.get(name)
       end)
 
-    unless exists? do
-      raise ArgumentError,
-            "Unknown Alva #{kind} projection #{inspect(name)} for mounted domains #{inspect(domains)}"
+    case projection do
+      nil ->
+        raise ArgumentError,
+              "Unknown Alva #{kind} projection #{inspect(name)} for mounted domains #{inspect(domains)}"
+
+      projection ->
+        projection
     end
   end
 
   defp projection_map(domain, :stream), do: Alva.Domain.Info.alva_stream_map(domain)
+  defp projection_map(domain, :collection), do: Alva.Domain.Info.alva_collection_map(domain)
   defp projection_map(domain, :signal), do: Alva.Domain.Info.alva_signal_map(domain)
+
+  defp normalize_mount_config({domains, collections})
+       when is_list(domains) and is_list(collections) do
+    {domains, collections}
+  end
+
+  defp normalize_mount_config(domains) when is_list(domains) do
+    {domains, []}
+  end
 
   defp notification_events(%Ash.Notifier.Notification{resource: resource, action: action})
        when is_atom(resource) and not is_nil(action) do
@@ -452,6 +511,7 @@ defmodule Alva.LiveView do
       domains: [],
       route_subscriptions: MapSet.new(),
       streams: MapSet.new(),
+      collections: MapSet.new(),
       signals: MapSet.new(),
       stream_queries: %{}
     })

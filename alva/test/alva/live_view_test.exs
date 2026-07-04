@@ -67,6 +67,13 @@ defmodule Alva.LiveViewTest do
         delete(on: "student_deleted")
       end
 
+      collection :sales_orders do
+        source(event: "students.list", mode: :reset)
+        insert(on: "student_created")
+        update(on: "student_updated")
+        delete(on: "student_deleted")
+      end
+
       signal("students.created",
         on: "student_created",
         expose_metadata: [:sync_token]
@@ -166,6 +173,21 @@ defmodule Alva.LiveViewTest do
     end
   end
 
+  defmodule CollectionLive do
+    use Phoenix.LiveView
+    use Alva.LiveView, domains: [Alva.LiveViewTest.TestDomain], collections: [:sales_orders]
+
+    def render(assigns) do
+      ~H"""
+      <div id="sales-orders">
+        <div :for={{dom_id, order} <- @streams.sales_orders} id={dom_id}>
+          <%= order.name %>
+        </div>
+      </div>
+      """
+    end
+  end
+
   defmodule TestDomain do
     use Ash.Domain, validate_config_inclusion?: false, extensions: [Alva.Domain]
 
@@ -231,6 +253,69 @@ defmodule Alva.LiveViewTest do
 
     assert Alva.LiveView.projection_active?(socket, :stream, :students)
     assert Alva.LiveView.projection_active?(socket, :signal, "students.created")
+  end
+
+  test "activates collection manually by dispatching its source event into a LiveView stream" do
+    create_student!("Manual Collection A")
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, base_socket())
+
+    socket = Alva.LiveView.collection(socket, :sales_orders)
+
+    assert Alva.LiveView.projection_active?(socket, :collection, :sales_orders)
+    assert [%{name: "Manual Collection A"}] = stream_items(socket, :sales_orders)
+    refute Map.has_key?(socket.assigns, :sales_orders)
+  end
+
+  test "declarative collections activate only allowlisted collection names" do
+    create_student!("Declarative Collection A")
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        {[Alva.LiveViewTest.TestDomain], [:sales_orders]},
+        %{},
+        %{},
+        base_socket()
+      )
+
+    assert Alva.LiveView.projection_active?(socket, :collection, :sales_orders)
+    assert [%{name: "Declarative Collection A"}] = stream_items(socket, :sales_orders)
+    refute Alva.LiveView.projection_active?(socket, :stream, :students)
+  end
+
+  test "mounting a domain does not activate collections by default" do
+    create_student!("Inactive Collection A")
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, base_socket())
+
+    refute Alva.LiveView.projection_active?(socket, :collection, :sales_orders)
+    refute Map.has_key?(socket.assigns, :streams)
+  end
+
+  test "unknown collection activation fails with an actionable error" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, base_socket())
+
+    assert_raise ArgumentError,
+                 ~r/Unknown Alva collection projection :missing_orders/,
+                 fn -> Alva.LiveView.collection(socket, :missing_orders) end
+  end
+
+  test "render can pass an activated collection from @streams into markup" do
+    create_student!("Rendered Collection A")
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        {[Alva.LiveViewTest.TestDomain], [:sales_orders]},
+        %{},
+        %{},
+        base_socket()
+      )
+
+    assert Phoenix.LiveViewTest.rendered_to_string(CollectionLive.render(socket.assigns)) =~
+             "Rendered Collection A"
   end
 
   test "activation state is scoped to the LiveView socket" do
@@ -561,6 +646,13 @@ defmodule Alva.LiveViewTest do
     socket = active_stream_socket()
     [%{function: callback}] = socket.private.lifecycle.handle_info
     callback
+  end
+
+  defp stream_items(socket, name) do
+    socket.assigns.streams
+    |> Map.fetch!(name)
+    |> Map.fetch!(:inserts)
+    |> Enum.map(fn {_dom_id, _at, item, _limit, _update_only} -> item end)
   end
 
   defp push_job_signal(data) do
