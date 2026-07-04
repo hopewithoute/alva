@@ -2,18 +2,9 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
   use AlvaDemoWeb, :live_view
   use Alva.LiveView, domains: [AlvaDemo.Sales, AlvaDemo.Catalog]
 
+  on_mount AlvaDemoWeb.DataSync
+
   def mount(_params, _session, socket) do
-    if connected?(socket) do
-      Phoenix.PubSub.subscribe(AlvaDemo.PubSub, "order:created")
-      Phoenix.PubSub.subscribe(AlvaDemo.PubSub, "order:updated")
-    end
-
-    socket =
-      socket
-      |> assign(:sales_orders, nil)
-      |> Alva.LiveView.activate_stream(:sales_orders)
-      |> Alva.LiveView.bind_stream_query("sales.list_orders", :sales_orders)
-
     {:ok, socket}
   end
 
@@ -28,7 +19,7 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
             Product catalog, Customer Name capture, ordering, and Support Chat arrive in the next slices.
           </p>
         </div>
-        <.vue v-component="CustomerStorefrontPage" sales_orders={assigns[:sales_orders]} />
+        <.vue v-component="CustomerStorefrontPage" sales_orders={assigns[:sales_orders]} products={assigns[:products]} />
       </section>
     </Layouts.app>
     """

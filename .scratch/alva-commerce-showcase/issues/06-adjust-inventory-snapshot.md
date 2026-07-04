@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: DONE
 
 # Adjust Inventory Snapshot
 
@@ -8,11 +8,11 @@ Let merchant staff adjust Product stock from the Merchant Console and have the I
 
 ## Acceptance criteria
 
-- [ ] Product stock can be adjusted through an explicit Alva event backed by a Product action.
-- [ ] The Merchant Console shows the updated Inventory Snapshot after a stock adjustment.
-- [ ] The Customer Storefront catalog reflects updated stock availability.
-- [ ] Tests cover valid stock adjustment, visible Inventory Snapshot changes, and Customer Storefront catalog updates.
-- [ ] The implementation avoids warehouse management, full inventory accounting, and unrelated commerce scope.
+- [x] Product stock can be adjusted through an explicit Alva event backed by a Product action.
+- [x] The Merchant Console shows the updated Inventory Snapshot after a stock adjustment.
+- [x] The Customer Storefront catalog reflects updated stock availability.
+- [x] Tests cover valid stock adjustment, visible Inventory Snapshot changes, and Customer Storefront catalog updates.
+- [x] The implementation avoids warehouse management, full inventory accounting, and unrelated commerce scope.
 
 ## Blocked by
 

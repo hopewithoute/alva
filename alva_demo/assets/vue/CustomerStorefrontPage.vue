@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { ref, defineProps } from "vue";
-import { useAlvaApi, ashQuery } from "alva";
+import { useAlvaApi } from "alva";
 import Button from "./components/ui/button/Button.vue";
 
+import { Order, Product } from "./types";
+
 const props = defineProps<{
-  salesOrders?: any[];
+  sales_orders?: Order[];
+  products?: Product[];
 }>();
 
 const api = useAlvaApi();
-const { data: products, loading, error } = ashQuery(api as any, "catalog.list_products");
 
 const customer_name = ref("");
 const ordering_product_id = ref<string | null>(null);
@@ -33,6 +35,7 @@ const buyProduct = async (productId: string) => {
   ordering_product_id.value = null;
   
   if (result.ok) {
+    alert("Order placed successfully!");
     // Rely on server stream to update UI
     customer_name.value = "";
   } else {
@@ -57,14 +60,11 @@ const buyProduct = async (productId: string) => {
       </div>
     </div>
     
-    <div v-if="loading" class="mt-4">
+    <div v-if="!props.products" class="mt-4 text-sm text-zinc-500">
       Loading catalog...
     </div>
-    <div v-else-if="error" class="mt-4 text-red-500">
-      Error loading catalog: {{ error.message }}
-    </div>
     <div v-else class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      <div v-for="product in products" :key="product.id" class="flex flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
+      <div v-for="product in props.products" :key="product.id" class="flex flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
         <div class="h-48 bg-zinc-100 flex items-center justify-center overflow-hidden">
           <img v-if="product.media_reference" :src="`/images/${product.media_reference}`" :alt="product.name" class="object-cover w-full h-full" />
           <div v-else class="text-zinc-400">No Image</div>
@@ -72,14 +72,19 @@ const buyProduct = async (productId: string) => {
         <div class="flex flex-1 flex-col p-4">
           <h3 class="text-lg font-medium text-zinc-900">{{ product.name }}</h3>
           <p class="mt-1 text-sm text-zinc-500">{{ product.description }}</p>
+          <div class="mt-4 flex flex-col gap-2">
+            <span class="text-sm text-zinc-600">Stock: {{ product.stock }} available</span>
+          </div>
           <div class="mt-auto pt-4 flex items-center justify-between">
             <span class="text-lg font-semibold text-zinc-900">{{ formatPrice(product.price) }}</span>
             <Button 
               size="sm" 
               @click="buyProduct(product.id)" 
-              :disabled="ordering_product_id === product.id"
+              :disabled="ordering_product_id === product.id || product.stock <= 0"
             >
-              {{ ordering_product_id === product.id ? 'Ordering...' : 'Buy' }}
+              <span v-if="product.stock <= 0">Out of Stock</span>
+              <span v-else-if="ordering_product_id === product.id">Ordering...</span>
+              <span v-else>Buy</span>
             </Button>
           </div>
         </div>
@@ -89,9 +94,9 @@ const buyProduct = async (productId: string) => {
     <!-- Orders Section -->
     <div class="mt-10 border-t border-zinc-200 pt-6">
       <h2 class="text-xl font-semibold text-zinc-900">Recent Orders</h2>
-      <div v-if="!props.salesOrders" class="text-sm text-zinc-500">Loading orders...</div>
-      <div v-else-if="props.salesOrders && props.salesOrders.length > 0" class="mt-4 space-y-4">
-        <div v-for="order in props.salesOrders" :key="order.id" class="rounded-lg border border-zinc-200 p-4">
+      <div v-if="!props.sales_orders" class="text-sm text-zinc-500">Loading orders...</div>
+      <div v-else-if="props.sales_orders && props.sales_orders.length > 0" class="mt-4 space-y-4">
+        <div v-for="order in props.sales_orders" :key="order.id" class="rounded-lg border border-zinc-200 p-4">
           <div class="flex justify-between items-center">
             <div>
               <p class="font-medium text-zinc-900">Order by {{ order.customer_name }}</p>
