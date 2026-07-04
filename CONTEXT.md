@@ -48,3 +48,42 @@
 
 **Stream API**:
 The term is currently overloaded between LiveView socket transport, Phoenix LiveView Streams, and Vue-owned reactive list updates. Phase 9 uses Phoenix stream operations plus LiveVue 1.x stream diff support as the primary collection/list update path, while **Subscribe Events** remain for semantic non-collection pushes.
+
+
+# Alva Commerce Showcase
+
+This context describes a sample commerce application for demonstrating Alva in realistic customer-facing and admin operations workflows.
+
+## Language
+
+**Customer Storefront**:
+The customer-facing surface where shoppers browse products and place orders.
+_Avoid_: Shop page, public demo
+
+**Merchant Console**:
+The admin-facing surface where merchant staff monitor orders, update fulfillment status, and respond to operational events.
+_Avoid_: Admin panel, dashboard
+
+**Order Lifecycle**:
+The intentionally small, linear sequence of order states used to exercise the Alva library surface.
+_Avoid_: Order workflow, status flow
+
+**Inventory Snapshot**:
+A lightweight view of current product stock used to support order operations without modeling full warehouse management.
+_Avoid_: Warehouse system, stock module
+
+**Product Media**:
+Uploaded product imagery owned directly by a Product and used to demonstrate file upload behavior in the showcase catalog.
+_Avoid_: Asset manager, media library
+
+**Support Chat**:
+A lightweight conversation surface between shoppers and merchant staff, organized as one conversation per customer without modeling a full helpdesk.
+_Avoid_: Helpdesk, ticketing system
+
+**Conversation**:
+A single support thread for one customer in the showcase.
+_Avoid_: Ticket, room
+
+**Customer Name**:
+A shopper-provided label used to distinguish orders and conversations in the showcase without modeling accounts or authentication.
+_Avoid_: User account, profile
