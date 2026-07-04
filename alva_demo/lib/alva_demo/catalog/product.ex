@@ -17,8 +17,8 @@ defmodule AlvaDemo.Catalog.Product do
     event("catalog.adjust_stock", action: :adjust_stock)
     event("catalog.upload_media", action: :upload_media)
 
-    stream :products do
-      insert(on: "adjust_stock")
+    collection :products do
+      source(event: "catalog.list_products", mode: :reset)
       update(on: "adjust_stock")
       update(on: "upload_media")
     end

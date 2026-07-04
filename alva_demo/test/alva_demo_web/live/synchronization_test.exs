@@ -102,4 +102,42 @@ defmodule AlvaDemoWeb.SynchronizationTest do
     assert render(storefront_live) =~ ~r/stock.?:50/
     assert render(console_live) =~ ~r/stock.?:50/
   end
+
+  test "product media updates sync across storefront and merchant console", %{
+    conn: conn,
+    product: product
+  } do
+    {:ok, storefront_live, _html} = live(conn, "/storefront")
+    {:ok, console_live, _html} = live(conn, "/console")
+
+    path = Path.join(System.tmp_dir!(), "mock_upload_#{System.unique_integer([:positive])}.jpg")
+    File.write!(path, "dummy image")
+
+    upload = %Plug.Upload{
+      path: path,
+      filename: "collection_media.jpg",
+      content_type: "image/jpeg"
+    }
+
+    AlvaDemoWeb.Endpoint.subscribe("product:updated")
+
+    updated_product =
+      product
+      |> Ash.Changeset.for_update(:upload_media, %{media: upload})
+      |> Ash.update!()
+
+    on_exit(fn ->
+      File.rm(path)
+
+      Path.join(:code.priv_dir(:alva_demo), "static/images/#{updated_product.media_reference}")
+      |> File.rm()
+    end)
+
+    assert_receive %Phoenix.Socket.Broadcast{event: "upload_media"}
+
+    :timer.sleep(50)
+
+    assert render(storefront_live) =~ "collection_media.jpg"
+    assert render(console_live) =~ "collection_media.jpg"
+  end
 end

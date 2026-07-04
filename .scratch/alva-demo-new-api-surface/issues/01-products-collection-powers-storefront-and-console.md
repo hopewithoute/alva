@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Products Collection Powers Storefront And Console
 
@@ -12,12 +12,12 @@ Move the showcase product list onto the new Alva Collection API surface end to e
 
 ## Acceptance criteria
 
-- [ ] Products are defined as an Alva Collection with an explicit source event and PubSub-backed update operations.
-- [ ] Storefront and Merchant Console activate the products Collection through declarative LiveView options or an equally explicit helper.
-- [ ] Storefront and Merchant Console pass products to Vue from `@streams.products`, not from a plain list assign.
-- [ ] Stock adjustments update the rendered product list without manually re-fetching the route-owned list.
-- [ ] Product media uploads still work and updated media references render without refresh.
-- [ ] Existing product seed data and product image behavior remain intact.
+- [x] Products are defined as an Alva Collection with an explicit source event and PubSub-backed update operations.
+- [x] Storefront and Merchant Console activate the products Collection through declarative LiveView options or an equally explicit helper.
+- [x] Storefront and Merchant Console pass products to Vue from `@streams.products`, not from a plain list assign.
+- [x] Stock adjustments update the rendered product list without manually re-fetching the route-owned list.
+- [x] Product media uploads still work and updated media references render without refresh.
+- [x] Existing product seed data and product image behavior remain intact.
 
 ## Blocked by
 

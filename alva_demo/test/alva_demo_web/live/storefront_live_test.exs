@@ -15,6 +15,7 @@ defmodule AlvaDemoWeb.CustomerStorefrontLiveTest do
 
     assert disconnected_html =~ "Customer Storefront"
     assert render(page_live) =~ "CustomerStorefrontPage"
+    assert render(page_live) =~ "Test Product"
 
     render_hook(page_live, "sales.create_order", %{
       "customer_name" => "Storefront Buyer",

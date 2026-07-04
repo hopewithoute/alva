@@ -3,7 +3,7 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
 
   use Alva.LiveView,
     domains: [AlvaDemo.Sales, AlvaDemo.Catalog, AlvaDemo.Support],
-    collections: [:sales_orders]
+    collections: [:sales_orders, :products]
 
   on_mount AlvaDemoWeb.DataSync
 
@@ -25,7 +25,7 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
         <.vue
           v-component="CustomerStorefrontPage"
           sales_orders={@streams.sales_orders}
-          products={assigns[:products]}
+          products={@streams.products}
           support_messages={assigns[:support_messages]}
         />
       </section>
