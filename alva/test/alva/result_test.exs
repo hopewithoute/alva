@@ -54,10 +54,10 @@ defmodule Alva.ResultTest do
   test "apply with {:push_event, event} pushes event to socket" do
     result = %{ok: true, data: %{id: 123}}
     socket = %Phoenix.LiveView.Socket{}
-    
+
     {reply, ^result, returned_socket} =
       Alva.Result.apply(result, socket, strategy: {:push_event, "user_created"})
-      
+
     assert reply == :reply
     assert [["user_created", %{id: 123}]] = returned_socket.private.live_temp.push_events
   end
@@ -65,10 +65,10 @@ defmodule Alva.ResultTest do
   test "apply with {:navigate, to} handles static string" do
     result = %{ok: true, data: %{}}
     socket = %Phoenix.LiveView.Socket{}
-    
+
     {reply, ^result, returned_socket} =
       Alva.Result.apply(result, socket, strategy: {:navigate, "/users"})
-      
+
     assert reply == :reply
     assert returned_socket.redirected == {:live, :redirect, %{to: "/users", kind: :push}}
   end
@@ -76,10 +76,10 @@ defmodule Alva.ResultTest do
   test "apply with {:patch, to} handles static string" do
     result = %{ok: true, data: %{}}
     socket = %Phoenix.LiveView.Socket{}
-    
+
     {reply, ^result, returned_socket} =
       Alva.Result.apply(result, socket, strategy: {:patch, "/users"})
-      
+
     assert reply == :reply
     assert returned_socket.redirected == {:live, :patch, %{to: "/users", kind: :push}}
   end
@@ -99,10 +99,10 @@ defmodule Alva.ResultTest do
   test "apply with {:custom, module} delegates to module returning socket" do
     result = %{ok: true, data: %{foo: "bar"}}
     socket = %Phoenix.LiveView.Socket{}
-    
+
     {reply, ^result, returned_socket} =
       Alva.Result.apply(result, socket, strategy: {:custom, DummyCustomHandler})
-      
+
     assert reply == :reply
     assert returned_socket.assigns.custom_handled == %{foo: "bar"}
   end
@@ -110,10 +110,10 @@ defmodule Alva.ResultTest do
   test "apply with {:custom, module} delegates to module returning {:noreply, socket}" do
     result = %{ok: true, data: %{foo: "baz"}}
     socket = %Phoenix.LiveView.Socket{}
-    
+
     {reply, ^result, returned_socket} =
       Alva.Result.apply(result, socket, strategy: {:custom, DummyCustomNoreplyHandler})
-      
+
     assert reply == :reply
     assert returned_socket.assigns.custom_handled == %{foo: "baz"}
   end

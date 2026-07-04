@@ -6,31 +6,31 @@ defmodule Alva.Codegen.InputContractTest do
     use Ash.Resource, domain: nil
 
     attributes do
-      uuid_primary_key :id
-      attribute :name, :string, public?: true, allow_nil?: false
-      attribute :age, :integer, public?: true
-      attribute :secret, :string, public?: false
+      uuid_primary_key(:id)
+      attribute(:name, :string, public?: true, allow_nil?: false)
+      attribute(:age, :integer, public?: true)
+      attribute(:secret, :string, public?: false)
     end
 
     actions do
-      defaults [:read]
+      defaults([:read])
 
       create :create do
-        accept [:name, :age]
-        allow_nil_input [:name]
-        argument :tags, {:array, :string}, allow_nil?: true
-        argument :role, :string, allow_nil?: false
+        accept([:name, :age])
+        allow_nil_input([:name])
+        argument(:tags, {:array, :string}, allow_nil?: true)
+        argument(:role, :string, allow_nil?: false)
       end
-      
+
       update :update do
-        accept [:name, :age]
-        require_attributes [:age]
+        accept([:name, :age])
+        require_attributes([:age])
       end
 
       action :do_something, :string do
-        argument :force, :boolean, allow_nil?: false, default: false
-        argument :reason, :string, allow_nil?: false
-        run fn input, _ -> {:ok, "done"} end
+        argument(:force, :boolean, allow_nil?: false, default: false)
+        argument(:reason, :string, allow_nil?: false)
+        run(fn input, _ -> {:ok, "done"} end)
       end
     end
   end

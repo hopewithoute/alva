@@ -26,6 +26,7 @@ defmodule Alva.ErrorTest do
     log =
       capture_log(fn ->
         result = Alva.Error.format(error)
+
         assert result == %{
                  type: "unknown",
                  message: "An unexpected error occurred"
@@ -34,7 +35,7 @@ defmodule Alva.ErrorTest do
 
     assert log =~ "Unhandled error:"
     assert log =~ "Something went wrong"
-    
+
     # Restore env to nil so that the fallback (Mix.env) can be tested or won't interfere
     Application.delete_env(:alva, :expose_unknown_errors)
   end

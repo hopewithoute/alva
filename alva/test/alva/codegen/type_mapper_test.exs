@@ -21,7 +21,7 @@ defmodule Alva.Codegen.TypeMapperTest do
     assert TypeMapper.map_type({:array, :string}) == "string[]"
     assert TypeMapper.map_type({:array, :integer}) == "number[]"
   end
-  
+
   test "maps fallback to any" do
     assert TypeMapper.map_type(:unknown_type) == "any"
   end
@@ -32,9 +32,10 @@ defmodule Alva.Codegen.TypeMapperTest do
 
   defmodule ProfileEmbed do
     use Ash.Resource, data_layer: :embedded
+
     attributes do
-      attribute :bio, :string
-      attribute :age, :integer, allow_nil?: false
+      attribute(:bio, :string)
+      attribute(:age, :integer, allow_nil?: false)
     end
   end
 
@@ -57,6 +58,7 @@ defmodule Alva.Codegen.TypeMapperTest do
         int_val: [type: :integer]
       ]
     ]
+
     assert TypeMapper.map_type(Ash.Type.Union, constraints) == "string | number"
   end
 end

@@ -24,7 +24,8 @@ defmodule Alva.Codegen.TypeMapper do
              :utc_datetime_usec,
              Ash.Type.Date,
              :date
-           ], do: "string"
+           ],
+      do: "string"
 
   def map_type(type, _constraints)
       when type in [
@@ -34,7 +35,8 @@ defmodule Alva.Codegen.TypeMapper do
              :float,
              Ash.Type.Decimal,
              :decimal
-           ], do: "number"
+           ],
+      do: "number"
 
   def map_type(type, _constraints) when type in [Ash.Type.Boolean, :boolean], do: "boolean"
 
