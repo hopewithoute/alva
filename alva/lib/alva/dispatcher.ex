@@ -6,14 +6,14 @@ defmodule Alva.Dispatcher do
 
   def dispatch(event_name, params, opts \\ []) do
     start_time = System.monotonic_time()
-    
+
     socket = Keyword.get(opts, :socket)
     opts = resolve_auth_opts(event_name, opts, socket)
-    
+
     result = do_dispatch(event_name, params, opts)
-    
+
     emit_telemetry(event_name, params, opts, result, start_time)
-    
+
     result
   end
 
@@ -26,9 +26,11 @@ defmodule Alva.Dispatcher do
         action_name = event_def.action
         action = Ash.Resource.Info.action(resource, action_name)
         params = Map.drop(params, ["meta", :meta])
-        
+
         socket = Keyword.get(opts, :socket)
-        params = if socket, do: consume_uploads_into_params(socket, action, params, opts), else: params
+
+        params =
+          if socket, do: consume_uploads_into_params(socket, action, params, opts), else: params
 
         case action.type do
           :read ->
@@ -126,15 +128,16 @@ defmodule Alva.Dispatcher do
             update_params = Map.delete(params, lookup_key)
 
             with {:ok, record} <- fetch_record(resource, event_def, params, ash_opts),
-                 changeset <- Ash.Changeset.for_update(record, action_name, update_params, ash_opts) do
-              
+                 changeset <-
+                   Ash.Changeset.for_update(record, action_name, update_params, ash_opts) do
               if event_def.validate_only do
                 handle_dry_run(changeset, event_def)
               else
                 case Ash.update(changeset, ash_opts) do
                   {:ok, updated_record} ->
                     dispatch_success(updated_record, event_def)
-                  {:error, error} -> 
+
+                  {:error, error} ->
                     handle_error(error)
                 end
               end
@@ -191,26 +194,29 @@ defmodule Alva.Dispatcher do
   defp consume_uploads_into_params(socket, action, params, opts) do
     consumer = Keyword.get(opts, :upload_consumer, Phoenix.LiveView)
 
-    file_args = Enum.filter(action.arguments || [], fn arg ->
-      arg.type == Ash.Type.File or arg.type == {:array, Ash.Type.File}
-    end)
+    file_args =
+      Enum.filter(action.arguments || [], fn arg ->
+        arg.type == Ash.Type.File or arg.type == {:array, Ash.Type.File}
+      end)
 
     Enum.reduce(file_args, params, fn arg, acc_params ->
       upload_name = arg.name
-      
+
       uploads = Map.get(socket.assigns || %{}, :uploads, %{})
       upload_config = Map.get(uploads, upload_name)
       entries = if upload_config, do: Map.get(upload_config, :entries, []), else: []
 
       if upload_config && length(entries) > 0 do
-        consumed_files = consumer.consume_uploaded_entries(socket, upload_name, fn %{path: path}, entry ->
-          # Generate a Plug.Upload representing the file
-          {:ok, %Plug.Upload{
-            path: path,
-            filename: entry.client_name,
-            content_type: entry.client_type
-          }}
-        end)
+        consumed_files =
+          consumer.consume_uploaded_entries(socket, upload_name, fn %{path: path}, entry ->
+            # Generate a Plug.Upload representing the file
+            {:ok,
+             %Plug.Upload{
+               path: path,
+               filename: entry.client_name,
+               content_type: entry.client_type
+             }}
+          end)
 
         value =
           if arg.type == {:array, Ash.Type.File} do
@@ -218,7 +224,7 @@ defmodule Alva.Dispatcher do
           else
             List.first(consumed_files)
           end
-          
+
         Map.put(acc_params, to_string(upload_name), value)
       else
         acc_params
@@ -378,10 +384,13 @@ defmodule Alva.Dispatcher do
       {%{}, []}
     else
       {permissions, _} = extract_permissions_from_map(hd(data))
-      new_data = Enum.map(data, fn item ->
-        {_, cleaned} = extract_permissions_from_map(item)
-        cleaned
-      end)
+
+      new_data =
+        Enum.map(data, fn item ->
+          {_, cleaned} = extract_permissions_from_map(item)
+          cleaned
+        end)
+
       {permissions, new_data}
     end
   end
@@ -393,11 +402,14 @@ defmodule Alva.Dispatcher do
   defp extract_and_remove_permissions(other), do: {%{}, other}
 
   defp extract_permissions_from_map(map) when is_map(map) do
-    {perms, rest} = Map.split_with(map, fn {k, _v} ->
-      String.starts_with?(to_string(k), "can_")
-    end)
+    {perms, rest} =
+      Map.split_with(map, fn {k, _v} ->
+        String.starts_with?(to_string(k), "can_")
+      end)
+
     {Map.new(perms), Map.new(rest)}
   end
+
   defp extract_permissions_from_map(other), do: {%{}, other}
 
   defp handle_error(error) do
@@ -410,16 +422,20 @@ defmodule Alva.Dispatcher do
     else
       user_key = Application.get_env(:alva, :actor_assign_key, :current_user)
       tenant_key = Application.get_env(:alva, :tenant_assign_key, :current_tenant)
-      
+
       actor = Map.get(socket.assigns, user_key)
       tenant = Map.get(socket.assigns, tenant_key)
-      
+
       if is_nil(actor) and not Keyword.has_key?(opts, :actor) do
-        Logger.warning("Alva Extension: Dispatching event #{inspect(event_name)} without an actor. Expected socket.assigns.#{user_key} to be set.")
+        Logger.warning(
+          "Alva Extension: Dispatching event #{inspect(event_name)} without an actor. Expected socket.assigns.#{user_key} to be set."
+        )
       end
-      
+
       if is_nil(tenant) and not Keyword.has_key?(opts, :tenant) do
-        Logger.warning("Alva Extension: Dispatching event #{inspect(event_name)} without a tenant. Expected socket.assigns.#{tenant_key} to be set.")
+        Logger.warning(
+          "Alva Extension: Dispatching event #{inspect(event_name)} without a tenant. Expected socket.assigns.#{tenant_key} to be set."
+        )
       end
 
       opts
@@ -427,12 +443,12 @@ defmodule Alva.Dispatcher do
       |> (fn o -> if tenant, do: Keyword.put_new(o, :tenant, tenant), else: o end).()
     end
   end
-  
+
   defp emit_telemetry(event_name, params, opts, result, start_time) do
     duration = System.monotonic_time() - start_time
     actor = Keyword.get(opts, :actor)
     tenant = Keyword.get(opts, :tenant)
-    
+
     metadata = %{
       event_name: event_name,
       params: params,
@@ -440,7 +456,7 @@ defmodule Alva.Dispatcher do
       tenant: tenant,
       result: result
     }
-    
+
     :telemetry.execute([:alva, :dispatch, :stop], %{duration: duration}, metadata)
   end
 end

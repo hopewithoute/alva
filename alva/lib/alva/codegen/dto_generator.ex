@@ -6,25 +6,27 @@ defmodule Alva.Codegen.DtoGenerator do
   alias Alva.Codegen.TypeMapper
 
   def generate_types_ts(resources, events_map \\ nil) do
-    interfaces = 
+    interfaces =
       resources
       |> Enum.map(&generate_interface/1)
       |> Enum.join("\n\n")
 
-    filter_resources = 
+    filter_resources =
       if events_map do
-        involved = 
+        involved =
           events_map
-          |> Enum.filter(fn {_name, {_res, event_def}} -> Map.get(event_def, :enable_filter, false) end)
+          |> Enum.filter(fn {_name, {_res, event_def}} ->
+            Map.get(event_def, :enable_filter, false)
+          end)
           |> Enum.map(fn {_name, {res, _event}} -> res end)
-          
+
         gather_related_resources(involved, MapSet.new(involved))
         |> Enum.to_list()
       else
         resources
       end
 
-    filter_interfaces = 
+    filter_interfaces =
       filter_resources
       |> Enum.map(&generate_filter_interface/1)
       |> Enum.join("\n\n")
@@ -69,19 +71,20 @@ defmodule Alva.Codegen.DtoGenerator do
   end
 
   defp gather_related_resources([], visited), do: visited
+
   defp gather_related_resources([resource | rest], visited) do
-    related = 
+    related =
       Ash.Resource.Info.public_relationships(resource)
       |> Enum.map(& &1.destination)
       |> Enum.reject(&MapSet.member?(visited, &1))
-      
+
     gather_related_resources(rest ++ related, MapSet.union(visited, MapSet.new(related)))
   end
 
   def output_type(resource, event_def) do
     action = Ash.Resource.Info.action(resource, event_def.action)
     interface = interface_name(resource)
-    
+
     if action.type == :read and is_nil(event_def.lookup) do
       "#{interface}[]"
     else
@@ -95,10 +98,11 @@ defmodule Alva.Codegen.DtoGenerator do
 
   defp generate_interface(resource) do
     name = interface_name(resource)
-    
+
     # Optionality logic: if there are field policies, they might be redacted
     field_policies =
-      if Code.ensure_loaded?(Ash.Policy.Info) and function_exported?(Ash.Policy.Info, :field_policies, 1) do
+      if Code.ensure_loaded?(Ash.Policy.Info) and
+           function_exported?(Ash.Policy.Info, :field_policies, 1) do
         apply(Ash.Policy.Info, :field_policies, [resource]) || []
       else
         []
@@ -121,19 +125,20 @@ defmodule Alva.Codegen.DtoGenerator do
         ts_type = TypeMapper.map_type(field.type, Map.get(field, :constraints, []))
         format_field(field.name, ts_type, optional?)
       end)
-      
-    rels_ts = 
+
+    rels_ts =
       rels
       |> Enum.map(fn rel ->
-        optional? = true # Relationships might not always be loaded
+        # Relationships might not always be loaded
+        optional? = true
         dest_name = interface_name(rel.destination)
-        
-        ts_type = 
+
+        ts_type =
           case rel.cardinality do
             :many -> "#{dest_name}[]"
             :one -> dest_name
           end
-          
+
         format_field(rel.name, ts_type, optional?)
       end)
 
@@ -166,6 +171,7 @@ defmodule Alva.Codegen.DtoGenerator do
       (attrs ++ calcs ++ aggs)
       |> Enum.map(fn field ->
         ts_type = TypeMapper.map_type(field.type, Map.get(field, :constraints, []))
+
         filter_op_type =
           case ts_type do
             "string" -> "StringFieldFilter"
@@ -173,10 +179,11 @@ defmodule Alva.Codegen.DtoGenerator do
             "boolean" -> "BooleanFieldFilter"
             _ -> "BaseFieldFilter<#{ts_type}>"
           end
+
         "  #{field.name}?: #{filter_op_type} | null;"
       end)
-      
-    rels_ts = 
+
+    rels_ts =
       rels
       |> Enum.map(fn rel ->
         dest_name = interface_name(rel.destination)

@@ -1,169 +1,190 @@
-import { ref, reactive, watch, onUnmounted, getCurrentInstance } from 'vue'
+import { ref, reactive, watch, onUnmounted, getCurrentInstance } from "vue";
 
 export interface AshFormOptions<FormValues, EventKeys> {
-  initialValues: FormValues
-  validateEvent?: EventKeys
-  debounceMs?: number
-  uploads?: Record<string, { getFileReferences: () => string[] }>
-  onOptimisticSubmit?: (formData: FormValues) => (() => void) | void
+    initialValues: FormValues;
+    validateEvent?: EventKeys;
+    debounceMs?: number;
+    uploads?: Record<string, { getFileReferences: () => string[] }>;
+    onOptimisticSubmit?: (formData: FormValues) => (() => void) | void;
 }
 
-export type LiveResult<T = any> = 
-  | { ok: true; data: T; meta?: Record<string, any> }
-  | { ok: false; error: any; meta?: Record<string, any> }
+export type LiveResult<T = any> =
+    | { ok: true; data: T; meta?: Record<string, any> }
+    | { ok: false; error: any; meta?: Record<string, any> };
 
 export function ashForm<
-  Events extends Record<string, { input: any; output: any }>,
-  SubmitEventKey extends keyof Events,
-  FormValues = Events[SubmitEventKey]['input']
+    Events extends Record<string, { input: any; output: any }>,
+    SubmitEventKey extends keyof Events,
+    FormValues = Events[SubmitEventKey]["input"],
 >(
-  api: { call: <K extends keyof Events>(event: K, params?: Events[K]['input']) => Promise<LiveResult> },
-  submitEvent: SubmitEventKey,
-  options: AshFormOptions<FormValues, keyof Events>
+    api: {
+        call: <K extends keyof Events>(
+            event: K,
+            params?: Events[K]["input"],
+        ) => Promise<LiveResult>;
+    },
+    submitEvent: SubmitEventKey,
+    options: AshFormOptions<FormValues, keyof Events>,
 ) {
-  const values = reactive({ ...options.initialValues } as any) as FormValues
-  const errors = ref<Record<string, string[]>>({})
-  const loading = ref(false)
-  const isValidating = ref(false)
-  
-  // Use a strict type for the cache instead of any
-  const validationCache = new Map<string, LiveResult>()
-  
-  if (getCurrentInstance()) {
-    onUnmounted(() => {
-      validationCache.clear()
-    })
-  }
+    const values = reactive({ ...options.initialValues } as any) as FormValues;
+    const errors = ref<Record<string, string[]>>({});
+    const loading = ref(false);
+    const isValidating = ref(false);
 
-  const applyErrors = (result: LiveResult) => {
-    if (!result.ok && result.error?.type === 'validation') {
-      errors.value = result.error.fields || {}
-    } else if (result.ok) {
-      errors.value = {}
-    }
-  }
+    // Use a strict type for the cache instead of any
+    const validationCache = new Map<string, LiveResult>();
 
-  let submitCounter = 0
-  let validateCounter = 0
-  let timeout: ReturnType<typeof setTimeout>
-  let pendingResolve: ((val: LiveResult) => void) | null = null
-
-  const submit = async (): Promise<LiveResult> => {
-    submitCounter++
-    const currentSubmit = submitCounter
-    
-    // Cancel any pending validations to prevent race conditions
-    validateCounter++ // Ensure any in-flight validation resolves without applying state
-    clearTimeout(timeout)
-    isValidating.value = false
-    if (pendingResolve) {
-      pendingResolve({ ok: false, error: { type: 'cancelled', message: 'Submit started' } })
-      pendingResolve = null
+    if (getCurrentInstance()) {
+        onUnmounted(() => {
+            validationCache.clear();
+        });
     }
 
-    loading.value = true
-    errors.value = {}
-    
-    const payload = { ...values } as Record<string, any>
-    if (options.uploads) {
-      for (const [key, upload] of Object.entries(options.uploads)) {
-        payload[key] = upload.getFileReferences()
-      }
-    }
-    
-    let rollbackFn: (() => void) | void = undefined
-    if (options.onOptimisticSubmit) {
-      rollbackFn = options.onOptimisticSubmit(payload as FormValues)
-    }
-
-    let result: LiveResult
-    try {
-      result = await api.call(submitEvent, payload as Events[SubmitEventKey]['input'])
-    } catch (e) {
-      if (rollbackFn) {
-        rollbackFn()
-      }
-      if (currentSubmit === submitCounter) {
-        loading.value = false
-      }
-      throw e
-    }
-    
-    if (!result.ok && rollbackFn) {
-      rollbackFn()
-    }
-
-    // Only apply if another submit hasn't superseded this one
-    if (currentSubmit === submitCounter) {
-      applyErrors(result)
-      loading.value = false
-    }
-    
-    return result
-  }
-
-  const validate = async (): Promise<LiveResult> => {
-    if (!options.validateEvent) return { ok: true, data: {} }
-    
-    validateCounter++
-    const currentValidation = validateCounter
-    
-    clearTimeout(timeout)
-    
-    // Resolve the previous hanging promise
-    if (pendingResolve) {
-      pendingResolve({ ok: false, error: { type: 'cancelled', message: 'Superseded' } })
-    }
-    
-    isValidating.value = true
-    
-    return new Promise((resolve) => {
-      pendingResolve = resolve
-      timeout = setTimeout(async () => {
-        const cacheKey = JSON.stringify(values)
-        let result = validationCache.get(cacheKey)
-
-        if (!result) {
-          try {
-            result = await api.call(options.validateEvent!, values as any)
-            validationCache.set(cacheKey, result)
-          } catch (e) {
-            result = { ok: false, error: e }
-          }
+    const applyErrors = (result: LiveResult) => {
+        if (!result.ok && result.error?.type === "validation") {
+            errors.value = result.error.fields || {};
+        } else if (result.ok) {
+            errors.value = {};
         }
-        
-        // Only apply if this is still the most recent validation and no submit has occurred
-        if (currentValidation === validateCounter && !loading.value) {
-          applyErrors(result)
-          isValidating.value = false
+    };
+
+    let submitCounter = 0;
+    let validateCounter = 0;
+    let timeout: ReturnType<typeof setTimeout>;
+    let pendingResolve: ((val: LiveResult) => void) | null = null;
+
+    const submit = async (): Promise<LiveResult> => {
+        submitCounter++;
+        const currentSubmit = submitCounter;
+
+        // Cancel any pending validations to prevent race conditions
+        validateCounter++; // Ensure any in-flight validation resolves without applying state
+        clearTimeout(timeout);
+        isValidating.value = false;
+        if (pendingResolve) {
+            pendingResolve({
+                ok: false,
+                error: { type: "cancelled", message: "Submit started" },
+            });
+            pendingResolve = null;
         }
-        
-        if (pendingResolve === resolve) {
-          pendingResolve = null
+
+        loading.value = true;
+        errors.value = {};
+
+        const payload = { ...values } as Record<string, any>;
+        if (options.uploads) {
+            for (const [key, upload] of Object.entries(options.uploads)) {
+                payload[key] = upload.getFileReferences();
+            }
         }
-        resolve(result)
-      }, options.debounceMs || 300)
-    })
-  }
 
-  if (options.validateEvent) {
-    watch(values as any, () => {
-      validate()
-    }, { deep: true })
-  }
+        let rollbackFn: (() => void) | void = undefined;
+        if (options.onOptimisticSubmit) {
+            rollbackFn = options.onOptimisticSubmit(payload as FormValues);
+        }
 
-  const reset = () => {
-    Object.assign(values as any, options.initialValues)
-    errors.value = {}
-  }
+        let result: LiveResult;
+        try {
+            result = await api.call(
+                submitEvent,
+                payload as Events[SubmitEventKey]["input"],
+            );
+        } catch (e) {
+            if (rollbackFn) {
+                rollbackFn();
+            }
+            if (currentSubmit === submitCounter) {
+                loading.value = false;
+            }
+            throw e;
+        }
 
-  return {
-    values,
-    errors,
-    loading,
-    isValidating,
-    submit,
-    validate,
-    reset
-  }
+        if (!result.ok && rollbackFn) {
+            rollbackFn();
+        }
+
+        // Only apply if another submit hasn't superseded this one
+        if (currentSubmit === submitCounter) {
+            applyErrors(result);
+            loading.value = false;
+        }
+
+        return result;
+    };
+
+    const validate = async (): Promise<LiveResult> => {
+        if (!options.validateEvent) return { ok: true, data: {} };
+
+        validateCounter++;
+        const currentValidation = validateCounter;
+
+        clearTimeout(timeout);
+
+        // Resolve the previous hanging promise
+        if (pendingResolve) {
+            pendingResolve({
+                ok: false,
+                error: { type: "cancelled", message: "Superseded" },
+            });
+        }
+
+        isValidating.value = true;
+
+        return new Promise((resolve) => {
+            pendingResolve = resolve;
+            timeout = setTimeout(async () => {
+                const cacheKey = JSON.stringify(values);
+                let result = validationCache.get(cacheKey);
+
+                if (!result) {
+                    try {
+                        result = await api.call(
+                            options.validateEvent!,
+                            values as any,
+                        );
+                        validationCache.set(cacheKey, result);
+                    } catch (e) {
+                        result = { ok: false, error: e };
+                    }
+                }
+
+                // Only apply if this is still the most recent validation and no submit has occurred
+                if (currentValidation === validateCounter && !loading.value) {
+                    applyErrors(result);
+                    isValidating.value = false;
+                }
+
+                if (pendingResolve === resolve) {
+                    pendingResolve = null;
+                }
+                resolve(result);
+            }, options.debounceMs || 300);
+        });
+    };
+
+    if (options.validateEvent) {
+        watch(
+            values as any,
+            () => {
+                validate();
+            },
+            { deep: true },
+        );
+    }
+
+    const reset = () => {
+        Object.assign(values as any, options.initialValues);
+        errors.value = {};
+    };
+
+    return {
+        values,
+        errors,
+        loading,
+        isValidating,
+        submit,
+        validate,
+        reset,
+    };
 }

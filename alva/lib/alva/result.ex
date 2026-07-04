@@ -55,9 +55,15 @@ defmodule Alva.Result do
 
   defp apply_strategy({:custom, module}, socket, data) do
     case module.handle_result(socket, data) do
-      %Phoenix.LiveView.Socket{} = returned_socket -> returned_socket
-      {:noreply, returned_socket} -> returned_socket
-      _ -> raise ArgumentError, "Custom module #{inspect(module)}.handle_result/2 must return a Phoenix.LiveView.Socket or {:noreply, socket}"
+      %Phoenix.LiveView.Socket{} = returned_socket ->
+        returned_socket
+
+      {:noreply, returned_socket} ->
+        returned_socket
+
+      _ ->
+        raise ArgumentError,
+              "Custom module #{inspect(module)}.handle_result/2 must return a Phoenix.LiveView.Socket or {:noreply, socket}"
     end
   end
 

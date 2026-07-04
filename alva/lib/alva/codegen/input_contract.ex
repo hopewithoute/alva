@@ -18,7 +18,8 @@ defmodule Alva.Codegen.InputContract do
       allow_nil_input = Map.get(action, :allow_nil_input, [])
 
       field_policies =
-        if Code.ensure_loaded?(Ash.Policy.Info) and function_exported?(Ash.Policy.Info, :field_policies, 1) do
+        if Code.ensure_loaded?(Ash.Policy.Info) and
+             function_exported?(Ash.Policy.Info, :field_policies, 1) do
           apply(Ash.Policy.Info, :field_policies, [resource]) || []
         else
           []
@@ -41,9 +42,17 @@ defmodule Alva.Codegen.InputContract do
         accept
         |> Enum.map(fn attr_name ->
           attr = Ash.Resource.Info.attribute(resource, attr_name)
-          
+
           if attr do
-            optional? = attr_optional?(attr, action.type, require_attributes, policy_fields, allow_nil_input)
+            optional? =
+              attr_optional?(
+                attr,
+                action.type,
+                require_attributes,
+                policy_fields,
+                allow_nil_input
+              )
+
             ts_type = TypeMapper.map_type(attr.type, Map.get(attr, :constraints, []))
             format_field(attr.name, ts_type, optional?, indent)
           else
@@ -52,7 +61,7 @@ defmodule Alva.Codegen.InputContract do
         end)
         |> Enum.reject(&is_nil/1)
 
-      filter_ts = 
+      filter_ts =
         if enable_filter? do
           resource_name = resource |> Module.split() |> List.last()
           ["#{indent}  filter?: Types.#{resource_name}Filter;"]
@@ -73,7 +82,7 @@ defmodule Alva.Codegen.InputContract do
   defp arg_optional?(arg) do
     arg.allow_nil? or has_default?(arg)
   end
-  
+
   defp has_default?(arg_or_attr) do
     arg_or_attr.default != nil
   end
@@ -82,14 +91,19 @@ defmodule Alva.Codegen.InputContract do
     cond do
       attr.name in allow_nil_input ->
         true
+
       attr.name in policy_fields ->
         true
+
       attr.name in require_attributes ->
         false
+
       action_type == :update ->
         true
+
       action_type == :create ->
         attr.allow_nil? or has_default?(attr)
+
       true ->
         true
     end

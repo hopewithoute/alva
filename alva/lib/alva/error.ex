@@ -35,11 +35,13 @@ defmodule Alva.Error do
               msg = Regex.replace(~r/^(attribute|argument)\s+#{field}\s+/i, msg, "")
 
               path = Map.get(sub_error, :path) || []
-              
-              field_key = 
+
+              field_key =
                 case path do
-                  [] -> to_string(field)
-                  p -> 
+                  [] ->
+                    to_string(field)
+
+                  p ->
                     if List.last(p) == field do
                       Enum.map_join(p, ".", &to_string/1)
                     else
@@ -91,19 +93,25 @@ defmodule Alva.Error do
 
   def format(error, stacktrace \\ nil) do
     require Logger
-    
-    stacktrace = stacktrace || (case Process.info(self(), :current_stacktrace) do
-      {:current_stacktrace, trace} -> trace
-      _ -> []
-    end)
-    
+
+    stacktrace =
+      stacktrace ||
+        case Process.info(self(), :current_stacktrace) do
+          {:current_stacktrace, trace} -> trace
+          _ -> []
+        end
+
     formatted_error = Exception.format(:error, error, stacktrace)
     Logger.error("Alva.Error: Unhandled error:\n#{formatted_error}")
 
-    expose? = 
+    expose? =
       case Application.fetch_env(:alva, :expose_unknown_errors) do
-        {:ok, val} -> val
-        :error -> Code.ensure_loaded?(Mix) && function_exported?(Mix, :env, 0) && Mix.env() in [:dev, :test]
+        {:ok, val} ->
+          val
+
+        :error ->
+          Code.ensure_loaded?(Mix) && function_exported?(Mix, :env, 0) &&
+            Mix.env() in [:dev, :test]
       end
 
     if expose? do
