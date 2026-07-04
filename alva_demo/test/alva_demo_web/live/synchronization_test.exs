@@ -60,6 +60,22 @@ defmodule AlvaDemoWeb.SynchronizationTest do
     assert render(console_live) =~ "fulfilled"
   end
 
+  test "order command updates the active storefront without a refresh", %{
+    conn: conn,
+    product: product
+  } do
+    {:ok, storefront_live, _html} = live(conn, "/storefront")
+
+    html =
+      render_hook(storefront_live, "sales.create_order", %{
+        "customer_name" => "Hook Shopper",
+        "product_id" => product.id,
+        "quantity" => 1
+      })
+
+    assert html =~ "Hook Shopper"
+  end
+
   test "product inventory updates sync across storefront and merchant console", %{
     conn: conn,
     product: product

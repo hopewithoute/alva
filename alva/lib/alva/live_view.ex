@@ -143,7 +143,11 @@ defmodule Alva.LiveView do
             {:cont, sock}
 
           _ ->
-            sock = apply_stream_query(sock, event_name, res)
+            sock =
+              sock
+              |> apply_stream_query(event_name, res)
+              |> apply_event_stream_operations(event_name, res)
+
             {:halt, res, sock}
         end
       end)
@@ -229,6 +233,28 @@ defmodule Alva.LiveView do
 
   defp apply_stream_query(socket, _event_name, _result), do: socket
 
+  defp apply_event_stream_operations(socket, event_name, %{ok: true, data: data}) do
+    state = alva_state(socket)
+
+    event_projection =
+      state.domains
+      |> Enum.find_value(fn domain ->
+        domain
+        |> Alva.Domain.Info.alva_event_map()
+        |> Map.get(event_name)
+      end)
+
+    case event_projection do
+      {resource, %{action: action_name}} ->
+        apply_stream_operations(socket, resource, to_string(action_name), data)
+
+      _ ->
+        socket
+    end
+  end
+
+  defp apply_event_stream_operations(socket, _event_name, _result), do: socket
+
   defp apply_stream_query_binding(socket, %{stream: stream_name, mode: :reset}, data) do
     Phoenix.Component.assign(socket, stream_name, stream_query_items(data))
   end
@@ -239,6 +265,7 @@ defmodule Alva.LiveView do
     |> Enum.reduce(socket, fn item, acc_socket ->
       Phoenix.Component.update(acc_socket, binding.stream, fn current ->
         current = current || []
+
         if binding.mode == :prepend do
           [item | current]
         else
@@ -289,6 +316,15 @@ defmodule Alva.LiveView do
          %Ash.Notifier.Notification{resource: notification_resource, data: data},
          events
        ) do
+    apply_stream_operations(socket, notification_resource, events, data)
+  end
+
+  defp apply_stream_operations(socket, notification_resource, event, data)
+       when is_binary(event) do
+    apply_stream_operations(socket, notification_resource, MapSet.new([event]), data)
+  end
+
+  defp apply_stream_operations(socket, notification_resource, events, data) do
     socket
     |> active_stream_projections()
     |> Enum.flat_map(fn {name, {resource, stream}} ->
@@ -305,21 +341,15 @@ defmodule Alva.LiveView do
         Phoenix.Component.update(acc_socket, name, fn current ->
           current = current || []
           stripped_data = Alva.Dispatcher.strip_metadata(data)
-          current ++ [stripped_data]
+          upsert_item(current, stripped_data)
         end)
 
       {name, :update}, acc_socket ->
         Phoenix.Component.update(acc_socket, name, fn current ->
           current = current || []
           stripped_data = Alva.Dispatcher.strip_metadata(data)
-          if Enum.any?(current, &(&1.id == stripped_data.id)) do
-            Enum.map(current, fn
-              %{id: id} when id == stripped_data.id -> stripped_data
-              item -> item
-            end)
-          else
-            current ++ [stripped_data]
-          end
+
+          upsert_item(current, stripped_data)
         end)
 
       {name, :delete}, acc_socket ->
@@ -330,6 +360,19 @@ defmodule Alva.LiveView do
         end)
     end)
   end
+
+  defp upsert_item(current, %{id: id} = item) do
+    if Enum.any?(current, &match?(%{id: ^id}, &1)) do
+      Enum.map(current, fn
+        %{id: ^id} -> item
+        existing -> existing
+      end)
+    else
+      current ++ [item]
+    end
+  end
+
+  defp upsert_item(current, item), do: current ++ [item]
 
   defp stream_projection_matches?(
          {_name, {resource, stream}},
