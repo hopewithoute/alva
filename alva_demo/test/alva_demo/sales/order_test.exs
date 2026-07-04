@@ -7,13 +7,14 @@ defmodule AlvaDemo.Sales.OrderTest do
   describe "order resource" do
     test "can create an order with new status" do
       # Need a product first
-      product = Ash.Seed.seed!(%Product{
-        name: "Test Product",
-        description: "Test desc",
-        price: 1000,
-        stock: 10,
-        media_reference: "test.jpg"
-      })
+      product =
+        Ash.Seed.seed!(%Product{
+          name: "Test Product",
+          description: "Test desc",
+          price: 1000,
+          stock: 10,
+          media_reference: "test.jpg"
+        })
 
       order =
         Order

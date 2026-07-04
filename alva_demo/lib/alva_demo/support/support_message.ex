@@ -30,8 +30,8 @@ defmodule AlvaDemo.Support.SupportMessage do
 
     read :read_for_conversation do
       public?(true)
-      argument :conversation_id, :uuid, allow_nil?: false
-      filter expr(conversation_id == ^arg(:conversation_id))
+      argument(:conversation_id, :uuid, allow_nil?: false)
+      filter(expr(conversation_id == ^arg(:conversation_id)))
     end
 
     create :create do
@@ -52,9 +52,9 @@ defmodule AlvaDemo.Support.SupportMessage do
     attribute :sender, :atom do
       allow_nil?(false)
       public?(true)
-      constraints [one_of: [:shopper, :merchant]]
+      constraints(one_of: [:shopper, :merchant])
     end
-    
+
     # We add created_at to help with sorting if needed, though ETS preserves order
     create_timestamp :created_at do
       public?(true)

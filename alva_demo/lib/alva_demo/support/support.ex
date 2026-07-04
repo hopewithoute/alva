@@ -3,7 +3,7 @@ defmodule AlvaDemo.Support do
     extensions: [Alva.Domain]
 
   resources do
-    resource AlvaDemo.Support.Conversation
-    resource AlvaDemo.Support.SupportMessage
+    resource(AlvaDemo.Support.Conversation)
+    resource(AlvaDemo.Support.SupportMessage)
   end
 end

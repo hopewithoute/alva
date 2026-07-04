@@ -16,6 +16,7 @@ defmodule AlvaDemo.Application do
       {:ok, pid} ->
         AlvaDemo.Catalog.Seeder.seed()
         {:ok, pid}
+
       error ->
         error
     end

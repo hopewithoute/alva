@@ -11,13 +11,15 @@ defmodule AlvaDemo.Sales.Validations.TransitionFrom do
 
   def validate(changeset, opts, _context) do
     expected_state = Keyword.fetch!(opts, :state)
+
     if changeset.data.lifecycle_status == expected_state do
       :ok
     else
-      {:error, Ash.Error.Changes.InvalidAttribute.exception(
-        field: :lifecycle_status, 
-        message: "Order must be in #{expected_state} state to transition"
-      )}
+      {:error,
+       Ash.Error.Changes.InvalidAttribute.exception(
+         field: :lifecycle_status,
+         message: "Order must be in #{expected_state} state to transition"
+       )}
     end
   end
 end

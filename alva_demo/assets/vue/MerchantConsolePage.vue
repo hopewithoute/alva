@@ -2,6 +2,7 @@
 import { ref, computed, watch, defineProps } from "vue";
 import { ashUpload as ash_upload } from "alva";
 import { api } from "../js/alva/client";
+import { useChatMessages } from "./composables/useChatMessages";
 import Button from "./components/ui/button/Button.vue";
 
 import type { Order, Product, Conversation, SupportMessage } from "../js/alva/types";
@@ -31,7 +32,6 @@ const new_message_text = ref("");
 const triggerMediaUpload = (productId: string) => {
   uploading_media_product_id.value = productId;
   upload_error.value = null;
-  // @ts-ignore
   media_upload.showFilePicker();
 };
 
@@ -40,12 +40,11 @@ watch(media_upload.progress, async (newProgress: number) => {
     const refs = media_upload.getFileReferences();
     if (refs.length > 0) {
       const productId = uploading_media_product_id.value;
-      const result = await api.catalog.upload_media({ 
+      const result = await api.call("catalog.upload_media", { 
         id: productId, 
-        media: refs[0] 
+        media: refs[0] as unknown as File 
       });
       
-      // @ts-ignore
       media_upload.clear();
       uploading_media_product_id.value = null;
       
@@ -60,7 +59,7 @@ const beginProcessing = async (orderId: string) => {
   transitioning_order_id.value = orderId;
   operation_error.value = null;
   
-  const result = await api.sales.begin_processing({ id: orderId });
+  const result = await api.call("sales.begin_processing", { id: orderId });
   transitioning_order_id.value = null;
   
   if (!result.ok) {
@@ -72,7 +71,7 @@ const fulfill = async (orderId: string) => {
   transitioning_order_id.value = orderId;
   operation_error.value = null;
   
-  const result = await api.sales.fulfill({ id: orderId });
+  const result = await api.call("sales.fulfill", { id: orderId });
   transitioning_order_id.value = null;
   
   if (!result.ok) {
@@ -91,7 +90,7 @@ const adjustStock = async (productId: string) => {
   adjusting_product_id.value = productId;
   adjustment_error.value = null;
   
-  const result = await api.catalog.adjust_stock({ 
+  const result = await api.call("catalog.adjust_stock", { 
     id: productId,
     stock: newStock 
   });
@@ -107,7 +106,7 @@ const selectConversation = async (conversationId: string) => {
   active_conversation_id.value = conversationId;
   historical_messages.value = [];
   
-  const messagesRes = await api.support.list_messages({
+  const messagesRes = await api.call("support.list_messages", {
     conversation_id: conversationId
   });
   
@@ -122,31 +121,18 @@ const sendReply = async () => {
   const text = new_message_text.value;
   new_message_text.value = "";
   
-  await api.support.send_message({
+  await api.call("support.send_message", {
     text: text,
     sender: "merchant",
     conversation_id: active_conversation_id.value
   });
 };
 
-const chat_messages = computed(() => {
-  if (!active_conversation_id.value) return [];
-  
-  const mergedMap = new Map<string, SupportMessage>();
-  historical_messages.value.forEach((m: SupportMessage) => mergedMap.set(m.id, m));
-  
-  if (props.support_messages) {
-    props.support_messages.forEach((m: SupportMessage) => {
-      if (m.conversation_id === active_conversation_id.value) {
-        mergedMap.set(m.id, m);
-      }
-    });
-  }
-  
-  return Array.from(mergedMap.values()).sort((a, b) => 
-    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  );
-});
+const chat_messages = useChatMessages(
+  active_conversation_id,
+  historical_messages,
+  computed(() => props.support_messages)
+);
 
 const getProductName = (productId: string) => {
   if (!props.products) return productId;
@@ -202,23 +188,27 @@ const getStatusColor = (status: string) => {
             </div>
             
             <div class="flex gap-2 min-w-[100px] justify-end">
+              <div v-if="order.lifecycle_status === 'new'" class="mt-4 flex justify-end">
               <Button 
-                v-if="order.lifecycle_status === 'new'"
+                variant="secondary"
                 size="sm"
-                @click="beginProcessing(order.id)"
+                @click="beginProcessing(order.id)" 
                 :disabled="transitioning_order_id === order.id"
               >
-                {{ transitioning_order_id === order.id ? '...' : 'Process' }}
+                {{ transitioning_order_id === order.id ? 'Processing...' : 'Begin Processing' }}
               </Button>
-              
+            </div>
+            
+            <div v-if="order.lifecycle_status === 'processing'" class="mt-4 flex justify-end">
               <Button 
-                v-if="order.lifecycle_status === 'processing'"
+                variant="secondary"
                 size="sm"
-                @click="fulfill(order.id)"
+                @click="fulfill(order.id)" 
                 :disabled="transitioning_order_id === order.id"
               >
-                {{ transitioning_order_id === order.id ? '...' : 'Fulfill' }}
+                {{ transitioning_order_id === order.id ? 'Fulfilling...' : 'Fulfill' }}
               </Button>
+            </div>
             </div>
           </div>
         </div>
@@ -265,7 +255,7 @@ const getStatusColor = (status: string) => {
             />
             <Button 
               size="sm"
-              variant="outline"
+              variant="secondary"
               @click="adjustStock(product.id)"
               :disabled="adjusting_product_id === product.id"
             >
@@ -275,7 +265,7 @@ const getStatusColor = (status: string) => {
             <div class="flex flex-col gap-1 w-28">
               <Button 
                 size="sm"
-                variant="outline"
+                variant="secondary"
                 @click="triggerMediaUpload(product.id)"
                 :disabled="uploading_media_product_id === product.id"
               >

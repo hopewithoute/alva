@@ -27,7 +27,7 @@ defmodule AlvaDemo.Catalog.Seeder do
           media_reference: "hoodie.jpg"
         }
       ]
-      
+
       Enum.each(products, fn product_attrs ->
         Ash.Seed.seed!(struct(Product, product_attrs))
       end)

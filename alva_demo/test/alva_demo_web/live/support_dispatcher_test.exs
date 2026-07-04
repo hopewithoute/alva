@@ -29,9 +29,10 @@ defmodule AlvaDemoWeb.SupportDispatcherTest do
 
   describe "support.send_message and support.list_messages events" do
     test "sends messages and lists them by conversation_id" do
-      conversation = Ash.Seed.seed!(%AlvaDemo.Support.Conversation{
-        customer_name: "Bob"
-      })
+      conversation =
+        Ash.Seed.seed!(%AlvaDemo.Support.Conversation{
+          customer_name: "Bob"
+        })
 
       socket = %Socket{
         private: %{alva: %{domains: [AlvaDemo.Support]}},
@@ -39,26 +40,31 @@ defmodule AlvaDemoWeb.SupportDispatcherTest do
       }
 
       # Shopper message
-      msg1 = assert_dispatch_ok(socket, "support.send_message", %{
-        "text" => "Help me",
-        "sender" => "shopper",
-        "conversation_id" => conversation.id
-      })
+      msg1 =
+        assert_dispatch_ok(socket, "support.send_message", %{
+          "text" => "Help me",
+          "sender" => "shopper",
+          "conversation_id" => conversation.id
+        })
+
       assert msg1.ok == true
 
       # Merchant response
-      msg2 = assert_dispatch_ok(socket, "support.send_message", %{
-        "text" => "How can I help?",
-        "sender" => "merchant",
-        "conversation_id" => conversation.id
-      })
+      msg2 =
+        assert_dispatch_ok(socket, "support.send_message", %{
+          "text" => "How can I help?",
+          "sender" => "merchant",
+          "conversation_id" => conversation.id
+        })
+
       assert msg2.ok == true
 
       # List messages
-      result = assert_dispatch_ok(socket, "support.list_messages", %{
-        "conversation_id" => conversation.id
-      })
-      
+      result =
+        assert_dispatch_ok(socket, "support.list_messages", %{
+          "conversation_id" => conversation.id
+        })
+
       assert result.ok == true
       assert length(result.data) == 2
       texts = Enum.map(result.data, & &1.text)

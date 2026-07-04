@@ -60,7 +60,10 @@ defmodule AlvaDemoWeb.SynchronizationTest do
     assert render(console_live) =~ "fulfilled"
   end
 
-  test "product inventory updates sync across storefront and merchant console", %{conn: conn, product: product} do
+  test "product inventory updates sync across storefront and merchant console", %{
+    conn: conn,
+    product: product
+  } do
     # Mount both surfaces
     {:ok, storefront_live, _html} = live(conn, "/storefront")
     {:ok, console_live, _html} = live(conn, "/console")
@@ -75,6 +78,7 @@ defmodule AlvaDemoWeb.SynchronizationTest do
 
     # Wait for the broadcast to ensure LiveViews have received it
     assert_receive %Phoenix.Socket.Broadcast{event: "adjust_stock"}
+
     # Give the LiveView processes a tiny fraction of time to process the message they also just received
     :timer.sleep(50)
 

@@ -41,9 +41,9 @@ defmodule AlvaDemo.Catalog.Product do
       public?(true)
       accept([])
       require_atomic?(false)
-      argument :media, Ash.Type.File, allow_nil?: false
-      
-      change {AlvaDemo.Catalog.Changes.StoreMedia, arg: :media, attribute: :media_reference}
+      argument(:media, Ash.Type.File, allow_nil?: false)
+
+      change({AlvaDemo.Catalog.Changes.StoreMedia, arg: :media, attribute: :media_reference})
     end
   end
 

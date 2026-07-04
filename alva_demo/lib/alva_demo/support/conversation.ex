@@ -31,8 +31,8 @@ defmodule AlvaDemo.Support.Conversation do
 
     read :get_by_customer do
       public?(true)
-      argument :customer_name, :string, allow_nil?: false
-      filter expr(customer_name == ^arg(:customer_name))
+      argument(:customer_name, :string, allow_nil?: false)
+      filter(expr(customer_name == ^arg(:customer_name)))
     end
 
     create :create do
@@ -60,6 +60,6 @@ defmodule AlvaDemo.Support.Conversation do
   end
 
   identities do
-    identity :unique_customer, [:customer_name], pre_check_with: AlvaDemo.Support
+    identity(:unique_customer, [:customer_name], pre_check_with: AlvaDemo.Support)
   end
 end

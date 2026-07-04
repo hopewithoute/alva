@@ -46,7 +46,7 @@ export interface Order {
   id: string;
   customer_name: string;
   quantity: number;
-  lifecycle_status: any;
+  lifecycle_status: "new" | "processing" | "fulfilled" | "cancelled";
   product_id: string;
   product?: Product;
 }
@@ -62,7 +62,7 @@ export interface Conversation {
 export interface SupportMessage {
   id: string;
   text: string;
-  sender: any;
+  sender: "shopper" | "merchant";
   created_at: string;
   conversation_id: string;
   conversation?: Conversation;

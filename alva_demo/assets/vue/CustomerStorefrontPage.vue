@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, defineProps } from "vue";
 import { api } from "../js/alva/client";
+import { useChatMessages } from "./composables/useChatMessages";
 import Button from "./components/ui/button/Button.vue";
 
 import type { Order, Product, Conversation, SupportMessage } from "../js/alva/types";
@@ -30,7 +31,7 @@ const buyProduct = async (productId: string) => {
   }
   
   ordering_product_id.value = productId;
-  const result = await api.sales.create_order({
+  const result = await api.call("sales.create_order", {
     customer_name: customer_name.value,
     product_id: productId,
     quantity: 1
@@ -39,9 +40,9 @@ const buyProduct = async (productId: string) => {
   ordering_product_id.value = null;
   
   if (result.ok) {
-    alert("Order placed successfully!");
+    alert("Order created successfully!");
   } else {
-    alert(`Failed to place order: ${result.error.message}`);
+    alert(`Failed to create order: ${result.error.message}`);
   }
 };
 
@@ -51,7 +52,7 @@ const joinChat = async () => {
     return;
   }
   
-  const result = await api.support.create({
+  const result = await api.call("support.create", {
     customer_name: customer_name.value
   });
   
@@ -59,7 +60,7 @@ const joinChat = async () => {
     active_conversation.value = result.data as Conversation;
     is_chat_open.value = true;
     
-    const messagesRes = await api.support.list_messages({
+    const messagesRes = await api.call("support.list_messages", {
       conversation_id: active_conversation.value.id
     });
     
@@ -77,32 +78,19 @@ const sendMessage = async () => {
   const text = new_message_text.value;
   new_message_text.value = "";
   
-  await api.support.send_message({
+  await api.call("support.send_message", {
     text: text,
     sender: "shopper",
     conversation_id: active_conversation.value.id
   });
 };
 
-const chat_messages = computed(() => {
-  if (!active_conversation.value) return [];
-  
-  const mergedMap = new Map<string, SupportMessage>();
-  
-  historical_messages.value.forEach((m: SupportMessage) => mergedMap.set(m.id, m));
-  
-  if (props.support_messages) {
-    props.support_messages.forEach((m: SupportMessage) => {
-      if (m.conversation_id === active_conversation.value?.id) {
-        mergedMap.set(m.id, m);
-      }
-    });
-  }
-  
-  return Array.from(mergedMap.values()).sort((a, b) => 
-    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  );
-});
+const active_conversation_id = computed(() => active_conversation.value?.id);
+const chat_messages = useChatMessages(
+  active_conversation_id, 
+  historical_messages, 
+  computed(() => props.support_messages)
+);
 </script>
 
 <template>

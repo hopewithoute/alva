@@ -6,13 +6,14 @@ defmodule AlvaDemoWeb.SalesOrderDispatcherTest do
   alias AlvaDemo.Sales.Order
 
   setup do
-    product = Ash.Seed.seed!(%Product{
-      name: "Test Product",
-      description: "Test desc",
-      price: 1000,
-      stock: 10,
-      media_reference: "test.jpg"
-    })
+    product =
+      Ash.Seed.seed!(%Product{
+        name: "Test Product",
+        description: "Test desc",
+        price: 1000,
+        stock: 10,
+        media_reference: "test.jpg"
+      })
 
     socket = %Socket{
       private: %{alva: %{domains: [AlvaDemo.Sales, AlvaDemo.Catalog]}},
@@ -24,11 +25,12 @@ defmodule AlvaDemoWeb.SalesOrderDispatcherTest do
 
   describe "sales.create_order event" do
     test "successfully creates an order", %{socket: socket, product: product} do
-      result = assert_dispatch_ok(socket, "sales.create_order", %{
-        "customer_name" => "Bob",
-        "product_id" => product.id,
-        "quantity" => 3
-      })
+      result =
+        assert_dispatch_ok(socket, "sales.create_order", %{
+          "customer_name" => "Bob",
+          "product_id" => product.id,
+          "quantity" => 3
+        })
 
       assert result.ok == true
       assert result.data.customer_name == "Bob"
@@ -48,7 +50,11 @@ defmodule AlvaDemoWeb.SalesOrderDispatcherTest do
     test "transitions order from new to processing", %{socket: socket, product: product} do
       order =
         Order
-        |> Ash.Changeset.for_create(:create, %{customer_name: "Alice", product_id: product.id, quantity: 1})
+        |> Ash.Changeset.for_create(:create, %{
+          customer_name: "Alice",
+          product_id: product.id,
+          quantity: 1
+        })
         |> Ash.create!()
 
       result = assert_dispatch_ok(socket, "sales.begin_processing", %{"id" => order.id})
@@ -61,10 +67,14 @@ defmodule AlvaDemoWeb.SalesOrderDispatcherTest do
     test "transitions order from processing to fulfilled", %{socket: socket, product: product} do
       order =
         Order
-        |> Ash.Changeset.for_create(:create, %{customer_name: "Alice", product_id: product.id, quantity: 1})
+        |> Ash.Changeset.for_create(:create, %{
+          customer_name: "Alice",
+          product_id: product.id,
+          quantity: 1
+        })
         |> Ash.create!()
-        
-      processed = 
+
+      processed =
         order
         |> Ash.Changeset.for_update(:begin_processing)
         |> Ash.update!()

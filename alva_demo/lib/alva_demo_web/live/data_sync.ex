@@ -22,8 +22,9 @@ defmodule AlvaDemoWeb.DataSync do
       |> Alva.LiveView.activate_stream(:conversations)
       |> Alva.LiveView.bind_stream_query("support.list_conversations", :conversations)
       |> Alva.LiveView.activate_stream(:support_messages)
-      # We don't bind stream query for messages globally, client will fetch them manually per conversation
-      # But the stream will push new messages.
+
+    # We don't bind stream query for messages globally, client will fetch them manually per conversation
+    # But the stream will push new messages.
 
     {:cont, socket}
   end

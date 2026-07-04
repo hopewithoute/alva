@@ -5,13 +5,14 @@ defmodule AlvaDemo.Sales.OrderLifecycleTest do
   alias AlvaDemo.Catalog.Product
 
   setup do
-    product = Ash.Seed.seed!(%Product{
-      name: "Console Test Product",
-      description: "Console desc",
-      price: 1000,
-      stock: 10,
-      media_reference: "test.jpg"
-    })
+    product =
+      Ash.Seed.seed!(%Product{
+        name: "Console Test Product",
+        description: "Console desc",
+        price: 1000,
+        stock: 10,
+        media_reference: "test.jpg"
+      })
 
     order =
       Order

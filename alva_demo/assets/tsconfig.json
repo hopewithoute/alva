@@ -6,7 +6,13 @@
     "moduleResolution": "Node",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "vue": ["node_modules/vue"],
+      "live_vue": ["../deps/live_vue/assets"],
+      "alva/useAlvaApi": ["../../alva/assets/js/useAlvaApi"],
+      "alva": ["../../alva/assets/js"],
+      "phoenix": ["../deps/phoenix"],
+      "phoenix_live_view": ["../deps/phoenix_live_view"]
     },
     "strict": true,
     "jsx": "preserve",
@@ -14,7 +20,9 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "lib": ["ES2020", "DOM"],
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "skipLibCheck": true
   },
-  "include": ["js/**/*.ts", "js/**/*.js", "vue/**/*.vue"]
+  "include": ["js/**/*.ts", "js/**/*.js", "vue/**/*.vue"],
+  "exclude": ["../deps", "node_modules"]
 }

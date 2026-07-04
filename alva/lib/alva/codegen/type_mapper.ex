@@ -62,6 +62,11 @@ defmodule Alva.Codegen.TypeMapper do
         |> Enum.uniq()
         |> Enum.join(" | ")
 
+      Keyword.has_key?(constraints || [], :one_of) ->
+        Keyword.get(constraints, :one_of)
+        |> Enum.map(fn v -> "\"#{v}\"" end)
+        |> Enum.join(" | ")
+
       true ->
         "any"
     end

@@ -3,6 +3,6 @@ defmodule AlvaDemo.Sales do
     extensions: [Alva.Domain]
 
   resources do
-    resource AlvaDemo.Sales.Order
+    resource(AlvaDemo.Sales.Order)
   end
 end

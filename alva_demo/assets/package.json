@@ -20,6 +20,8 @@
     "vue": "^3.4.21"
   },
   "devDependencies": {
+    "@types/phoenix": "^1.6.7",
+    "@types/phoenix_live_view": "^1.0.0",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.38",
     "shadcn-vue": "^0.11.3",

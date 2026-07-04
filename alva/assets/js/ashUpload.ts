@@ -15,6 +15,8 @@ export interface UseLiveUploadReturn {
     entries: { value: UploadEntry[] };
     errors: { value: any[] };
     cancel: (ref: string) => void;
+    showFilePicker: () => void;
+    clear: () => void;
 }
 
 export interface AshUploadOptions {
@@ -23,7 +25,8 @@ export interface AshUploadOptions {
 }
 
 export function ashUpload(name: string, options?: AshUploadOptions) {
-    const upload = useLiveUpload(name) as UseLiveUploadReturn;
+    // @ts-ignore
+    const upload = useLiveUpload(name, options || {}) as unknown as UseLiveUploadReturn;
 
     const files = computed(() => upload.entries?.value || []);
     const errors = computed(() => upload.errors?.value || []);
@@ -47,11 +50,11 @@ export function ashUpload(name: string, options?: AshUploadOptions) {
 
         if (options.maxFiles && files.value.length > options.maxFiles) {
             const toRemove = files.value.slice(options.maxFiles);
-            toRemove.forEach((file) => upload.cancel(file.ref));
+            toRemove.forEach((file: UploadEntry) => upload.cancel(file.ref));
         }
 
         if (options.maxSize) {
-            files.value.forEach((file) => {
+            files.value.forEach((file: UploadEntry) => {
                 if (file.size > options.maxSize!) {
                     upload.cancel(file.ref);
                 }
@@ -70,7 +73,7 @@ export function ashUpload(name: string, options?: AshUploadOptions) {
 
     // Gets file references for ash_storage actions
     const getFileReferences = () => {
-        return files.value.map((file) => file.ref);
+        return files.value.map((file: UploadEntry) => file.ref);
     };
 
     return {

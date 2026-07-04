@@ -1,4 +1,4 @@
 export * from "./useAlvaApi";
 export * from "./ashQuery";
-export * from "./ashForm";
+export { ashForm } from "./ashForm";
 export * from "./ashUpload";

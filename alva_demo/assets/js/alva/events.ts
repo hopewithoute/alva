@@ -83,7 +83,7 @@ export type AlvaEvents = {
   "support.send_message": {
     input: {
               text: string;
-              sender: any;
+              sender: "shopper" | "merchant";
               conversation_id: string;
             };
     output: LiveResult<Types.SupportMessage>;
