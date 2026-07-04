@@ -1,5 +1,6 @@
 import Config
 
+config :alva_demo, ash_domains: [AlvaDemo.Catalog]
 config :alva_demo,
   generators: [timestamp_type: :utc_datetime]
 

@@ -12,7 +12,9 @@ defmodule AlvaDemo.Application do
       AlvaDemoWeb.Endpoint
     ]
 
-    Supervisor.start_link(children, strategy: :one_for_one, name: AlvaDemo.Supervisor)
+    result = Supervisor.start_link(children, strategy: :one_for_one, name: AlvaDemo.Supervisor)
+    AlvaDemo.Catalog.Seeder.seed()
+    result
   end
 
   @impl true
