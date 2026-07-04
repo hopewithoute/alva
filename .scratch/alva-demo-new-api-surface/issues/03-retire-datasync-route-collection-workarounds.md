@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Retire DataSync Route Collection Workarounds
 
@@ -12,11 +12,11 @@ Remove the obsolete DataSync route-owned list setup after products and conversat
 
 ## Acceptance criteria
 
-- [ ] DataSync no longer manually loads products or conversations into plain assigns.
-- [ ] DataSync no longer binds product or conversation read events through route stream queries.
-- [ ] Storefront and Merchant Console still mount successfully with orders, products, conversations, and support chat behavior intact.
-- [ ] Any remaining DataSync responsibility is named or documented clearly enough that future contributors do not copy the old route-owned list workaround.
-- [ ] Tests cover that product and conversation data still renders after the cleanup.
+- [x] DataSync no longer manually loads products or conversations into plain assigns.
+- [x] DataSync no longer binds product or conversation read events through route stream queries.
+- [x] Storefront and Merchant Console still mount successfully with orders, products, conversations, and support chat behavior intact.
+- [x] Any remaining DataSync responsibility is named or documented clearly enough that future contributors do not copy the old route-owned list workaround.
+- [x] Tests cover that product and conversation data still renders after the cleanup.
 
 ## Blocked by
 
