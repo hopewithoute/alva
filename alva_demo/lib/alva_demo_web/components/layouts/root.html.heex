@@ -7,9 +7,16 @@
     <.live_title suffix=" - Alva Commerce Showcase">
       {assigns[:page_title] || "Alva Commerce Showcase"}
     </.live_title>
-    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
-    <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
-    </script>
+    <%= if vite_dev_server?() do %>
+      <script type="module" src="http://localhost:5173/@vite/client">
+      </script>
+      <script type="module" src="http://localhost:5173/js/app.js">
+      </script>
+    <% else %>
+      <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+      <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
+      </script>
+    <% end %>
   </head>
   <body>
     {@inner_content}

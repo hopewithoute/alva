@@ -7,6 +7,10 @@ defmodule AlvaDemoWeb.Layouts do
 
   embed_templates "layouts/*"
 
+  def vite_dev_server? do
+    Application.get_env(:alva_demo, :dev_routes, false)
+  end
+
   attr :flash, :map, required: true
   slot :inner_block, required: true
 
