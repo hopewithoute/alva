@@ -11,7 +11,10 @@ defmodule Alva.Resource.Verifiers.VerifyActions do
     signals = Enum.filter(projections, &match?(%Alva.Resource.Signal{}, &1))
     module = Spark.Dsl.Extension.get_persisted(dsl_state, :module)
     publication_names = pubsub_publication_names(dsl_state)
-    event_names = MapSet.new(events, & &1.name)
+    event_names =
+      events
+      |> Enum.map(& &1.name)
+      |> MapSet.new()
 
     Enum.each(events, fn event ->
       action = Ash.Resource.Info.action(dsl_state, event.action)
