@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Conversations Collection Powers Merchant Console
 
@@ -12,11 +12,11 @@ Move the Merchant Console conversation list onto the new Alva Collection API sur
 
 ## Acceptance criteria
 
-- [ ] Conversations are defined as an Alva Collection with an explicit source event and PubSub-backed insert operation.
-- [ ] Merchant Console activates the conversations Collection through declarative LiveView options or an equally explicit helper.
-- [ ] Merchant Console passes conversations to Vue from `@streams.conversations`, not from a plain list assign.
-- [ ] Creating or joining a support conversation makes it appear in Merchant Console without a manual list refresh.
-- [ ] Existing support conversation creation behavior remains intact.
+- [x] Conversations are defined as an Alva Collection with an explicit source event and PubSub-backed insert operation.
+- [x] Merchant Console activates the conversations Collection through declarative LiveView options or an equally explicit helper.
+- [x] Merchant Console passes conversations to Vue from `@streams.conversations`, not from a plain list assign.
+- [x] Creating or joining a support conversation makes it appear in Merchant Console without a manual list refresh.
+- [x] Existing support conversation creation behavior remains intact.
 
 ## Blocked by
 

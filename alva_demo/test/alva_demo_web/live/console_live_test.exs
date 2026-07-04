@@ -17,17 +17,15 @@ defmodule AlvaDemoWeb.MerchantConsoleLiveTest do
       quantity: 1
     })
 
+    Ash.Seed.seed!(%AlvaDemo.Support.Conversation{
+      customer_name: "Console Chat"
+    })
+
     {:ok, page_live, disconnected_html} = live(conn, "/console")
 
     assert disconnected_html =~ "Merchant Console"
     assert render(page_live) =~ "Test Console Product"
     assert render(page_live) =~ "Console Buyer"
-
-    Ash.Seed.seed!(%AlvaDemo.Support.Conversation{
-      customer_name: "Console Chat"
-    })
-
-    assert render_hook(page_live, "catalog.list_products", %{}) =~ "Test Console Product"
-    assert render_hook(page_live, "support.list_conversations", %{}) =~ "Console Chat"
+    assert render(page_live) =~ "Console Chat"
   end
 end

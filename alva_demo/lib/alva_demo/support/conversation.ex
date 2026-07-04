@@ -16,7 +16,8 @@ defmodule AlvaDemo.Support.Conversation do
     event("support.list_conversations", action: :read)
     event("support.get_conversation", action: :get_by_customer)
 
-    stream :conversations do
+    collection :conversations do
+      source(event: "support.list_conversations", mode: :reset)
       insert(on: "create")
     end
   end

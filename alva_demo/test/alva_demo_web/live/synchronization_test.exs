@@ -140,4 +140,21 @@ defmodule AlvaDemoWeb.SynchronizationTest do
     assert render(storefront_live) =~ "collection_media.jpg"
     assert render(console_live) =~ "collection_media.jpg"
   end
+
+  test "support conversation creates sync to merchant console without a refresh", %{conn: conn} do
+    {:ok, console_live, _html} = live(conn, "/console")
+
+    AlvaDemoWeb.Endpoint.subscribe("conversation:created")
+
+    _conversation =
+      AlvaDemo.Support.Conversation
+      |> Ash.Changeset.for_create(:create, %{customer_name: "Collection Support"})
+      |> Ash.create!()
+
+    assert_receive %Phoenix.Socket.Broadcast{event: "create"}
+
+    :timer.sleep(50)
+
+    assert render(console_live) =~ "Collection Support"
+  end
 end
