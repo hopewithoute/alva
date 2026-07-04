@@ -1,18 +1,23 @@
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, onUnmounted, getCurrentInstance } from 'vue'
 
 export interface AshFormOptions<FormValues, EventKeys> {
   initialValues: FormValues
   validateEvent?: EventKeys
   debounceMs?: number
   uploads?: Record<string, { getFileReferences: () => string[] }>
+  onOptimisticSubmit?: (formData: FormValues) => (() => void) | void
 }
+
+export type LiveResult<T = any> = 
+  | { ok: true; data: T; meta?: Record<string, any> }
+  | { ok: false; error: any; meta?: Record<string, any> }
 
 export function ashForm<
   Events extends Record<string, { input: any; output: any }>,
   SubmitEventKey extends keyof Events,
   FormValues = Events[SubmitEventKey]['input']
 >(
-  api: { call: <K extends keyof Events>(event: K, params?: Events[K]['input']) => Promise<any> },
+  api: { call: <K extends keyof Events>(event: K, params?: Events[K]['input']) => Promise<LiveResult> },
   submitEvent: SubmitEventKey,
   options: AshFormOptions<FormValues, keyof Events>
 ) {
@@ -20,8 +25,17 @@ export function ashForm<
   const errors = ref<Record<string, string[]>>({})
   const loading = ref(false)
   const isValidating = ref(false)
+  
+  // Use a strict type for the cache instead of any
+  const validationCache = new Map<string, LiveResult>()
+  
+  if (getCurrentInstance()) {
+    onUnmounted(() => {
+      validationCache.clear()
+    })
+  }
 
-  const applyErrors = (result: any) => {
+  const applyErrors = (result: LiveResult) => {
     if (!result.ok && result.error?.type === 'validation') {
       errors.value = result.error.fields || {}
     } else if (result.ok) {
@@ -32,9 +46,9 @@ export function ashForm<
   let submitCounter = 0
   let validateCounter = 0
   let timeout: ReturnType<typeof setTimeout>
-  let pendingResolve: ((val: any) => void) | null = null
+  let pendingResolve: ((val: LiveResult) => void) | null = null
 
-  const submit = async () => {
+  const submit = async (): Promise<LiveResult> => {
     submitCounter++
     const currentSubmit = submitCounter
     
@@ -57,8 +71,28 @@ export function ashForm<
       }
     }
     
-    const result = await api.call(submitEvent, payload as Events[SubmitEventKey]['input'])
+    let rollbackFn: (() => void) | void = undefined
+    if (options.onOptimisticSubmit) {
+      rollbackFn = options.onOptimisticSubmit(payload as FormValues)
+    }
+
+    let result: LiveResult
+    try {
+      result = await api.call(submitEvent, payload as Events[SubmitEventKey]['input'])
+    } catch (e) {
+      if (rollbackFn) {
+        rollbackFn()
+      }
+      if (currentSubmit === submitCounter) {
+        loading.value = false
+      }
+      throw e
+    }
     
+    if (!result.ok && rollbackFn) {
+      rollbackFn()
+    }
+
     // Only apply if another submit hasn't superseded this one
     if (currentSubmit === submitCounter) {
       applyErrors(result)
@@ -68,8 +102,8 @@ export function ashForm<
     return result
   }
 
-  const validate = async () => {
-    if (!options.validateEvent) return { ok: true }
+  const validate = async (): Promise<LiveResult> => {
+    if (!options.validateEvent) return { ok: true, data: {} }
     
     validateCounter++
     const currentValidation = validateCounter
@@ -86,7 +120,17 @@ export function ashForm<
     return new Promise((resolve) => {
       pendingResolve = resolve
       timeout = setTimeout(async () => {
-        const result = await api.call(options.validateEvent!, values as any)
+        const cacheKey = JSON.stringify(values)
+        let result = validationCache.get(cacheKey)
+
+        if (!result) {
+          try {
+            result = await api.call(options.validateEvent!, values as any)
+            validationCache.set(cacheKey, result)
+          } catch (e) {
+            result = { ok: false, error: e }
+          }
+        }
         
         // Only apply if this is still the most recent validation and no submit has occurred
         if (currentValidation === validateCounter && !loading.value) {

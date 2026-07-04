@@ -248,4 +248,47 @@ describe('ashForm', () => {
     // The stale validate response should NOT overwrite the submit errors
     expect(errors.value.name).toEqual(['Submit error'])
   })
+
+  it('should invoke onOptimisticSubmit and rollback if submit fails', async () => {
+    const api = mockApi()
+    api.call.mockResolvedValue({ ok: false, error: { type: 'validation', fields: { name: ['bad'] } } })
+    
+    const rollbackFn = vi.fn()
+    const onOptimisticSubmit = vi.fn().mockReturnValue(rollbackFn)
+    
+    const { values, submit } = ashForm(api as any, 'students.create', {
+      initialValues: { name: 'A' },
+      onOptimisticSubmit
+    })
+    
+    values.name = 'B'
+    await submit()
+    
+    expect(onOptimisticSubmit).toHaveBeenCalledWith({ name: 'B' })
+    expect(rollbackFn).toHaveBeenCalled()
+  })
+
+  it('should cache validation responses and skip api calls for identical payloads', async () => {
+    const api = mockApi()
+    api.call.mockResolvedValue({ ok: true })
+    
+    const { validate } = ashForm(api as any, 'students.create', {
+      initialValues: { name: 'A' },
+      validateEvent: 'students.validate'
+    })
+    
+    // First validation
+    const p1 = validate()
+    vi.advanceTimersByTime(300)
+    await p1
+    expect(api.call).toHaveBeenCalledTimes(1)
+    
+    // Second validation with identical payload
+    const p2 = validate()
+    vi.advanceTimersByTime(300)
+    await p2
+    
+    // Should hit cache
+    expect(api.call).toHaveBeenCalledTimes(1)
+  })
 })

@@ -5,12 +5,12 @@ The codegen must NOT use a generic `AshFilter<T>`. Instead, it must strictly map
 
 ## Acceptance criteria
 
-- [ ] Generates reusable type-specific operator interfaces (e.g., `StringFieldFilter`, `IntFieldFilter`, `BooleanFieldFilter`).
-- [ ] Generates a `[Resource]Filter` interface for resources involved in an `enable_filter: true` event.
-- [ ] The `[Resource]Filter` interface maps scalar fields to their correct type-specific operator interface.
-- [ ] The `[Resource]Filter` interface supports basic boolean logic (`and`, `or`, `not`).
-- [ ] The `[Resource]Filter` interface supports recursive deep relationship filtering (e.g., `PostFilter` can filter by `author?: UserFilter`).
-- [ ] Compilation succeeds without cyclic dependency errors in the generated TypeScript.
+- [x] Generates reusable type-specific operator interfaces (e.g., `StringFieldFilter`, `IntFieldFilter`, `BooleanFieldFilter`).
+- [x] Generates a `[Resource]Filter` interface for resources involved in an `enable_filter: true` event.
+- [x] The `[Resource]Filter` interface maps scalar fields to their correct type-specific operator interface.
+- [x] The `[Resource]Filter` interface supports basic boolean logic (`and`, `or`, `not`).
+- [x] The `[Resource]Filter` interface supports recursive deep relationship filtering (e.g., `PostFilter` can filter by `author?: UserFilter`).
+- [x] Compilation succeeds without cyclic dependency errors in the generated TypeScript.
 
 ## Blocked by
 
