@@ -7,7 +7,10 @@ export interface AlvaApi {
     list_products: (input: AlvaEvents["catalog.list_products"]["input"]) => Promise<AlvaEvents["catalog.list_products"]["output"]>;
   };
   sales: {
+    begin_processing: (input: AlvaEvents["sales.begin_processing"]["input"]) => Promise<AlvaEvents["sales.begin_processing"]["output"]>;
     create_order: (input: AlvaEvents["sales.create_order"]["input"]) => Promise<AlvaEvents["sales.create_order"]["output"]>;
+    fulfill: (input: AlvaEvents["sales.fulfill"]["input"]) => Promise<AlvaEvents["sales.fulfill"]["output"]>;
+    list_orders: (input: AlvaEvents["sales.list_orders"]["input"]) => Promise<AlvaEvents["sales.list_orders"]["output"]>;
   };
 }
 

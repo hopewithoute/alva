@@ -10,6 +10,11 @@ export type AlvaEvents = {
     output: LiveResult<Types.Product[]>;
   };
 
+  "sales.begin_processing": {
+    input: Record<string, never>;
+    output: LiveResult<Types.Order>;
+  };
+
   "sales.create_order": {
     input: {
               customer_name: string;
@@ -17,6 +22,16 @@ export type AlvaEvents = {
               quantity?: number;
             };
     output: LiveResult<Types.Order>;
+  };
+
+  "sales.fulfill": {
+    input: Record<string, never>;
+    output: LiveResult<Types.Order>;
+  };
+
+  "sales.list_orders": {
+    input: Record<string, never>;
+    output: LiveResult<Types.Order[]>;
   };
 
 };
