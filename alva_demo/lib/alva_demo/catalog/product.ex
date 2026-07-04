@@ -9,15 +9,18 @@ defmodule AlvaDemo.Catalog.Product do
     module(AlvaDemoWeb.Endpoint)
     prefix("product")
     publish(:adjust_stock, ["updated"])
+    publish(:upload_media, ["updated"])
   end
 
   live_vue do
     event("catalog.list_products", action: :read)
     event("catalog.adjust_stock", action: :adjust_stock)
+    event("catalog.upload_media", action: :upload_media)
 
     stream :products do
       insert(on: "adjust_stock")
       update(on: "adjust_stock")
+      update(on: "upload_media")
     end
   end
 
@@ -32,6 +35,15 @@ defmodule AlvaDemo.Catalog.Product do
     update :adjust_stock do
       public?(true)
       accept([:stock])
+    end
+
+    update :upload_media do
+      public?(true)
+      accept([])
+      require_atomic?(false)
+      argument :media, Ash.Type.File, allow_nil?: false
+      
+      change {AlvaDemo.Catalog.Changes.StoreMedia, arg: :media, attribute: :media_reference}
     end
   end
 

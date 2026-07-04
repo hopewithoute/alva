@@ -52,4 +52,38 @@ defmodule AlvaDemoWeb.CatalogProductDispatcherTest do
       assert updated_product.stock == 25
     end
   end
+
+  describe "catalog.upload_media event" do
+    test "successfully processes uploaded media and updates reference" do
+      product =
+        Ash.Seed.seed!(%AlvaDemo.Catalog.Product{
+          name: "Upload Media Product",
+          description: "Test upload",
+          price: 1000,
+          stock: 10,
+          media_reference: nil
+        })
+
+      # Create a dummy file for the test
+      path = "test/support/fixtures/mock_upload_#{System.unique_integer([:positive])}.jpg"
+      File.mkdir_p!("test/support/fixtures")
+      File.write!(path, "dummy image")
+
+      upload = %Plug.Upload{
+        path: path,
+        filename: "test_upload.jpg",
+        content_type: "image/jpeg"
+      }
+
+      result =
+        product
+        |> Ash.Changeset.for_update(:upload_media, %{media: upload})
+        |> Ash.update!()
+
+      assert result.media_reference =~ "test_upload.jpg"
+
+      updated_product = Ash.get!(AlvaDemo.Catalog.Product, product.id)
+      assert updated_product.media_reference =~ "test_upload.jpg"
+    end
+  end
 end

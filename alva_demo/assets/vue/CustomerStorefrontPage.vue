@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, defineProps } from "vue";
-import { useAlvaApi } from "alva";
+import { useAlvaApi as use_alva_api } from "alva";
 import Button from "./components/ui/button/Button.vue";
 
 import { Order, Product } from "./types";
@@ -10,7 +10,7 @@ const props = defineProps<{
   products?: Product[];
 }>();
 
-const api = useAlvaApi();
+const api = use_alva_api();
 
 const customer_name = ref("");
 const ordering_product_id = ref<string | null>(null);
@@ -26,7 +26,7 @@ const buyProduct = async (productId: string) => {
   }
   
   ordering_product_id.value = productId;
-  const result = await api.call("sales.create_order" as any, {
+  const result = await api.ashCall("sales.create_order", {
     customer_name: customer_name.value,
     product_id: productId,
     quantity: 1

@@ -8,6 +8,5 @@ defmodule AlvaDemoWeb.CustomerStorefrontLiveTest do
     assert disconnected_html =~ "Customer Storefront"
     assert render(page_live) =~ "Customer Storefront"
     assert render(page_live) =~ "data-name=\"CustomerStorefrontPage\""
-    
   end
 end

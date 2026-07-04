@@ -127,7 +127,7 @@ defmodule Alva.LiveView do
         domain
         |> Alva.Domain.Info.file_upload_arguments()
         |> Enum.reduce(acc_socket, fn arg, s ->
-          Phoenix.LiveView.allow_upload(s, arg.name, accept: :any)
+          Phoenix.LiveView.allow_upload(s, arg.name, accept: :any, auto_upload: true)
         end)
       end)
 
