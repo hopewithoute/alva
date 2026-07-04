@@ -55,7 +55,7 @@ defmodule Alva.Codegen.InputContract do
       filter_ts = 
         if enable_filter? do
           resource_name = resource |> Module.split() |> List.last()
-          ["#{indent}  filter?: Types.AshFilter<Types.#{resource_name}>;"]
+          ["#{indent}  filter?: Types.#{resource_name}Filter;"]
         else
           []
         end

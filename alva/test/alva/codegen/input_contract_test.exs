@@ -71,10 +71,10 @@ defmodule Alva.Codegen.InputContractTest do
   end
 
   test "generates filter property for read action if enable_filter is true" do
-    action = Ash.Resource.Info.action(Resource, :read)
-    event_def = %{enable_filter: true}
-    shape = InputContract.generate_input_shape(Resource, event_def, action)
+    event_def = %{action: :read_users, enable_filter: true}
+    action = %{type: :read, arguments: [], accept: [], require_attributes: [], allow_nil_input: []}
 
-    assert shape =~ "filter?: Types.AshFilter<Types.Resource>;"
+    shape = InputContract.generate_input_shape(Resource, event_def, action)
+    assert shape =~ "filter?: Types.ResourceFilter;"
   end
 end
