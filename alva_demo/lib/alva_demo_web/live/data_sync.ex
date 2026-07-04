@@ -13,19 +13,32 @@ defmodule AlvaDemoWeb.DataSync do
 
     socket =
       socket
-      |> assign(:sales_orders, nil)
-      |> assign(:products, nil)
+      |> assign(:sales_orders, load_collection(socket, "sales.list_orders"))
+      |> assign(:products, load_collection(socket, "catalog.list_products"))
+      |> assign(:conversations, load_collection(socket, "support.list_conversations"))
+      |> assign(:support_messages, nil)
       |> Alva.LiveView.activate_stream(:sales_orders)
-      |> Alva.LiveView.bind_stream_query("sales.list_orders", :sales_orders)
+      |> Alva.LiveView.bind_stream_query("sales.list_orders", :sales_orders, mode: :reset)
       |> Alva.LiveView.activate_stream(:products)
-      |> Alva.LiveView.bind_stream_query("catalog.list_products", :products)
+      |> Alva.LiveView.bind_stream_query("catalog.list_products", :products, mode: :reset)
       |> Alva.LiveView.activate_stream(:conversations)
-      |> Alva.LiveView.bind_stream_query("support.list_conversations", :conversations)
+      |> Alva.LiveView.bind_stream_query("support.list_conversations", :conversations,
+        mode: :reset
+      )
       |> Alva.LiveView.activate_stream(:support_messages)
 
     # We don't bind stream query for messages globally, client will fetch them manually per conversation
     # But the stream will push new messages.
 
     {:cont, socket}
+  end
+
+  defp load_collection(socket, event_name) do
+    domains = get_in(socket.private, [:alva, :domains]) || []
+
+    case Alva.Dispatcher.dispatch(event_name, %{}, domains: domains) do
+      %{ok: true, data: data} when is_list(data) -> data
+      _ -> []
+    end
   end
 end

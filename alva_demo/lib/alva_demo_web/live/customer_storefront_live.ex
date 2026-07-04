@@ -19,7 +19,13 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
             Product catalog, Customer Name capture, ordering, and Support Chat arrive in the next slices.
           </p>
         </div>
-        <.vue v-component="CustomerStorefrontPage" sales_orders={assigns[:sales_orders]} products={assigns[:products]} support_messages={assigns[:support_messages]} />
+        <.vue
+          v-component="CustomerStorefrontPage"
+          v-diff={false}
+          sales_orders={assigns[:sales_orders]}
+          products={assigns[:products]}
+          support_messages={assigns[:support_messages]}
+        />
       </section>
     </Layouts.app>
     """

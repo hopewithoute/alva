@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch, defineProps } from "vue";
+import { ref, computed, watch } from "vue";
 import { ashUpload as ash_upload } from "alva";
-import { api } from "../js/alva/client";
+import { createAlvaApi } from "../js/alva/client";
 import { useChatMessages } from "./composables/useChatMessages";
 import { getStatusColor } from "./utils/ui";
 import Button from "./components/ui/button/Button.vue";
@@ -29,6 +29,8 @@ const upload_error = ref<string | null>(null);
 const active_conversation_id = ref<string | null>(null);
 const historical_messages = ref<SupportMessage[]>([]);
 const new_message_text = ref("");
+
+const api = createAlvaApi();
 
 const triggerMediaUpload = (product_id: string) => {
   uploading_media_product_id.value = product_id;
@@ -152,7 +154,10 @@ const getProductName = (product_id: string) => {
     <!-- Order Lifecycle Section -->
     <div class="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
       <div class="flex items-center justify-between mb-6">
-        <h2 class="text-xl font-semibold">Order Lifecycle</h2>
+        <div>
+          <h2 class="text-xl font-semibold">Order Lifecycle</h2>
+          <p class="mt-1 text-sm text-zinc-500">Purchases from the storefront arrive here as new orders.</p>
+        </div>
         <div class="flex gap-2">
           <span class="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-800">
             {{ props.sales_orders?.length || 0 }} total

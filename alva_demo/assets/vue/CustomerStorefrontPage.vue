@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch, defineProps } from "vue";
-import { api } from "../js/alva/client";
+import { ref, computed, nextTick, watch } from "vue";
+import { createAlvaApi } from "../js/alva/client";
 import { useChatMessages } from "./composables/useChatMessages";
 import { getStatusColor } from "./utils/ui";
 import Button from "./components/ui/button/Button.vue";
@@ -14,6 +14,8 @@ const props = defineProps<{
 }>();
 
 const customer_name = ref("");
+const order_error = ref<string | null>(null);
+const order_notice = ref<string | null>(null);
 const ordering_product_id = ref<string | null>(null);
 
 const active_conversation = ref<Conversation | null>(null);
@@ -21,14 +23,27 @@ const historical_messages = ref<SupportMessage[]>([]);
 const new_message_text = ref("");
 const is_chat_open = ref(false);
 
+const api = createAlvaApi();
+
 const formatPrice = (cents: number) => {
   return `$${(cents / 100).toFixed(2)}`;
 };
 
 const buyProduct = async (product_id: string) => {
+  const customerName = customer_name.value.trim();
+  if (!customerName) {
+    order_error.value = "Enter your name before placing an order.";
+    order_notice.value = null;
+    return;
+  }
+
+  const product = props.products?.find((product: Product) => product.id === product_id);
   ordering_product_id.value = product_id;
+  order_error.value = null;
+  order_notice.value = null;
+
   const result = await api.call("sales.create_order", {
-    customer_name: customer_name.value,
+    customer_name: customerName,
     product_id: product_id,
     quantity: 1
   });
@@ -36,9 +51,11 @@ const buyProduct = async (product_id: string) => {
   ordering_product_id.value = null;
   
   if (result.ok) {
-    alert("Order created successfully!");
+    order_notice.value = `Order placed for ${product?.name || "this product"}. It is now waiting in Recent Orders and the Merchant Console.`;
+    await nextTick();
+    document.getElementById("recent-orders")?.scrollIntoView({ behavior: "smooth", block: "start" });
   } else {
-    alert(`Failed to create order: ${result.error?.message || "Unknown error"}`);
+    order_error.value = `Failed to create order: ${result.error?.message || "Unknown error"}`;
   }
 };
 
@@ -136,7 +153,13 @@ const chat_messages = useChatMessages(
     <div v-if="!props.products" class="mt-4 text-sm text-zinc-500">
       Loading catalog...
     </div>
-    <div v-else class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <div v-if="order_error" class="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
+      {{ order_error }}
+    </div>
+    <div v-if="order_notice" class="mt-4 rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">
+      {{ order_notice }}
+    </div>
+    <div v-if="props.products" class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
       <div v-for="product in props.products" :key="product.id" class="flex flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
         <div class="h-48 bg-zinc-100 flex items-center justify-center overflow-hidden">
           <img v-if="product.media_reference" :src="`/images/${product.media_reference}`" :alt="product.name" class="object-cover w-full h-full" />
@@ -153,7 +176,7 @@ const chat_messages = useChatMessages(
             <Button 
               size="sm" 
               @click="buyProduct(product.id)" 
-              :disabled="ordering_product_id === product.id || product.stock <= 0"
+              :disabled="ordering_product_id === product.id || product.stock <= 0 || !customer_name.trim()"
             >
               <span v-if="product.stock <= 0">Out of Stock</span>
               <span v-else-if="ordering_product_id === product.id">Ordering...</span>
@@ -165,8 +188,11 @@ const chat_messages = useChatMessages(
     </div>
 
     <!-- Orders Section -->
-    <div class="mt-10 border-t border-zinc-200 pt-6">
-      <h2 class="text-xl font-semibold text-zinc-900">Recent Orders</h2>
+    <div id="recent-orders" class="mt-10 scroll-mt-6 border-t border-zinc-200 pt-6">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-semibold text-zinc-900">Recent Orders</h2>
+        <p class="text-sm text-zinc-500">New purchases appear here and in the Merchant Console.</p>
+      </div>
       <div v-if="!props.sales_orders" class="text-sm text-zinc-500">Loading orders...</div>
       <div v-else-if="props.sales_orders && props.sales_orders.length > 0" class="mt-4 space-y-4">
         <div v-for="order in props.sales_orders" :key="order.id" class="rounded-lg border border-zinc-200 p-4">

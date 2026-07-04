@@ -34,7 +34,25 @@ defmodule AlvaDemoWeb.SalesOrderDispatcherTest do
 
       assert result.ok == true
       assert result.data.customer_name == "Bob"
-      assert result.data.lifecycle_status == :new
+      assert result.data.lifecycle_status == "new"
+    end
+
+    test "rejects orders without a customer name", %{socket: socket, product: product} do
+      result =
+        Alva.Dispatcher.dispatch(
+          "sales.create_order",
+          %{
+            "customer_name" => "",
+            "product_id" => product.id,
+            "quantity" => 1
+          },
+          domains: [AlvaDemo.Sales, AlvaDemo.Catalog],
+          socket: socket
+        )
+
+      assert result.ok == false
+      assert result.error.type == "validation"
+      assert result.error.fields["customer_name"] == ["is required"]
     end
   end
 
@@ -59,7 +77,7 @@ defmodule AlvaDemoWeb.SalesOrderDispatcherTest do
 
       result = assert_dispatch_ok(socket, "sales.begin_processing", %{"id" => order.id})
       assert result.ok == true
-      assert result.data.lifecycle_status == :processing
+      assert result.data.lifecycle_status == "processing"
     end
   end
 
@@ -81,7 +99,7 @@ defmodule AlvaDemoWeb.SalesOrderDispatcherTest do
 
       result = assert_dispatch_ok(socket, "sales.fulfill", %{"id" => processed.id})
       assert result.ok == true
-      assert result.data.lifecycle_status == :fulfilled
+      assert result.data.lifecycle_status == "fulfilled"
     end
   end
 end
