@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: completed
 
 # Expose Showcase Typed Client Contracts
 
@@ -8,11 +8,11 @@ Make the showcase's generated client event contracts visible and used by the Vue
 
 ## Acceptance criteria
 
-- [ ] Showcase events are included in generated TypeScript contracts.
-- [ ] Vue surfaces use the generated contracts for Alva command calls and signal callbacks.
-- [ ] Wrong event names or wrong input shapes fail TypeScript in the showcase build/test path.
-- [ ] Generated files are placed in the established isolated output location and do not collide with hand-written code.
-- [ ] Tests or build checks prove the typed client contract is healthy.
+- [x] Showcase events are included in generated TypeScript contracts.
+- [x] Vue surfaces use the generated contracts for Alva command calls and signal callbacks.
+- [x] Wrong event names or wrong input shapes fail TypeScript in the showcase build/test path.
+- [x] Generated files are placed in the established isolated output location and do not collide with hand-written code.
+- [x] Tests or build checks prove the typed client contract is healthy.
 
 ## Blocked by
 

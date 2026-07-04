@@ -51,3 +51,20 @@ export interface Order {
   product?: Product;
 }
 
+
+export interface Conversation {
+  id: string;
+  customer_name: string;
+  messages?: SupportMessage[];
+}
+
+
+export interface SupportMessage {
+  id: string;
+  text: string;
+  sender: any;
+  created_at: string;
+  conversation_id: string;
+  conversation?: Conversation;
+}
+

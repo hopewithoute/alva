@@ -5,13 +5,31 @@ import type { LiveResult } from "./types";
 import type * as Types from "./types";
 
 export type AlvaEvents = {
+  "catalog.adjust_stock": {
+    input: {
+              id: string;
+              stock?: number;
+            };
+    output: LiveResult<Types.Product>;
+  };
+
   "catalog.list_products": {
     input: Record<string, never>;
     output: LiveResult<Types.Product[]>;
   };
 
+  "catalog.upload_media": {
+    input: {
+              media: File;
+              id: string;
+            };
+    output: LiveResult<Types.Product>;
+  };
+
   "sales.begin_processing": {
-    input: Record<string, never>;
+    input: {
+              id: string;
+            };
     output: LiveResult<Types.Order>;
   };
 
@@ -25,13 +43,50 @@ export type AlvaEvents = {
   };
 
   "sales.fulfill": {
-    input: Record<string, never>;
+    input: {
+              id: string;
+            };
     output: LiveResult<Types.Order>;
   };
 
   "sales.list_orders": {
     input: Record<string, never>;
     output: LiveResult<Types.Order[]>;
+  };
+
+  "support.create": {
+    input: {
+              customer_name: string;
+            };
+    output: LiveResult<Types.Conversation>;
+  };
+
+  "support.get_conversation": {
+    input: {
+              customer_name: string;
+            };
+    output: LiveResult<Types.Conversation[]>;
+  };
+
+  "support.list_conversations": {
+    input: Record<string, never>;
+    output: LiveResult<Types.Conversation[]>;
+  };
+
+  "support.list_messages": {
+    input: {
+              conversation_id: string;
+            };
+    output: LiveResult<Types.SupportMessage[]>;
+  };
+
+  "support.send_message": {
+    input: {
+              text: string;
+              sender: any;
+              conversation_id: string;
+            };
+    output: LiveResult<Types.SupportMessage>;
   };
 
 };

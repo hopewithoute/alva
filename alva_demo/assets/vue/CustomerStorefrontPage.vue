@@ -1,17 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, watch, defineProps } from "vue";
-import { useAlvaApi as use_alva_api } from "alva";
+import { api } from "../js/alva/client";
 import Button from "./components/ui/button/Button.vue";
 
-import { Order, Product, Conversation, SupportMessage } from "./types";
+import type { Order, Product, Conversation, SupportMessage } from "../js/alva/types";
 
 const props = defineProps<{
   sales_orders?: Order[];
   products?: Product[];
   support_messages?: SupportMessage[];
 }>();
-
-const api = use_alva_api();
 
 const customer_name = ref("");
 const ordering_product_id = ref<string | null>(null);
@@ -32,7 +30,7 @@ const buyProduct = async (productId: string) => {
   }
   
   ordering_product_id.value = productId;
-  const result = await api.ashCall("sales.create_order", {
+  const result = await api.sales.create_order({
     customer_name: customer_name.value,
     product_id: productId,
     quantity: 1
@@ -53,7 +51,7 @@ const joinChat = async () => {
     return;
   }
   
-  const result = await api.ashCall("support.create", {
+  const result = await api.support.create({
     customer_name: customer_name.value
   });
   
@@ -61,7 +59,7 @@ const joinChat = async () => {
     active_conversation.value = result.data as Conversation;
     is_chat_open.value = true;
     
-    const messagesRes = await api.ashCall("support.list_messages", {
+    const messagesRes = await api.support.list_messages({
       conversation_id: active_conversation.value.id
     });
     
@@ -79,7 +77,7 @@ const sendMessage = async () => {
   const text = new_message_text.value;
   new_message_text.value = "";
   
-  await api.ashCall("support.send_message", {
+  await api.support.send_message({
     text: text,
     sender: "shopper",
     conversation_id: active_conversation.value.id
@@ -91,10 +89,10 @@ const chat_messages = computed(() => {
   
   const mergedMap = new Map<string, SupportMessage>();
   
-  historical_messages.value.forEach(m => mergedMap.set(m.id, m));
+  historical_messages.value.forEach((m: SupportMessage) => mergedMap.set(m.id, m));
   
   if (props.support_messages) {
-    props.support_messages.forEach(m => {
+    props.support_messages.forEach((m: SupportMessage) => {
       if (m.conversation_id === active_conversation.value?.id) {
         mergedMap.set(m.id, m);
       }

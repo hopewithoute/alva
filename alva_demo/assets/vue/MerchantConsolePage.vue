@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, defineProps } from "vue";
-import { useAlvaApi as use_alva_api, ashUpload as ash_upload } from "alva";
+import { ashUpload as ash_upload } from "alva";
+import { api } from "../js/alva/client";
 import Button from "./components/ui/button/Button.vue";
 
-import { Order, Product, Conversation, SupportMessage } from "./types";
+import type { Order, Product, Conversation, SupportMessage } from "../js/alva/types";
 
 const props = defineProps<{
   sales_orders?: Order[];
@@ -11,8 +12,6 @@ const props = defineProps<{
   conversations?: Conversation[];
   support_messages?: SupportMessage[];
 }>();
-
-const api = use_alva_api();
 
 const transitioning_order_id = ref<string | null>(null);
 const operation_error = ref<string | null>(null);
@@ -32,19 +31,21 @@ const new_message_text = ref("");
 const triggerMediaUpload = (productId: string) => {
   uploading_media_product_id.value = productId;
   upload_error.value = null;
+  // @ts-ignore
   media_upload.showFilePicker();
 };
 
-watch(media_upload.progress, async (newProgress) => {
+watch(media_upload.progress, async (newProgress: number) => {
   if (newProgress === 100 && media_upload.files.value.length > 0 && uploading_media_product_id.value) {
     const refs = media_upload.getFileReferences();
     if (refs.length > 0) {
       const productId = uploading_media_product_id.value;
-      const result = await api.ashCall("catalog.upload_media", { 
+      const result = await api.catalog.upload_media({ 
         id: productId, 
         media: refs[0] 
       });
       
+      // @ts-ignore
       media_upload.clear();
       uploading_media_product_id.value = null;
       
@@ -59,7 +60,7 @@ const beginProcessing = async (orderId: string) => {
   transitioning_order_id.value = orderId;
   operation_error.value = null;
   
-  const result = await api.ashCall("sales.begin_processing", { id: orderId });
+  const result = await api.sales.begin_processing({ id: orderId });
   transitioning_order_id.value = null;
   
   if (!result.ok) {
@@ -71,7 +72,7 @@ const fulfill = async (orderId: string) => {
   transitioning_order_id.value = orderId;
   operation_error.value = null;
   
-  const result = await api.ashCall("sales.fulfill", { id: orderId });
+  const result = await api.sales.fulfill({ id: orderId });
   transitioning_order_id.value = null;
   
   if (!result.ok) {
@@ -82,7 +83,7 @@ const fulfill = async (orderId: string) => {
 const adjustStock = async (productId: string) => {
   let newStock = stock_input.value[productId];
   if (newStock === undefined) {
-    const p = props.products?.find(p => p.id === productId);
+    const p = props.products?.find((p: Product) => p.id === productId);
     if (p) newStock = p.stock;
   }
   if (newStock === undefined || newStock < 0) return;
@@ -90,7 +91,7 @@ const adjustStock = async (productId: string) => {
   adjusting_product_id.value = productId;
   adjustment_error.value = null;
   
-  const result = await api.ashCall("catalog.adjust_stock", { 
+  const result = await api.catalog.adjust_stock({ 
     id: productId,
     stock: newStock 
   });
@@ -106,7 +107,7 @@ const selectConversation = async (conversationId: string) => {
   active_conversation_id.value = conversationId;
   historical_messages.value = [];
   
-  const messagesRes = await api.ashCall("support.list_messages", {
+  const messagesRes = await api.support.list_messages({
     conversation_id: conversationId
   });
   
@@ -121,7 +122,7 @@ const sendReply = async () => {
   const text = new_message_text.value;
   new_message_text.value = "";
   
-  await api.ashCall("support.send_message", {
+  await api.support.send_message({
     text: text,
     sender: "merchant",
     conversation_id: active_conversation_id.value
@@ -132,10 +133,10 @@ const chat_messages = computed(() => {
   if (!active_conversation_id.value) return [];
   
   const mergedMap = new Map<string, SupportMessage>();
-  historical_messages.value.forEach(m => mergedMap.set(m.id, m));
+  historical_messages.value.forEach((m: SupportMessage) => mergedMap.set(m.id, m));
   
   if (props.support_messages) {
-    props.support_messages.forEach(m => {
+    props.support_messages.forEach((m: SupportMessage) => {
       if (m.conversation_id === active_conversation_id.value) {
         mergedMap.set(m.id, m);
       }
@@ -316,7 +317,7 @@ const getStatusColor = (status: string) => {
           <template v-else>
             <div class="p-3 border-b border-zinc-200 bg-white">
               <h3 class="font-medium">
-                Chatting with {{ props.conversations?.find(c => c.id === active_conversation_id)?.customer_name }}
+                Chatting with {{ props.conversations?.find((c: Conversation) => c.id === active_conversation_id)?.customer_name }}
               </h3>
             </div>
             <div class="flex-1 overflow-y-auto p-4 space-y-3 bg-zinc-50/30">

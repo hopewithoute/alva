@@ -61,6 +61,18 @@ defmodule Alva.Codegen.InputContract do
         end)
         |> Enum.reject(&is_nil/1)
 
+      pks_ts =
+        if action.type in [:update, :destroy] do
+          Ash.Resource.Info.primary_key(resource)
+          |> Enum.map(fn pk ->
+            attr = Ash.Resource.Info.attribute(resource, pk)
+            ts_type = TypeMapper.map_type(attr.type, Map.get(attr, :constraints, []))
+            format_field(attr.name, ts_type, false, indent)
+          end)
+        else
+          []
+        end
+
       filter_ts =
         if enable_filter? do
           resource_name = resource |> Module.split() |> List.last()
@@ -69,7 +81,7 @@ defmodule Alva.Codegen.InputContract do
           []
         end
 
-      all_fields = (args_ts ++ attrs_ts ++ filter_ts) |> Enum.join("\n")
+      all_fields = (args_ts ++ pks_ts ++ attrs_ts ++ filter_ts) |> Enum.uniq() |> Enum.join("\n")
 
       if all_fields == "" do
         "Record<string, never>"
