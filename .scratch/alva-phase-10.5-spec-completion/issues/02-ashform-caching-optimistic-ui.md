@@ -6,11 +6,13 @@ Optimistic UI must be implemented via an explicit `onOptimisticSubmit` developer
 
 ## Acceptance criteria
 
-- [ ] `ashForm` implements an instance-scoped in-memory cache for server-side validation checks.
-- [ ] Submitting the same field value multiple times (e.g. backspacing and retyping) uses the cache instead of querying the DB.
-- [ ] `ashForm` accepts an `onOptimisticSubmit: (formData) => rollbackFn` configuration callback.
-- [ ] When submitted, `ashForm` invokes `onOptimisticSubmit` before awaiting the server response.
-- [ ] If the server command fails, the rollback function is executed to revert the optimistic local state.
+- [x] `ashForm` implements an instance-scoped in-memory cache for server-side validation checks.
+- [x] The cache correctly prevents identical validation network requests (e.g. backspacing and retyping).
+- [x] The cache explicitly clears when the component unmounts (memory leak prevention).
+- [x] `ashForm` accepts an `onOptimisticSubmit: (formData) => rollbackFn` configuration callback.
+- [x] When submitted, `ashForm` invokes `onOptimisticSubmit` before awaiting the server response.
+- [x] If the server command fails (or throws), the `rollbackFn` is executed to revert the optimistic local state.
+- [x] Validation and submission tests are updated/written to cover these features.
 
 ## Blocked by
 

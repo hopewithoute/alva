@@ -19,6 +19,14 @@ defmodule AlvaDemoWeb.Router do
     live "/", HomeLive
   end
 
+  scope "/demo", AlvaDemoWeb do
+    pipe_through :browser
+    
+    live "/chat", DemoChatLive
+    live "/notifications", DemoNotificationsLive
+    live "/load-more", DemoLoadMoreLive
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", AlvaDemoWeb do
   #   pipe_through :api

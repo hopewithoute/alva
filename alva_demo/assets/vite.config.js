@@ -23,6 +23,7 @@ export default defineConfig(({ command }) => {
     resolve: {
       alias: {
         vue: path.resolve(__dirname, "node_modules/vue"),
+        live_vue: path.resolve(__dirname, "node_modules/live_vue"),
         "@": path.resolve(__dirname, "."),
       },
     },
