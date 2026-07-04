@@ -30,17 +30,4 @@ defmodule AlvaDemoWeb.SalesOrderDispatcherTest do
       assert result.data.lifecycle_status == :new
     end
   end
-
-  describe "sales.list_orders event" do
-    test "successfully returns orders" do
-      socket = %Socket{
-        private: %{alva: %{domains: [AlvaDemo.Sales, AlvaDemo.Catalog]}},
-        assigns: %{}
-      }
-
-      result = assert_dispatch_ok(socket, "sales.list_orders", %{})
-      assert result.ok == true
-      assert is_list(result.data)
-    end
-  end
 end

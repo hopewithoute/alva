@@ -19,9 +19,4 @@ export type AlvaEvents = {
     output: LiveResult<Types.Order>;
   };
 
-  "sales.list_orders": {
-    input: Record<string, never>;
-    output: LiveResult<Types.Order[]>;
-  };
-
 };

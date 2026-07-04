@@ -4,34 +4,35 @@ import { useAlvaApi, ashQuery } from "alva";
 import Button from "./components/ui/button/Button.vue";
 
 const api = useAlvaApi();
-const { data: products, loading: productsLoading, error: productsError } = ashQuery(api as any, "catalog.list_products");
-const { data: orders, fetch: fetchOrders } = ashQuery(api as any, "sales.list_orders");
+const { data: products, loading, error } = ashQuery(api as any, "catalog.list_products");
 
-const customerName = ref("");
-const orderingProductId = ref<string | null>(null);
+const session_orders = ref<any[]>([]);
+
+const customer_name = ref("");
+const ordering_product_id = ref<string | null>(null);
 
 const formatPrice = (cents: number) => {
   return `$${(cents / 100).toFixed(2)}`;
 };
 
 const buyProduct = async (productId: string) => {
-  if (!customerName.value) {
+  if (!customer_name.value) {
     alert("Please enter your name first!");
     return;
   }
   
-  orderingProductId.value = productId;
+  ordering_product_id.value = productId;
   const result = await api.call("sales.create_order" as any, {
-    customer_name: customerName.value,
+    customer_name: customer_name.value,
     product_id: productId,
     quantity: 1
   });
   
-  orderingProductId.value = null;
+  ordering_product_id.value = null;
   
   if (result.ok) {
     alert("Order placed successfully!");
-    fetchOrders();
+    session_orders.value.push(result.data);
   } else {
     alert(`Failed to place order: ${result.error.message}`);
   }
@@ -46,7 +47,7 @@ const buyProduct = async (productId: string) => {
         <label for="customerName" class="text-sm font-medium text-zinc-700">Your Name:</label>
         <input 
           id="customerName" 
-          v-model="customerName" 
+          v-model="customer_name" 
           type="text" 
           placeholder="e.g. Alice" 
           class="rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
@@ -54,11 +55,11 @@ const buyProduct = async (productId: string) => {
       </div>
     </div>
     
-    <div v-if="productsLoading" class="mt-4">
+    <div v-if="loading" class="mt-4">
       Loading catalog...
     </div>
-    <div v-else-if="productsError" class="mt-4 text-red-500">
-      Error loading catalog: {{ productsError.message }}
+    <div v-else-if="error" class="mt-4 text-red-500">
+      Error loading catalog: {{ error.message }}
     </div>
     <div v-else class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
       <div v-for="product in products" :key="product.id" class="flex flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
@@ -74,9 +75,9 @@ const buyProduct = async (productId: string) => {
             <Button 
               size="sm" 
               @click="buyProduct(product.id)" 
-              :disabled="orderingProductId === product.id"
+              :disabled="ordering_product_id === product.id"
             >
-              {{ orderingProductId === product.id ? 'Ordering...' : 'Buy' }}
+              {{ ordering_product_id === product.id ? 'Ordering...' : 'Buy' }}
             </Button>
           </div>
         </div>
@@ -86,8 +87,8 @@ const buyProduct = async (productId: string) => {
     <!-- Orders Section -->
     <div class="mt-10 border-t border-zinc-200 pt-6">
       <h2 class="text-xl font-semibold text-zinc-900">Recent Orders</h2>
-      <div v-if="orders && orders.length > 0" class="mt-4 space-y-4">
-        <div v-for="order in orders" :key="order.id" class="rounded-lg border border-zinc-200 p-4">
+      <div v-if="session_orders && session_orders.length > 0" class="mt-4 space-y-4">
+        <div v-for="order in session_orders" :key="order.id" class="rounded-lg border border-zinc-200 p-4">
           <div class="flex justify-between items-center">
             <div>
               <p class="font-medium text-zinc-900">Order by {{ order.customer_name }}</p>

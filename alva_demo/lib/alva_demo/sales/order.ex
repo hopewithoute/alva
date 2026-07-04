@@ -6,16 +6,10 @@ defmodule AlvaDemo.Sales.Order do
 
   live_vue do
     event "sales.create_order", action: :create
-    event "sales.list_orders", action: :read
   end
 
   actions do
     defaults [:destroy]
-
-    read :read do
-      primary? true
-      public? true
-    end
 
     create :create do
       primary? true
@@ -36,6 +30,7 @@ defmodule AlvaDemo.Sales.Order do
       allow_nil? false
       default 1
       public? true
+      constraints [min: 1]
     end
 
     attribute :lifecycle_status, :atom do
