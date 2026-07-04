@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: completed
 
 # Support Chat Between Shopper And Merchant
 
@@ -8,13 +8,13 @@ Add lightweight Support Chat between shoppers and merchant staff. A shopper's Cu
 
 ## Acceptance criteria
 
-- [ ] Conversation and SupportMessage resources support one lightweight Conversation per Customer Name.
-- [ ] The Customer Storefront lets a shopper send a Support Chat message in their Conversation.
-- [ ] The Merchant Console shows Conversations by Customer Name and lets merchant staff select one.
-- [ ] Merchant staff can send a Support Message back to the shopper.
-- [ ] New Support Messages appear realtime on the opposite surface through Alva Streams or Signals.
-- [ ] Tests cover Customer Name scoping, customer message creation, merchant response, selected Conversation behavior, and realtime message visibility.
-- [ ] The slice avoids helpdesk behavior such as ticket status, priority, assignment, SLA, tags, macros, or escalation.
+- [x] Conversation and SupportMessage resources support one lightweight Conversation per Customer Name.
+- [x] The Customer Storefront lets a shopper send a Support Chat message in their Conversation.
+- [x] The Merchant Console shows Conversations by Customer Name and lets merchant staff select one.
+- [x] Merchant staff can send a Support Message back to the shopper.
+- [x] New Support Messages appear realtime on the opposite surface through Alva Streams or Signals.
+- [x] Tests cover Customer Name scoping, customer message creation, merchant response, selected Conversation behavior, and realtime message visibility.
+- [x] The slice avoids helpdesk behavior such as ticket status, priority, assignment, SLA, tags, macros, or escalation.
 
 ## Blocked by
 
