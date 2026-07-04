@@ -46,7 +46,7 @@ export interface Order {
   id: string;
   customer_name: string;
   quantity: number;
-  lifecycle_status: "new" | "processing" | "fulfilled" | "cancelled";
+  lifecycle_status: "new" | "processing" | "fulfilled";
   product_id: string;
   product?: Product;
 }

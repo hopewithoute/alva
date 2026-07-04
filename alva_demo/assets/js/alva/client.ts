@@ -2,4 +2,28 @@
 import type { AlvaEvents } from "./events";
 import { useAlvaApi } from "alva";
 
-export const api = useAlvaApi<AlvaEvents>();
+export function createAlvaApi() {
+  const base_api = useAlvaApi<AlvaEvents>();
+
+  function create_deep_proxy(path: string[] = []): any {
+    return new Proxy(() => {}, {
+      get(target, prop: string) {
+        if (path.length === 0 && prop === "call") {
+          return base_api.call;
+        }
+
+        if (path.length === 0 && prop === "on") {
+          return base_api.on;
+        }
+
+        return create_deep_proxy([...path, prop]);
+      },
+      apply(target, thisArg, args) {
+        const event = path.join(".");
+        return base_api.call(event as keyof AlvaEvents, args[0], args[1]);
+      }
+    });
+  }
+
+  return create_deep_proxy();
+}
