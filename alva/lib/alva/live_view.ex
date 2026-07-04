@@ -142,6 +142,11 @@ defmodule Alva.LiveView do
         |> active_stream_projections()
         |> Enum.filter(&stream_projection_matches?(&1, notification_resource, events))
         |> Enum.map(fn {name, _projection} -> name end),
+      collections:
+        socket
+        |> active_collection_projections()
+        |> Enum.filter(&stream_projection_matches?(&1, notification_resource, events))
+        |> Enum.map(fn {name, _projection} -> name end),
       signals:
         socket
         |> active_signal_projections()
@@ -219,7 +224,7 @@ defmodule Alva.LiveView do
     projections = active_projections(sock, notification, events)
 
     case projections do
-      %{streams: [], signals: []} ->
+      %{streams: [], collections: [], signals: []} ->
         {:cont, sock}
 
       %{signals: signals} ->
@@ -250,6 +255,14 @@ defmodule Alva.LiveView do
     state.domains
     |> Enum.flat_map(&Alva.Domain.Info.alva_stream_map/1)
     |> Enum.filter(fn {name, _projection} -> MapSet.member?(state.streams, name) end)
+  end
+
+  defp active_collection_projections(socket) do
+    state = alva_state(socket)
+
+    state.domains
+    |> Enum.flat_map(&Alva.Domain.Info.alva_collection_map/1)
+    |> Enum.filter(fn {name, _projection} -> MapSet.member?(state.collections, name) end)
   end
 
   defp active_signal_projections(socket) do
@@ -468,6 +481,22 @@ defmodule Alva.LiveView do
   end
 
   defp apply_stream_operations(socket, notification_resource, events, data) do
+    socket =
+      socket
+      |> active_collection_projections()
+      |> Enum.flat_map(fn {name, {resource, collection}} ->
+        if resource == notification_resource do
+          collection.operations
+          |> Enum.filter(&MapSet.member?(events, &1.on))
+          |> Enum.map(&{name, &1})
+        else
+          []
+        end
+      end)
+      |> Enum.reduce(socket, fn {name, operation}, acc_socket ->
+        apply_collection_operation(acc_socket, name, operation, data)
+      end)
+
     socket
     |> active_stream_projections()
     |> Enum.flat_map(fn {name, {resource, stream}} ->
@@ -502,6 +531,37 @@ defmodule Alva.LiveView do
           Enum.reject(current, &(&1.id == stripped_data.id))
         end)
     end)
+  end
+
+  defp apply_collection_operation(socket, name, %{op: :delete}, data) do
+    Phoenix.LiveView.stream_delete(socket, name, Alva.Dispatcher.strip_metadata(data))
+  end
+
+  defp apply_collection_operation(socket, name, %{op: :update} = operation, data) do
+    Phoenix.LiveView.stream_insert(
+      socket,
+      name,
+      Alva.Dispatcher.strip_metadata(data),
+      collection_operation_opts(operation, update_only: true)
+    )
+  end
+
+  defp apply_collection_operation(socket, name, %{op: :insert} = operation, data) do
+    Phoenix.LiveView.stream_insert(
+      socket,
+      name,
+      Alva.Dispatcher.strip_metadata(data),
+      collection_operation_opts(operation)
+    )
+  end
+
+  defp collection_operation_opts(operation, defaults \\ []) do
+    defaults
+    |> Keyword.merge(
+      operation
+      |> Map.take([:at, :limit, :update_only])
+      |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+    )
   end
 
   defp upsert_item(current, %{id: id} = item) do

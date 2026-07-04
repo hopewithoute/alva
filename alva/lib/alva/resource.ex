@@ -19,7 +19,7 @@ defmodule Alva.Resource.CollectionSource do
 end
 
 defmodule Alva.Resource.CollectionOperation do
-  defstruct [:on, :op, :__spark_metadata__]
+  defstruct [:on, :op, :at, :limit, :update_only, :__spark_metadata__]
 end
 
 defmodule Alva.Resource.Stream do
@@ -76,6 +76,21 @@ defmodule Alva.Resource do
       type: :string,
       required: true,
       doc: "The Ash PubSub published event name that triggers this collection operation."
+    ],
+    at: [
+      type: :integer,
+      required: false,
+      doc: "Optional position passed to Phoenix.LiveView.stream_insert/4."
+    ],
+    limit: [
+      type: :integer,
+      required: false,
+      doc: "Optional limit passed to Phoenix.LiveView.stream_insert/4."
+    ],
+    update_only: [
+      type: :boolean,
+      required: false,
+      doc: "Optional update_only flag passed to Phoenix.LiveView.stream_insert/4."
     ]
   ]
 

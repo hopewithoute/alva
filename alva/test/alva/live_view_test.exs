@@ -69,7 +69,7 @@ defmodule Alva.LiveViewTest do
 
       collection :sales_orders do
         source(event: "students.list", mode: :reset)
-        insert(on: "student_created")
+        insert(on: "student_created", at: 0, limit: -10)
         update(on: "student_updated")
         delete(on: "student_deleted")
       end
@@ -775,6 +775,52 @@ defmodule Alva.LiveViewTest do
              final_socket.assigns.students
   end
 
+  test "handle_info inserts matching active collection notifications through stream_insert options" do
+    {:halt, final_socket} =
+      collection_callback().(student_created_notification(), active_collection_socket())
+
+    assert [{_dom_id, 0, %{id: "123", name: "test"}, -10, false}] =
+             stream_inserts(final_socket, :sales_orders)
+
+    refute Map.has_key?(final_socket.assigns, :sales_orders)
+  end
+
+  test "handle_info updates matching active collection notifications with update_only by default" do
+    {:halt, final_socket} =
+      collection_callback().(student_updated_notification(), active_collection_socket())
+
+    assert [{_dom_id, -1, %{id: "123", name: "renamed"}, nil, true}] =
+             stream_inserts(final_socket, :sales_orders)
+  end
+
+  test "handle_info deletes matching active collection notifications through stream_delete" do
+    {:halt, final_socket} =
+      collection_callback().(student_deleted_notification(), active_collection_socket())
+
+    assert ["sales_orders-123"] = stream_deletes(final_socket, :sales_orders)
+  end
+
+  test "inactive collections ignore matching PubSub occurrences" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        [Alva.LiveViewTest.TestDomain],
+        %{},
+        %{},
+        %Phoenix.LiveView.Socket{
+          assigns: %{__changed__: %{}},
+          private: %{
+            lifecycle: %Phoenix.LiveView.Lifecycle{},
+            live_temp: %{push_events: []}
+          }
+        }
+      )
+
+    [%{function: callback}] = socket.private.lifecycle.handle_info
+
+    assert {:cont, ^socket} = callback.(student_created_notification(), socket)
+    refute Map.has_key?(socket.assigns, :streams)
+  end
+
   defp base_socket(opts \\ []) do
     %Phoenix.LiveView.Socket{
       endpoint: Keyword.get(opts, :endpoint),
@@ -812,8 +858,32 @@ defmodule Alva.LiveViewTest do
     |> Alva.LiveView.activate_stream(:students)
   end
 
+  defp active_collection_socket do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        [Alva.LiveViewTest.TestDomain],
+        %{},
+        %{},
+        %Phoenix.LiveView.Socket{
+          assigns: %{__changed__: %{}},
+          private: %{
+            lifecycle: %Phoenix.LiveView.Lifecycle{},
+            live_temp: %{push_events: []}
+          }
+        }
+      )
+
+    Alva.LiveView.collection(socket, :sales_orders)
+  end
+
   defp stream_callback do
     socket = active_stream_socket()
+    [%{function: callback}] = socket.private.lifecycle.handle_info
+    callback
+  end
+
+  defp collection_callback do
+    socket = active_collection_socket()
     [%{function: callback}] = socket.private.lifecycle.handle_info
     callback
   end
@@ -823,6 +893,18 @@ defmodule Alva.LiveViewTest do
     |> Map.fetch!(name)
     |> Map.fetch!(:inserts)
     |> Enum.map(fn {_dom_id, _at, item, _limit, _update_only} -> item end)
+  end
+
+  defp stream_inserts(socket, name) do
+    socket.assigns.streams
+    |> Map.fetch!(name)
+    |> Map.fetch!(:inserts)
+  end
+
+  defp stream_deletes(socket, name) do
+    socket.assigns.streams
+    |> Map.fetch!(name)
+    |> Map.fetch!(:deletes)
   end
 
   defp push_job_signal(data) do

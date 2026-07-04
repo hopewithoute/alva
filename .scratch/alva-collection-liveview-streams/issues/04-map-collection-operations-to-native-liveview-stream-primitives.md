@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Map Collection Operations to Native LiveView Stream Primitives
 
@@ -14,13 +14,13 @@ The core mapping is `insert` to `stream_insert`, `update` to `stream_insert(upda
 
 ## Acceptance criteria
 
-- [ ] `insert on: "...", at: 0` calls `stream_insert` with the declared `at` option.
-- [ ] `update on: "..."` calls `stream_insert` with `update_only: true` by default.
-- [ ] Native LiveView options such as `at`, `limit`, and `update_only` can be passed through where appropriate.
-- [ ] `delete on: "..."` calls `stream_delete` for the projected item.
-- [ ] Collection operations run only for active Collections on the current LiveView.
-- [ ] Inactive Collections ignore matching PubSub occurrences.
-- [ ] Tests prove LiveVue receives stream diffs through `@streams` rather than props-diff changes.
+- [x] `insert on: "...", at: 0` calls `stream_insert` with the declared `at` option.
+- [x] `update on: "..."` calls `stream_insert` with `update_only: true` by default.
+- [x] Native LiveView options such as `at`, `limit`, and `update_only` can be passed through where appropriate.
+- [x] `delete on: "..."` calls `stream_delete` for the projected item.
+- [x] Collection operations run only for active Collections on the current LiveView.
+- [x] Inactive Collections ignore matching PubSub occurrences.
+- [x] Tests prove LiveVue receives stream diffs through `@streams` rather than props-diff changes.
 
 ## Blocked by
 
