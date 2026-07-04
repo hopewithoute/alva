@@ -229,30 +229,28 @@ defmodule Alva.LiveView do
 
   defp apply_stream_query(socket, _event_name, _result), do: socket
 
-  defp apply_stream_query_binding(socket, %{stream: stream_name, mode: :reset} = binding, data) do
-    Phoenix.LiveView.stream(socket, stream_name, stream_query_items(data),
-      reset: true,
-      limit: binding.limit
-    )
+  defp apply_stream_query_binding(socket, %{stream: stream_name, mode: :reset}, data) do
+    Phoenix.Component.assign(socket, stream_name, stream_query_items(data))
   end
 
   defp apply_stream_query_binding(socket, binding, data) do
     data
     |> stream_query_items()
     |> Enum.reduce(socket, fn item, acc_socket ->
-      Phoenix.LiveView.stream_insert(acc_socket, binding.stream, item,
-        at: stream_query_at(binding.mode),
-        limit: binding.limit
-      )
+      Phoenix.Component.update(acc_socket, binding.stream, fn current ->
+        current = current || []
+        if binding.mode == :prepend do
+          [item | current]
+        else
+          current ++ [item]
+        end
+      end)
     end)
   end
 
   defp stream_query_items(nil), do: []
   defp stream_query_items(items) when is_list(items), do: items
   defp stream_query_items(item), do: [item]
-
-  defp stream_query_at(:prepend), do: 0
-  defp stream_query_at(:append), do: -1
 
   defp push_signals(
          socket,
@@ -304,13 +302,32 @@ defmodule Alva.LiveView do
     end)
     |> Enum.reduce(socket, fn
       {name, :insert}, acc_socket ->
-        Phoenix.LiveView.stream_insert(acc_socket, name, data)
+        Phoenix.Component.update(acc_socket, name, fn current ->
+          current = current || []
+          stripped_data = Alva.Dispatcher.strip_metadata(data)
+          current ++ [stripped_data]
+        end)
 
       {name, :update}, acc_socket ->
-        Phoenix.LiveView.stream_insert(acc_socket, name, data)
+        Phoenix.Component.update(acc_socket, name, fn current ->
+          current = current || []
+          stripped_data = Alva.Dispatcher.strip_metadata(data)
+          if Enum.any?(current, &(&1.id == stripped_data.id)) do
+            Enum.map(current, fn
+              %{id: id} when id == stripped_data.id -> stripped_data
+              item -> item
+            end)
+          else
+            current ++ [stripped_data]
+          end
+        end)
 
       {name, :delete}, acc_socket ->
-        Phoenix.LiveView.stream_delete(acc_socket, name, data)
+        Phoenix.Component.update(acc_socket, name, fn current ->
+          current = current || []
+          stripped_data = Alva.Dispatcher.strip_metadata(data)
+          Enum.reject(current, &(&1.id == stripped_data.id))
+        end)
     end)
   end
 

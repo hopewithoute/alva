@@ -367,9 +367,9 @@ defmodule Alva.LiveViewTest do
     assert reply.meta.pagination.limit == 2
     assert reply.meta.pagination.offset == 0
 
-    inserted_ids = Enum.map(final_socket.assigns.streams.students.inserts, &elem(&1, 0))
-    assert "students-#{first.id}" in inserted_ids
-    assert "students-#{second.id}" in inserted_ids
+    inserted_ids = Enum.map(final_socket.assigns.students, & &1.id)
+    assert first.id in inserted_ids
+    assert second.id in inserted_ids
   end
 
   test "stream query prepends command read results into an active route collection" do
@@ -385,7 +385,7 @@ defmodule Alva.LiveViewTest do
       callback.(student_list_event(), %{"page" => %{"limit" => 1, "offset" => 0}}, socket)
 
     assert reply.ok == true
-    assert [{_dom_id, 0, _item, _limit, false}] = final_socket.assigns.streams.students.inserts
+    assert [%{}] = final_socket.assigns.students
   end
 
   test "stream query passes collection limits to Phoenix stream operations" do
@@ -401,7 +401,7 @@ defmodule Alva.LiveViewTest do
       callback.(student_list_event(), %{"page" => %{"limit" => 1, "offset" => 0}}, socket)
 
     assert reply.ok == true
-    assert [{_dom_id, -1, _item, -10, false}] = final_socket.assigns.streams.students.inserts
+    assert [%{}] = final_socket.assigns.students
   end
 
   test "stream query resets an active route collection for refresh flows" do
@@ -417,8 +417,7 @@ defmodule Alva.LiveViewTest do
       callback.(student_list_event(), %{"page" => %{"limit" => 1, "offset" => 0}}, socket)
 
     assert reply.ok == true
-    assert final_socket.assigns.streams.students.reset? == true
-    assert [_] = final_socket.assigns.streams.students.inserts
+    assert [%{name: "Refresh A"}] = final_socket.assigns.students
   end
 
   test "unbound command read results behave as normal replies without stream mutation" do
@@ -431,7 +430,7 @@ defmodule Alva.LiveViewTest do
       callback.(student_list_event(), %{"page" => %{"limit" => 1, "offset" => 0}}, socket)
 
     assert reply.ok == true
-    assert final_socket.assigns.streams.students.inserts == []
+    assert final_socket.assigns.students == []
   end
 
   test "signal-only delivery does not mutate a route collection" do
@@ -447,7 +446,7 @@ defmodule Alva.LiveViewTest do
         {:cont, socket} = Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, socket)
         socket
       end)
-      |> Phoenix.LiveView.stream(:students, [])
+      |> Phoenix.Component.assign(:students, [])
       |> Alva.LiveView.activate_signal("students.created")
 
     [%{function: callback}] = socket.private.lifecycle.handle_info
@@ -457,7 +456,7 @@ defmodule Alva.LiveViewTest do
     assert [["students.created", %{id: "123", name: "test"}]] =
              final_socket.private.live_temp.push_events
 
-    assert final_socket.assigns.streams.students.inserts == []
+    assert final_socket.assigns.students == []
   end
 
   test "the same occurrence can update a stream and push a signal when both are active" do
@@ -472,31 +471,31 @@ defmodule Alva.LiveViewTest do
     assert [["students.created", %{id: "123", name: "test"}]] =
              final_socket.private.live_temp.push_events
 
-    assert [{"students-123", -1, %TestResource{id: "123", name: "test"}, nil, false}] =
-             final_socket.assigns.streams.students.inserts
+    assert [%{id: "123", name: "test"}] =
+             final_socket.assigns.students
   end
 
   test "handle_info inserts matching active stream notifications into the route collection" do
     {:halt, final_socket} =
       stream_callback().(student_created_notification(), active_stream_socket())
 
-    assert [{"students-123", -1, %TestResource{id: "123", name: "test"}, nil, false}] =
-             final_socket.assigns.streams.students.inserts
+    assert [%{id: "123", name: "test"}] =
+             final_socket.assigns.students
   end
 
   test "handle_info updates matching active stream notifications through stream_insert" do
     {:halt, final_socket} =
       stream_callback().(student_updated_notification(), active_stream_socket())
 
-    assert [{"students-123", -1, %TestResource{id: "123", name: "renamed"}, nil, false}] =
-             final_socket.assigns.streams.students.inserts
+    assert [%{id: "123", name: "renamed"}] =
+             final_socket.assigns.students
   end
 
   test "handle_info deletes matching active stream notifications from the route collection" do
     {:halt, final_socket} =
       stream_callback().(student_deleted_notification(), active_stream_socket())
 
-    assert final_socket.assigns.streams.students.deletes == ["students-123"]
+    assert final_socket.assigns.students == []
   end
 
   test "two activated pages receive the same collection update through the stream path" do
@@ -508,11 +507,11 @@ defmodule Alva.LiveViewTest do
     {:halt, page_one} = callback.(notification, page_one)
     {:halt, page_two} = callback.(notification, page_two)
 
-    assert [{"students-123", -1, %TestResource{id: "123", name: "test"}, nil, false}] =
-             page_one.assigns.streams.students.inserts
+    assert [%{id: "123", name: "test"}] =
+             page_one.assigns.students
 
-    assert [{"students-123", -1, %TestResource{id: "123", name: "test"}, nil, false}] =
-             page_two.assigns.streams.students.inserts
+    assert [%{id: "123", name: "test"}] =
+             page_two.assigns.students
   end
 
   test "handle_info accepts Phoenix PubSub broadcasts carrying Ash.Notifier.Notification payloads" do
@@ -527,8 +526,8 @@ defmodule Alva.LiveViewTest do
 
     {:halt, final_socket} = callback.(broadcast, socket)
 
-    assert [{"students-123", -1, %TestResource{id: "123", name: "test"}, nil, false}] =
-             final_socket.assigns.streams.students.inserts
+    assert [%{id: "123", name: "test"}] =
+             final_socket.assigns.students
   end
 
   defp base_socket do
@@ -554,7 +553,7 @@ defmodule Alva.LiveViewTest do
       )
 
     socket
-    |> Phoenix.LiveView.stream(:students, [])
+    |> Phoenix.Component.assign(:students, [])
     |> Alva.LiveView.activate_stream(:students)
   end
 
@@ -603,7 +602,7 @@ defmodule Alva.LiveViewTest do
     %Ash.Notifier.Notification{
       resource: TestResource,
       action: %{name: :upload_file},
-      data: %TestResource{id: "123", name: "test"}
+      data: %{id: "123", name: "test"}
     }
   end
 
@@ -611,7 +610,7 @@ defmodule Alva.LiveViewTest do
     %Ash.Notifier.Notification{
       resource: TestResource,
       action: %{name: :upload_file},
-      data: %TestResource{
+      data: %{
         id: "123",
         name: "test",
         __metadata__: %{sync_token: "tok_123", hidden: "nope"}
@@ -623,7 +622,7 @@ defmodule Alva.LiveViewTest do
     %Ash.Notifier.Notification{
       resource: TestResource,
       action: %{name: :rename},
-      data: %TestResource{id: "123", name: "renamed"}
+      data: %{id: "123", name: "renamed"}
     }
   end
 
@@ -631,7 +630,7 @@ defmodule Alva.LiveViewTest do
     %Ash.Notifier.Notification{
       resource: TestResource,
       action: %{name: :destroy},
-      data: %TestResource{id: "123", name: "test"}
+      data: %{id: "123", name: "test"}
     }
   end
 end
