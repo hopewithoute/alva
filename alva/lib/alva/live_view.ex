@@ -32,11 +32,14 @@ defmodule Alva.LiveView do
     end)
   end
 
-  def collection(socket, name) when is_atom(name) do
+  def collection(socket, name, opts \\ [])
+
+  def collection(socket, name, opts) when is_atom(name) and is_list(opts) do
     {_resource, collection} = find_projection!(socket, :collection, name)
+    params = collection_params!(socket, name, Keyword.get(opts, :params, %{}))
 
     result =
-      Alva.Dispatcher.dispatch(collection.source.event, %{},
+      Alva.Dispatcher.dispatch(collection.source.event, params,
         domains: alva_state(socket).domains,
         socket: socket
       )
@@ -47,6 +50,7 @@ defmodule Alva.LiveView do
         |> Phoenix.LiveView.stream(name, stream_query_items(data),
           reset: collection.source.mode == :reset
         )
+        |> subscribe_collection_topics(name, Keyword.get(opts, :subscriptions, []))
         |> update_alva(fn state ->
           update_in(state.collections, &MapSet.put(&1, name))
         end)
@@ -203,8 +207,9 @@ defmodule Alva.LiveView do
       end)
 
     socket =
-      Enum.reduce(collections, socket, fn collection_name, acc_socket ->
-        collection(acc_socket, collection_name)
+      Enum.reduce(collections, socket, fn collection_spec, acc_socket ->
+        {collection_name, opts} = normalize_collection_spec!(collection_spec)
+        collection(acc_socket, collection_name, opts)
       end)
 
     {:cont, socket}
@@ -318,6 +323,104 @@ defmodule Alva.LiveView do
   defp stream_query_items(nil), do: []
   defp stream_query_items(items) when is_list(items), do: items
   defp stream_query_items(item), do: [item]
+
+  defp collection_params!(_socket, _name, params) when is_map(params), do: params
+
+  defp collection_params!(socket, name, callback) when is_atom(callback) do
+    callback
+    |> resolve_live_view_callback!(socket, name, :params)
+    |> unwrap_callback_result!(name, :params, callback)
+    |> case do
+      params when is_map(params) ->
+        params
+
+      params ->
+        raise ArgumentError,
+              "Alva collection #{inspect(name)} params callback #{inspect(callback)} must return a map, got: #{inspect(params)}"
+    end
+  end
+
+  defp collection_params!(_socket, name, params) do
+    raise ArgumentError,
+          "Alva collection #{inspect(name)} params must be a map or local callback name, got: #{inspect(params)}"
+  end
+
+  defp subscribe_collection_topics(socket, name, subscriptions) do
+    topics =
+      subscriptions
+      |> List.wrap()
+      |> Enum.flat_map(&collection_subscription_topics!(socket, name, &1))
+
+    if Phoenix.LiveView.connected?(socket) do
+      Enum.reduce(topics, socket, fn topic, acc_socket ->
+        subscribe(acc_socket, topic)
+      end)
+    else
+      socket
+    end
+  end
+
+  defp collection_subscription_topics!(_socket, _name, topic) when is_binary(topic), do: [topic]
+
+  defp collection_subscription_topics!(socket, name, callback) when is_atom(callback) do
+    callback
+    |> resolve_live_view_callback!(socket, name, :subscription)
+    |> unwrap_callback_result!(name, :subscription, callback)
+    |> normalize_subscription_topics!(name, callback)
+  end
+
+  defp collection_subscription_topics!(_socket, name, topic) do
+    raise ArgumentError,
+          "Alva collection #{inspect(name)} subscriptions must be binary topics or local callback names, got: #{inspect(topic)}"
+  end
+
+  defp normalize_subscription_topics!(topic, _name, _callback) when is_binary(topic), do: [topic]
+
+  defp normalize_subscription_topics!(topics, name, callback) when is_list(topics) do
+    if Enum.all?(topics, &is_binary/1) do
+      topics
+    else
+      raise_invalid_subscription_callback!(name, callback, topics)
+    end
+  end
+
+  defp normalize_subscription_topics!(topics, name, callback) do
+    raise_invalid_subscription_callback!(name, callback, topics)
+  end
+
+  defp raise_invalid_subscription_callback!(name, callback, topics) do
+    raise ArgumentError,
+          "Alva collection #{inspect(name)} subscription callback #{inspect(callback)} must return a binary topic or list of binary topics, got: #{inspect(topics)}"
+  end
+
+  defp resolve_live_view_callback!(callback, %{view: view} = socket, name, kind)
+       when is_atom(view) and not is_nil(view) do
+    cond do
+      function_exported?(view, callback, 1) ->
+        apply(view, callback, [socket])
+
+      function_exported?(view, callback, 0) ->
+        apply(view, callback, [])
+
+      true ->
+        raise ArgumentError,
+              "Alva collection #{inspect(name)} #{kind} callback #{inspect(callback)} is not defined on #{inspect(view)}"
+    end
+  end
+
+  defp resolve_live_view_callback!(callback, _socket, name, kind) do
+    raise ArgumentError,
+          "Alva collection #{inspect(name)} #{kind} callback #{inspect(callback)} requires socket.view to be set"
+  end
+
+  defp unwrap_callback_result!({:ok, value}, _name, _kind, _callback), do: value
+
+  defp unwrap_callback_result!({:error, reason}, name, kind, callback) do
+    raise ArgumentError,
+          "Alva collection #{inspect(name)} #{kind} callback #{inspect(callback)} failed: #{inspect(reason)}"
+  end
+
+  defp unwrap_callback_result!(value, _name, _kind, _callback), do: value
 
   defp push_signals(
          socket,
@@ -459,6 +562,17 @@ defmodule Alva.LiveView do
 
   defp normalize_mount_config(domains) when is_list(domains) do
     {domains, []}
+  end
+
+  defp normalize_collection_spec!(name) when is_atom(name), do: {name, []}
+
+  defp normalize_collection_spec!({name, opts}) when is_atom(name) and is_list(opts) do
+    {name, opts}
+  end
+
+  defp normalize_collection_spec!(spec) do
+    raise ArgumentError,
+          "Alva collection activation must be an atom name or {name, opts}, got: #{inspect(spec)}"
   end
 
   defp notification_events(%Ash.Notifier.Notification{resource: resource, action: action})

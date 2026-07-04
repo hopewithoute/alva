@@ -177,6 +177,13 @@ defmodule Alva.LiveViewTest do
     use Phoenix.LiveView
     use Alva.LiveView, domains: [Alva.LiveViewTest.TestDomain], collections: [:sales_orders]
 
+    def sales_order_params(_socket), do: {:ok, %{"page" => %{"limit" => 1}}}
+    def raw_sales_order_params, do: %{"page" => %{"limit" => 1}}
+    def failing_params, do: {:error, :missing_context}
+    def order_topics(_socket), do: {:ok, ["orders:new", "orders:tenant"]}
+    def raw_order_topic, do: "orders:raw"
+    def invalid_order_topics, do: [123]
+
     def render(assigns) do
       ~H"""
       <div id="sales-orders">
@@ -206,6 +213,7 @@ defmodule Alva.LiveViewTest do
       render_errors: [formats: [html: Phoenix.ErrorView], layout: false]
     )
 
+    start_supervised!({Phoenix.PubSub, name: Alva.PubSub})
     start_supervised!(Alva.LiveViewTest.Endpoint)
     :ok
   end
@@ -268,6 +276,18 @@ defmodule Alva.LiveViewTest do
     refute Map.has_key?(socket.assigns, :sales_orders)
   end
 
+  test "manual collection activation accepts static source params" do
+    create_student!("Manual Params A")
+    create_student!("Manual Params B")
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, base_socket())
+
+    socket = Alva.LiveView.collection(socket, :sales_orders, params: %{"page" => %{"limit" => 1}})
+
+    assert [_one_record] = stream_items(socket, :sales_orders)
+  end
+
   test "declarative collections activate only allowlisted collection names" do
     create_student!("Declarative Collection A")
 
@@ -282,6 +302,146 @@ defmodule Alva.LiveViewTest do
     assert Alva.LiveView.projection_active?(socket, :collection, :sales_orders)
     assert [%{name: "Declarative Collection A"}] = stream_items(socket, :sales_orders)
     refute Alva.LiveView.projection_active?(socket, :stream, :students)
+  end
+
+  test "declarative collection activation accepts static source params" do
+    create_student!("Static Params A")
+    create_student!("Static Params B")
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        {[Alva.LiveViewTest.TestDomain], [sales_orders: [params: %{"page" => %{"limit" => 1}}]]},
+        %{},
+        %{},
+        base_socket()
+      )
+
+    assert [_one_record] = stream_items(socket, :sales_orders)
+  end
+
+  test "declarative collection activation resolves params callbacks on the LiveView module" do
+    create_student!("Callback Params A")
+    create_student!("Callback Params B")
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        {[Alva.LiveViewTest.TestDomain], [sales_orders: [params: :sales_order_params]]},
+        %{},
+        %{},
+        base_socket(view: CollectionLive)
+      )
+
+    assert [_one_record] = stream_items(socket, :sales_orders)
+  end
+
+  test "collection params callbacks may return raw params" do
+    create_student!("Raw Callback Params A")
+    create_student!("Raw Callback Params B")
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        {[Alva.LiveViewTest.TestDomain], [sales_orders: [params: :raw_sales_order_params]]},
+        %{},
+        %{},
+        base_socket(view: CollectionLive)
+      )
+
+    assert [_one_record] = stream_items(socket, :sales_orders)
+  end
+
+  test "collection params callback failure raises a clear activation error" do
+    assert_raise ArgumentError,
+                 ~r/Alva collection :sales_orders params callback :failing_params failed: :missing_context/,
+                 fn ->
+                   Alva.LiveView.on_mount(
+                     {[Alva.LiveViewTest.TestDomain], [sales_orders: [params: :failing_params]]},
+                     %{},
+                     %{},
+                     base_socket(view: CollectionLive)
+                   )
+                 end
+  end
+
+  test "declarative collection activation subscribes connected LiveViews to static topics" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        {[Alva.LiveViewTest.TestDomain], [sales_orders: [subscriptions: ["orders:new"]]]},
+        %{},
+        %{},
+        connected_socket()
+      )
+
+    assert "orders:new" in Alva.LiveView.route_subscriptions(socket)
+
+    Phoenix.PubSub.broadcast(Alva.PubSub, "orders:new", {:collection_subscription_seen, self()})
+    assert_receive {:collection_subscription_seen, _}
+  end
+
+  test "declarative collection activation resolves subscription callbacks" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        {[Alva.LiveViewTest.TestDomain], [sales_orders: [subscriptions: [:order_topics]]]},
+        %{},
+        %{},
+        connected_socket(view: CollectionLive)
+      )
+
+    assert "orders:new" in Alva.LiveView.route_subscriptions(socket)
+    assert "orders:tenant" in Alva.LiveView.route_subscriptions(socket)
+  end
+
+  test "subscription callbacks may return a raw binary topic" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        {[Alva.LiveViewTest.TestDomain], [sales_orders: [subscriptions: [:raw_order_topic]]]},
+        %{},
+        %{},
+        connected_socket(view: CollectionLive)
+      )
+
+    assert "orders:raw" in Alva.LiveView.route_subscriptions(socket)
+  end
+
+  test "subscription callback failure raises a clear activation error" do
+    assert_raise ArgumentError,
+                 ~r/Alva collection :sales_orders subscription callback :failing_params failed: :missing_context/,
+                 fn ->
+                   Alva.LiveView.on_mount(
+                     {[Alva.LiveViewTest.TestDomain],
+                      [sales_orders: [subscriptions: [:failing_params]]]},
+                     %{},
+                     %{},
+                     connected_socket(view: CollectionLive)
+                   )
+                 end
+  end
+
+  test "subscription callbacks must resolve to binary topics" do
+    assert_raise ArgumentError,
+                 ~r/Alva collection :sales_orders subscription callback :invalid_order_topics must return a binary topic or list of binary topics/,
+                 fn ->
+                   Alva.LiveView.on_mount(
+                     {[Alva.LiveViewTest.TestDomain],
+                      [sales_orders: [subscriptions: [:invalid_order_topics]]]},
+                     %{},
+                     %{},
+                     connected_socket(view: CollectionLive)
+                   )
+                 end
+  end
+
+  test "subscription callbacks fail loud before the LiveView is connected" do
+    assert_raise ArgumentError,
+                 ~r/Alva collection :sales_orders subscription callback :invalid_order_topics must return a binary topic or list of binary topics/,
+                 fn ->
+                   Alva.LiveView.on_mount(
+                     {[Alva.LiveViewTest.TestDomain],
+                      [sales_orders: [subscriptions: [:invalid_order_topics]]]},
+                     %{},
+                     %{},
+                     base_socket(view: CollectionLive)
+                   )
+                 end
   end
 
   test "mounting a domain does not activate collections by default" do
@@ -615,11 +775,21 @@ defmodule Alva.LiveViewTest do
              final_socket.assigns.students
   end
 
-  defp base_socket do
+  defp base_socket(opts \\ []) do
     %Phoenix.LiveView.Socket{
+      endpoint: Keyword.get(opts, :endpoint),
+      transport_pid: Keyword.get(opts, :transport_pid),
+      view: Keyword.get(opts, :view),
       assigns: %{__changed__: %{}},
       private: %{lifecycle: %Phoenix.LiveView.Lifecycle{}}
     }
+  end
+
+  defp connected_socket(opts \\ []) do
+    opts
+    |> Keyword.put_new(:endpoint, Alva.LiveViewTest.Endpoint)
+    |> Keyword.put_new(:transport_pid, self())
+    |> base_socket()
   end
 
   defp active_stream_socket do

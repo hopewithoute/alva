@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Support Collection Params and Subscription Callbacks
 
@@ -14,14 +14,14 @@ Callbacks should fail loud. Declarative activation is page setup, not user-facin
 
 ## Acceptance criteria
 
-- [ ] Collection activation accepts static params, such as `collections: [sales_orders: [params: %{status: "new"}]]`.
-- [ ] Collection activation accepts a local callback name for params, such as `params: :sales_order_params`.
-- [ ] `subscriptions: ["order:created"]` subscribes connected LiveViews to static topics.
-- [ ] `subscriptions: [:order_topics]` resolves local callback topics at activation time.
-- [ ] Callback success accepts raw values and `{:ok, value}`.
-- [ ] Callback failure `{:error, reason}` raises a clear activation error naming the Collection or subscription callback.
-- [ ] Subscription callbacks resolve to a binary topic or list of binary topics; invalid shapes raise.
-- [ ] Manual helpers remain available for graceful 404/redirect or conditional activation flows.
+- [x] Collection activation accepts static params, such as `collections: [sales_orders: [params: %{status: "new"}]]`.
+- [x] Collection activation accepts a local callback name for params, such as `params: :sales_order_params`.
+- [x] `subscriptions: ["order:created"]` subscribes connected LiveViews to static topics.
+- [x] `subscriptions: [:order_topics]` resolves local callback topics at activation time.
+- [x] Callback success accepts raw values and `{:ok, value}`.
+- [x] Callback failure `{:error, reason}` raises a clear activation error naming the Collection or subscription callback.
+- [x] Subscription callbacks resolve to a binary topic or list of binary topics; invalid shapes raise.
+- [x] Manual helpers remain available for graceful 404/redirect or conditional activation flows.
 
 ## Blocked by
 
