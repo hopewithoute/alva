@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Infer Collection Source Records from Auto-DTO Projection
 
@@ -12,12 +12,12 @@ Collection sources should not declare result shape. Alva should determine the st
 
 ## Acceptance criteria
 
-- [ ] A source event returning a standard resource list streams the returned records.
-- [ ] A source event returning a supported Ash page-like result streams the page records rather than the envelope.
-- [ ] Collection DSL does not grow `shape`, `records`, or `items` options.
-- [ ] If a custom DTO envelope is used as a source and records cannot be inferred, compilation or activation fails with an actionable message pointing at the source event projection.
-- [ ] TypeScript/DTO codegen remains the source of truth for source result shape.
-- [ ] Tests cover list, page-like, and unsupported custom envelope cases.
+- [x] A source event returning a standard resource list streams the returned records.
+- [x] A source event returning a supported Ash page-like result streams the page records rather than the envelope.
+- [x] Collection DSL does not grow `shape`, `records`, or `items` options.
+- [x] If a custom DTO envelope is used as a source and records cannot be inferred, compilation or activation fails with an actionable message pointing at the source event projection.
+- [x] TypeScript/DTO codegen remains the source of truth for source result shape.
+- [x] Tests cover list, page-like, and unsupported custom envelope cases.
 
 ## Blocked by
 

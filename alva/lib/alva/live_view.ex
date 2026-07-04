@@ -47,7 +47,7 @@ defmodule Alva.LiveView do
     case result do
       %{ok: true, data: data} ->
         socket
-        |> Phoenix.LiveView.stream(name, stream_query_items(data),
+        |> Phoenix.LiveView.stream(name, collection_source_items!(name, collection, data),
           reset: collection.source.mode == :reset
         )
         |> subscribe_collection_topics(name, Keyword.get(opts, :subscriptions, []))
@@ -336,6 +336,28 @@ defmodule Alva.LiveView do
   defp stream_query_items(nil), do: []
   defp stream_query_items(items) when is_list(items), do: items
   defp stream_query_items(item), do: [item]
+
+  defp collection_source_items!(_name, _collection, nil), do: []
+
+  defp collection_source_items!(_name, _collection, items) when is_list(items), do: items
+
+  defp collection_source_items!(name, collection, %{results: items}) when is_list(items) do
+    collection_source_items!(name, collection, items)
+  end
+
+  defp collection_source_items!(name, collection, %{"results" => items}) when is_list(items) do
+    collection_source_items!(name, collection, items)
+  end
+
+  defp collection_source_items!(name, collection, %{} = envelope) do
+    raise ArgumentError,
+          "Alva collection #{inspect(name)} source event #{inspect(collection.source.event)} returned a custom envelope whose records could not be inferred. Return a list, use a supported Ash page result, or expose the record field in the source event projection. Got: #{inspect(envelope)}"
+  end
+
+  defp collection_source_items!(name, collection, result) do
+    raise ArgumentError,
+          "Alva collection #{inspect(name)} source event #{inspect(collection.source.event)} must return a list of records or a supported Ash page result, got: #{inspect(result)}"
+  end
 
   defp collection_params!(_socket, _name, params) when is_map(params), do: params
 

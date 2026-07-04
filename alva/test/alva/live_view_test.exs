@@ -33,6 +33,12 @@ defmodule Alva.LiveViewTest do
         pagination(offset?: true, required?: false)
       end
 
+      action :custom_envelope, :map do
+        run(fn _input, _context ->
+          {:ok, %{records: [%{id: Ash.UUID.generate(), name: "Envelope A"}], total: 1}}
+        end)
+      end
+
       create :upload_file do
         argument(:file, Ash.Type.File, allow_nil?: false)
         accept([])
@@ -61,6 +67,7 @@ defmodule Alva.LiveViewTest do
     live_vue do
       event("upload", action: :upload_file)
       event("students.list", action: :read)
+      event("students.custom_envelope", action: :custom_envelope)
       event("students.create", action: :create)
       event("students.rename", action: :rename)
       event("students.destroy", action: :destroy)
@@ -76,6 +83,11 @@ defmodule Alva.LiveViewTest do
         insert(on: "student_created", at: 0, limit: -10)
         update(on: "student_updated")
         delete(on: "student_deleted")
+      end
+
+      collection :enveloped_orders do
+        source(event: "students.custom_envelope", mode: :reset)
+        insert(on: "student_created")
       end
 
       signal("students.created",
@@ -290,6 +302,30 @@ defmodule Alva.LiveViewTest do
     socket = Alva.LiveView.collection(socket, :sales_orders, params: %{"page" => %{"limit" => 1}})
 
     assert [_one_record] = stream_items(socket, :sales_orders)
+  end
+
+  test "collection activation streams records from an Ash page-like source result" do
+    create_student!("Paged Source A")
+    create_student!("Paged Source B")
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, base_socket())
+
+    socket = Alva.LiveView.collection(socket, :sales_orders, params: %{"page" => %{"limit" => 1}})
+
+    assert [%{name: name}] = stream_items(socket, :sales_orders)
+    assert name in ["Paged Source A", "Paged Source B"]
+  end
+
+  test "collection activation fails clearly for unsupported custom DTO envelopes" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, base_socket())
+
+    assert_raise ArgumentError,
+                 ~r/Alva collection :enveloped_orders source event "students.custom_envelope" returned a custom envelope whose records could not be inferred/,
+                 fn ->
+                   Alva.LiveView.collection(socket, :enveloped_orders)
+                 end
   end
 
   test "declarative collections activate only allowlisted collection names" do
