@@ -15,6 +15,13 @@ defmodule Alva.Resource.Info do
     |> Enum.filter(&match?(%Alva.Resource.Stream{}, &1))
   end
 
+  def collections(resource) do
+    resource
+    |> Spark.Dsl.Extension.get_entities([:live_vue])
+    |> Enum.filter(&match?(%Alva.Resource.Collection{}, &1))
+    |> Enum.map(&normalize_collection/1)
+  end
+
   def signals(resource) do
     resource
     |> Spark.Dsl.Extension.get_entities([:live_vue])
@@ -32,4 +39,14 @@ defmodule Alva.Resource.Info do
 
     attrs ++ calcs ++ rels ++ aggs
   end
+
+  defp normalize_collection(%Alva.Resource.Collection{source: [source]} = collection) do
+    %{collection | source: source}
+  end
+
+  defp normalize_collection(%Alva.Resource.Collection{source: []} = collection) do
+    %{collection | source: nil}
+  end
+
+  defp normalize_collection(collection), do: collection
 end

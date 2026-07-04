@@ -20,6 +20,14 @@ defmodule Alva.Domain.Info do
   end
 
   @doc """
+  Returns a static O(1) map of all Alva Collections registered across all resources in the domain.
+  The map structure is: %{ :collection_name => {ResourceModule, CollectionStruct} }
+  """
+  def alva_collection_map(domain) do
+    Spark.Dsl.Extension.get_persisted(domain, :alva_collection_map, %{})
+  end
+
+  @doc """
   Returns a static O(1) map of all LiveVue signal projections registered across all resources in the domain.
   The map structure is: %{ "signal_name" => {ResourceModule, SignalStruct} }
   """

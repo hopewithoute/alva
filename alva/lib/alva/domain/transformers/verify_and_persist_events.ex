@@ -32,6 +32,17 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEvents do
         )
       end)
 
+    collection_map =
+      Enum.reduce(resources, %{}, fn resource, acc ->
+        persist_unique(
+          acc,
+          Alva.Resource.Info.collections(resource),
+          resource,
+          module,
+          :collection
+        )
+      end)
+
     signal_map =
       Enum.reduce(resources, %{}, fn resource, acc ->
         persist_unique(
@@ -47,6 +58,7 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEvents do
       dsl_state
       |> Spark.Dsl.Transformer.persist(:alva_event_map, event_map)
       |> Spark.Dsl.Transformer.persist(:alva_stream_map, stream_map)
+      |> Spark.Dsl.Transformer.persist(:alva_collection_map, collection_map)
       |> Spark.Dsl.Transformer.persist(:alva_signal_map, signal_map)
 
     {:ok, dsl_state}

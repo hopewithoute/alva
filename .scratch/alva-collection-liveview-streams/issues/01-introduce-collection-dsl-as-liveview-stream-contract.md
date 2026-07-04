@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Introduce Collection DSL as LiveView Stream Contract
 
@@ -14,13 +14,13 @@ This slice should not implement the runtime stream behavior yet. It establishes 
 
 ## Acceptance criteria
 
-- [ ] A resource can declare `collection :name do source event: "...", mode: :reset end`.
-- [ ] Collection source event is required; omitting it fails with an actionable compile-time error.
-- [ ] Source-only Collections compile but emit a warning that they will not update from PubSub.
-- [ ] Collection names are domain-unique and duplicate collection names fail at compile time.
-- [ ] Collection operation `on:` values remain Ash PubSub published event identities, not Alva command event names.
-- [ ] Resource and domain info helpers expose Collections separately from command events and Signals.
-- [ ] Existing stream/signal command tests continue to pass or have a documented compatibility migration path.
+- [x] A resource can declare `collection :name do source event: "...", mode: :reset end`.
+- [x] Collection source event is required; omitting it fails with an actionable compile-time error.
+- [x] Source-only Collections compile but emit a warning that they will not update from PubSub.
+- [x] Collection names are domain-unique and duplicate collection names fail at compile time.
+- [x] Collection operation `on:` values remain Ash PubSub published event identities, not Alva command event names.
+- [x] Resource and domain info helpers expose Collections separately from command events and Signals.
+- [x] Existing stream/signal command tests continue to pass or have a documented compatibility migration path.
 
 ## Blocked by
 

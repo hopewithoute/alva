@@ -72,6 +72,88 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
              Alva.Resource.Info.signals(TestResource.RealtimeValid)
   end
 
+  test "compiles successfully with collection source and operation projections" do
+    assert_compile("""
+    defmodule TestResource.CollectionValid do
+      use Ash.Resource,
+        domain: TestDomain,
+        validate_domain_inclusion?: false,
+        extensions: [Alva.Resource],
+        notifiers: [Ash.Notifier.PubSub]
+
+      resource do
+        require_primary_key? false
+      end
+
+      actions do
+        defaults [:read]
+
+        create :create do
+          accept []
+        end
+      end
+
+      pub_sub do
+        module TestPubSub
+
+        publish "student_created", :create, "students"
+      end
+
+      live_vue do
+        event "students.list", action: :read
+
+        collection :students do
+          source event: "students.list", mode: :reset
+          insert on: "student_created"
+        end
+      end
+    end
+    """)
+
+    assert [
+             %Alva.Resource.Collection{
+               name: :students,
+               source: %Alva.Resource.CollectionSource{event: "students.list", mode: :reset},
+               operations: [%Alva.Resource.CollectionOperation{op: :insert, on: "student_created"}]
+             }
+           ] = Alva.Resource.Info.collections(TestResource.CollectionValid)
+  end
+
+  test "emits a warning when collection has only a source" do
+    import ExUnit.CaptureLog
+
+    log =
+      capture_log(fn ->
+        compile_module("""
+        defmodule TestResource.SourceOnlyCollection do
+          use Ash.Resource,
+            domain: TestDomain,
+            validate_domain_inclusion?: false,
+            extensions: [Alva.Resource]
+
+          resource do
+            require_primary_key? false
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          live_vue do
+            event "students.list", action: :read
+
+            collection :students do
+              source event: "students.list", mode: :reset
+            end
+          end
+        end
+        """)
+      end)
+
+    assert log =~
+             "Alva Extension: Collection :students has no insert/update/delete mappings and will not update from PubSub."
+  end
+
   test "compiles successfully when projections reference declared pubsub publications" do
     assert_compile("""
     defmodule TestResource.PubSubRealtimeValid do
@@ -236,6 +318,100 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
     assert stderr =~ "Stream projection trigger must be a non-empty string"
   end
 
+  test "fails to compile when collection source is missing" do
+    stderr =
+      capture_io(:stderr, fn ->
+        compile_module("""
+        defmodule TestResource.CollectionMissingSource do
+          use Ash.Resource,
+            domain: TestDomain,
+            validate_domain_inclusion?: false,
+            extensions: [Alva.Resource]
+
+          resource do
+            require_primary_key? false
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          live_vue do
+            collection :students do
+              insert on: "student_created"
+            end
+          end
+        end
+        """)
+      end)
+
+    assert stderr =~ "Collection :students must declare exactly one source event."
+  end
+
+  test "fails to compile when collection source event is not declared" do
+    stderr =
+      capture_io(:stderr, fn ->
+        compile_module("""
+        defmodule TestResource.CollectionUnknownSourceEvent do
+          use Ash.Resource,
+            domain: TestDomain,
+            validate_domain_inclusion?: false,
+            extensions: [Alva.Resource]
+
+          resource do
+            require_primary_key? false
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          live_vue do
+            collection :students do
+              source event: "students.list", mode: :reset
+            end
+          end
+        end
+        """)
+      end)
+
+    assert stderr =~
+             "Collection :students source event \"students.list\" must reference a declared live_vue event."
+  end
+
+  test "fails to compile when collection operation trigger is blank" do
+    stderr =
+      capture_io(:stderr, fn ->
+        compile_module("""
+        defmodule TestResource.BlankCollectionTrigger do
+          use Ash.Resource,
+            domain: TestDomain,
+            validate_domain_inclusion?: false,
+            extensions: [Alva.Resource]
+
+          resource do
+            require_primary_key? false
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          live_vue do
+            event "students.list", action: :read
+
+            collection :students do
+              source event: "students.list", mode: :reset
+              insert on: ""
+            end
+          end
+        end
+        """)
+      end)
+
+    assert stderr =~ "Collection projection trigger must be a non-empty string"
+  end
+
   test "fails to compile when signal projection trigger is blank" do
     stderr =
       capture_io(:stderr, fn ->
@@ -364,10 +540,15 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
       [
         TestResource.Valid,
         TestResource.RealtimeValid,
+        TestResource.CollectionValid,
+        TestResource.SourceOnlyCollection,
         TestResource.PubSubRealtimeValid,
         TestResource.MissingAction,
         TestResource.PrivateAction,
         TestResource.BlankStreamTrigger,
+        TestResource.CollectionMissingSource,
+        TestResource.CollectionUnknownSourceEvent,
+        TestResource.BlankCollectionTrigger,
         TestResource.BlankSignalTrigger,
         TestResource.UnknownStreamPublication,
         TestResource.UnknownSignalPublication

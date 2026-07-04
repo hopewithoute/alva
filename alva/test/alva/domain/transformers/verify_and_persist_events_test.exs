@@ -105,6 +105,47 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEventsTest do
     assert signal_map["students.import_completed"] |> elem(0) == TestResource.Realtime
   end
 
+  test "compiles successfully and creates collection map" do
+    assert_compile("""
+    defmodule TestResource.CollectionRealtime do
+      use Ash.Resource,
+        domain: TestDomain.CollectionRealtime,
+        validate_domain_inclusion?: false,
+        extensions: [Alva.Resource]
+
+      resource do
+        require_primary_key? false
+      end
+
+      actions do
+        defaults [:read]
+      end
+
+      live_vue do
+        event "students.list", action: :read
+
+        collection :students do
+          source event: "students.list", mode: :reset
+          insert on: "student_created"
+        end
+      end
+    end
+
+    defmodule TestDomain.CollectionRealtime do
+      use Ash.Domain, validate_config_inclusion?: false, extensions: [Alva.Domain]
+
+      resources do
+        resource TestResource.CollectionRealtime
+      end
+    end
+    """)
+
+    collection_map = Alva.Domain.Info.alva_collection_map(TestDomain.CollectionRealtime)
+
+    assert collection_map[:students] |> elem(0) == TestResource.CollectionRealtime
+    assert %Alva.Resource.Collection{} = collection_map[:students] |> elem(1)
+  end
+
   test "fails to compile when duplicate event exists" do
     assert_raise Spark.Error.DslError,
                  ~r/Duplicate event name "dup.read" found in resource/,
@@ -219,6 +260,69 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEventsTest do
                  end
   end
 
+  test "fails to compile when duplicate collection exists" do
+    assert_raise Spark.Error.DslError,
+                 ~r/Duplicate collection name :students found in resource/,
+                 fn ->
+                   compile_module("""
+                   defmodule TestResource.CollectionDupA do
+                     use Ash.Resource,
+                       domain: TestDomain.CollectionDuplicate,
+                       validate_domain_inclusion?: false,
+                       extensions: [Alva.Resource]
+
+                     resource do
+                       require_primary_key? false
+                     end
+
+                     actions do
+                       defaults [:read]
+                     end
+
+                     live_vue do
+                       event "students.a", action: :read
+
+                       collection :students do
+                         source event: "students.a", mode: :reset
+                       end
+                     end
+                   end
+
+                   defmodule TestResource.CollectionDupB do
+                     use Ash.Resource,
+                       domain: TestDomain.CollectionDuplicate,
+                       validate_domain_inclusion?: false,
+                       extensions: [Alva.Resource]
+
+                     resource do
+                       require_primary_key? false
+                     end
+
+                     actions do
+                       defaults [:read]
+                     end
+
+                     live_vue do
+                       event "students.b", action: :read
+
+                       collection :students do
+                         source event: "students.b", mode: :reset
+                       end
+                     end
+                   end
+
+                   defmodule TestDomain.CollectionDuplicate do
+                     use Ash.Domain, validate_config_inclusion?: false, extensions: [Alva.Domain]
+
+                     resources do
+                       resource TestResource.CollectionDupA
+                       resource TestResource.CollectionDupB
+                     end
+                   end
+                   """)
+                 end
+  end
+
   test "fails to compile when duplicate signal exists" do
     assert_raise Spark.Error.DslError,
                  ~r/Duplicate signal name "students.import_completed" found in resource/,
@@ -299,9 +403,14 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEventsTest do
         TestResource.DupB,
         TestDomain.Realtime,
         TestResource.Realtime,
+        TestDomain.CollectionRealtime,
+        TestResource.CollectionRealtime,
         TestDomain.StreamDuplicate,
         TestResource.StreamDupA,
         TestResource.StreamDupB,
+        TestDomain.CollectionDuplicate,
+        TestResource.CollectionDupA,
+        TestResource.CollectionDupB,
         TestDomain.SignalDuplicate,
         TestResource.SignalDupA,
         TestResource.SignalDupB
