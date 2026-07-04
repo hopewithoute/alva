@@ -10,4 +10,18 @@ export type AlvaEvents = {
     output: LiveResult<Types.Product[]>;
   };
 
+  "sales.create_order": {
+    input: {
+              customer_name: string;
+              product_id: string;
+              quantity?: number;
+            };
+    output: LiveResult<Types.Order>;
+  };
+
+  "sales.list_orders": {
+    input: Record<string, never>;
+    output: LiveResult<Types.Order[]>;
+  };
+
 };

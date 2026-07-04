@@ -6,6 +6,10 @@ export interface AlvaApi {
   catalog: {
     list_products: (input: AlvaEvents["catalog.list_products"]["input"]) => Promise<AlvaEvents["catalog.list_products"]["output"]>;
   };
+  sales: {
+    create_order: (input: AlvaEvents["sales.create_order"]["input"]) => Promise<AlvaEvents["sales.create_order"]["output"]>;
+    list_orders: (input: AlvaEvents["sales.list_orders"]["input"]) => Promise<AlvaEvents["sales.list_orders"]["output"]>;
+  };
 }
 
 const base_api = use_alva_api<AlvaEvents>();

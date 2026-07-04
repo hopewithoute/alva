@@ -41,3 +41,13 @@ export interface Product {
   media_reference: string;
 }
 
+
+export interface Order {
+  id: string;
+  customer_name: string;
+  quantity: number;
+  lifecycle_status: any;
+  product_id: string;
+  product?: Product;
+}
+
