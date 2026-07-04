@@ -21,8 +21,11 @@ defmodule Alva.DispatcherTest do
       attribute(:name, :string, public?: true)
       attribute(:actor_name, :string, public?: true)
       attribute(:tenant_id, :string, public?: true)
+      attribute(:status, :atom, public?: true, default: :open)
       attribute(:secret_key, :string, public?: false, default: "secret")
       attribute(:can_archive, :boolean, public?: true, default: true)
+
+      create_timestamp(:created_at, public?: true)
     end
 
     actions do
@@ -43,35 +46,43 @@ defmodule Alva.DispatcherTest do
 
       create :create do
         accept([:name, :tenant_id])
-        change fn changeset, context ->
+
+        change(fn changeset, context ->
           actor_name = if context.actor, do: context.actor.name, else: nil
+
           changeset
           |> Ash.Changeset.change_attribute(:actor_name, actor_name)
-          |> Ash.Changeset.change_attribute(:tenant_id, context.tenant || Ash.Changeset.get_attribute(changeset, :tenant_id))
-        end
+          |> Ash.Changeset.change_attribute(
+            :tenant_id,
+            context.tenant || Ash.Changeset.get_attribute(changeset, :tenant_id)
+          )
+        end)
       end
-
 
       destroy :archive do
         require_atomic?(false)
         accept([])
-        change fn changeset, context ->
+
+        change(fn changeset, context ->
           actor_name = if context.actor, do: context.actor.name, else: nil
+
           changeset
           |> Ash.Changeset.change_attribute(:actor_name, actor_name)
           |> Ash.Changeset.change_attribute(:tenant_id, context.tenant)
-        end
+        end)
       end
 
       update :update do
         require_atomic?(false)
         accept([:name])
-        change fn changeset, context ->
+
+        change(fn changeset, context ->
           actor_name = if context.actor, do: context.actor.name, else: nil
+
           changeset
           |> Ash.Changeset.change_attribute(:actor_name, actor_name)
           |> Ash.Changeset.change_attribute(:tenant_id, context.tenant)
-        end
+        end)
       end
 
       action :say_hello, :string do
@@ -88,7 +99,7 @@ defmodule Alva.DispatcherTest do
       end
 
       read :read_with_tenant do
-        prepare fn query, context ->
+        prepare(fn query, context ->
           if context.tenant do
             require Ash.Query
             require Ash.Expr
@@ -96,25 +107,28 @@ defmodule Alva.DispatcherTest do
           else
             query
           end
-        end
+        end)
       end
 
       create :upload_file do
-        accept []
-        argument :file, Ash.Type.File, allow_nil?: false
-        change fn changeset, _context ->
+        accept([])
+        argument(:file, Ash.Type.File, allow_nil?: false)
+
+        change(fn changeset, _context ->
           file = Ash.Changeset.get_argument(changeset, :file)
+
           if is_map(file) do
-            filename = 
+            filename =
               case file do
                 %Ash.Type.File{source: source} -> Map.get(source, :filename, "unknown")
                 _ -> Map.get(file, :filename, "unknown")
               end
+
             Ash.Changeset.change_attribute(changeset, :name, filename)
           else
             changeset
           end
-        end
+        end)
       end
     end
 
@@ -170,21 +184,21 @@ defmodule Alva.DispatcherTest do
 
   test "validate_only true on create returns early without DB commit" do
     params = %{"name" => "valid name"}
-    
+
     # Should return ok: true, data: %{}
     result = Alva.Dispatcher.dispatch("test.validate_create", params, domains: [TestDomain])
     assert result.ok == true
     assert result.data == %{}
-    
+
     # Check DB to ensure it was not created
     records = Ash.read!(TestResource)
     assert not Enum.any?(records, fn r -> r.name == "valid name" end)
   end
-  
+
   test "validate_only true on create returns validation error if invalid" do
     # pass invalid type to force validation error
     params = %{"name" => %{"invalid" => "type"}}
-    
+
     result = Alva.Dispatcher.dispatch("test.validate_create", params, domains: [TestDomain])
     assert result.ok == false
     assert result.error.type == "validation"
@@ -192,11 +206,11 @@ defmodule Alva.DispatcherTest do
 
   test "validate_only true on update returns early without DB commit", %{record: record} do
     params = %{"id" => record.id, "name" => "new name"}
-    
+
     result = Alva.Dispatcher.dispatch("test.validate_update", params, domains: [TestDomain])
     assert result.ok == true
     assert result.data == %{}
-    
+
     # Check DB to ensure it was not updated
     updated_record = Ash.get!(TestResource, record.id)
     assert updated_record.name == "Test"
@@ -232,7 +246,7 @@ defmodule Alva.DispatcherTest do
       # Attach a telemetry handler for this test
       test_pid = self()
       handler_id = "test-telemetry-handler-#{System.unique_integer()}"
-      
+
       :telemetry.attach(
         handler_id,
         [:alva, :dispatch, :stop],
@@ -258,38 +272,43 @@ defmodule Alva.DispatcherTest do
       assert metadata.actor == %{id: 2}
       assert metadata.tenant == "org_2"
       assert metadata.result.ok == true
-      
+
       :telemetry.detach(handler_id)
     end
 
     test "logs warnings when actor and tenant are missing" do
-      log = capture_log(fn ->
-        Alva.Dispatcher.dispatch(
-          "test.say_hello",
-          %{"name" => "Warnings"},
-          domains: [TestDomain],
-          socket: %{assigns: %{}}
-        )
-      end)
-      
-      assert log =~ "Alva Extension: Dispatching event \"test.say_hello\" without an actor. Expected socket.assigns.current_user to be set."
-      assert log =~ "Alva Extension: Dispatching event \"test.say_hello\" without a tenant. Expected socket.assigns.current_tenant to be set."
+      log =
+        capture_log(fn ->
+          Alva.Dispatcher.dispatch(
+            "test.say_hello",
+            %{"name" => "Warnings"},
+            domains: [TestDomain],
+            socket: %{assigns: %{}}
+          )
+        end)
+
+      assert log =~
+               "Alva Extension: Dispatching event \"test.say_hello\" without an actor. Expected socket.assigns.current_user to be set."
+
+      assert log =~
+               "Alva Extension: Dispatching event \"test.say_hello\" without a tenant. Expected socket.assigns.current_tenant to be set."
     end
-    
+
     test "extracts actor and tenant from socket.assigns" do
       # Configure fake keys just in case
       Application.put_env(:alva, :actor_assign_key, :current_user)
       Application.put_env(:alva, :tenant_assign_key, :current_tenant)
-      
+
       socket = %{assigns: %{current_user: %{id: 99}, current_tenant: "org_99"}}
-      
-      result = Alva.Dispatcher.dispatch(
-        "test.get_context",
-        %{},
-        domains: [TestDomain],
-        socket: socket
-      )
-      
+
+      result =
+        Alva.Dispatcher.dispatch(
+          "test.get_context",
+          %{},
+          domains: [TestDomain],
+          socket: socket
+        )
+
       assert result.ok == true
       assert result.data.actor == %{id: 99}
       assert result.data.tenant == "org_99"
@@ -355,7 +374,9 @@ defmodule Alva.DispatcherTest do
     result =
       Alva.Dispatcher.dispatch(
         "test.list",
-        %{"page" => %{"limit" => 2, "offset" => 0, "hacked" => "yes"}}, domains: [TestDomain])
+        %{"page" => %{"limit" => 2, "offset" => 0, "hacked" => "yes"}},
+        domains: [TestDomain]
+      )
 
     assert result.ok == true
     assert is_list(result.data)
@@ -446,8 +467,13 @@ defmodule Alva.DispatcherTest do
   end
 
   test "dispatch passes actor and tenant for :read list event" do
-    Ash.create!(Ash.Changeset.for_create(TestResource, :create, %{name: "T1", tenant_id: "tenant_1"}))
-    Ash.create!(Ash.Changeset.for_create(TestResource, :create, %{name: "T2", tenant_id: "tenant_2"}))
+    Ash.create!(
+      Ash.Changeset.for_create(TestResource, :create, %{name: "T1", tenant_id: "tenant_1"})
+    )
+
+    Ash.create!(
+      Ash.Changeset.for_create(TestResource, :create, %{name: "T2", tenant_id: "tenant_2"})
+    )
 
     result =
       Alva.Dispatcher.dispatch(
@@ -463,7 +489,10 @@ defmodule Alva.DispatcherTest do
   end
 
   test "dispatch passes actor and tenant for :read lookup event" do
-    record1 = Ash.create!(Ash.Changeset.for_create(TestResource, :create, %{name: "T1", tenant_id: "tenant_1"}))
+    record1 =
+      Ash.create!(
+        Ash.Changeset.for_create(TestResource, :create, %{name: "T1", tenant_id: "tenant_1"})
+      )
 
     # Try to read with correct tenant
     result_ok =
@@ -473,6 +502,7 @@ defmodule Alva.DispatcherTest do
         domains: [TestDomain],
         tenant: "tenant_1"
       )
+
     assert result_ok.ok == true
 
     # Try to read with wrong tenant
@@ -483,13 +513,14 @@ defmodule Alva.DispatcherTest do
         domains: [TestDomain],
         tenant: "tenant_wrong"
       )
+
     assert result_err.ok == false
     assert result_err.error.type == "not_found"
   end
 
   test "dispatch strips private fields (Auto-DTO)", %{record: record} do
     result = Alva.Dispatcher.dispatch("test.get", %{"id" => record.id}, domains: [TestDomain])
-    
+
     assert result.ok == true
     assert Map.has_key?(result.data, :name)
     assert Map.has_key?(result.data, :id)
@@ -498,12 +529,21 @@ defmodule Alva.DispatcherTest do
 
   test "dispatch groups can_ calculations into meta._permissions", %{record: record} do
     result = Alva.Dispatcher.dispatch("test.get", %{"id" => record.id}, domains: [TestDomain])
-    
+
     assert result.ok == true
     assert Map.has_key?(result.data, :name)
     assert Map.has_key?(result.data, :id)
     refute Map.has_key?(result.data, :can_archive)
     assert result.meta._permissions.can_archive == true
+  end
+
+  test "dispatch returns JSON-safe public timestamp and atom fields", %{record: record} do
+    result = Alva.Dispatcher.dispatch("test.get", %{"id" => record.id}, domains: [TestDomain])
+
+    assert result.ok == true
+    assert result.data.status == "open"
+    assert result.data.created_at == DateTime.to_iso8601(record.created_at)
+    assert Jason.encode!(result.data)
   end
 
   defmodule MetadataResource do
@@ -562,7 +602,9 @@ defmodule Alva.DispatcherTest do
   describe "expose_metadata" do
     test "exposes specified metadata keys in meta for single record" do
       record = Ash.create!(Ash.Changeset.for_create(MetadataResource, :create, %{name: "Test"}))
-      result = Alva.Dispatcher.dispatch("meta.get", %{"id" => record.id}, domains: [MetadataDomain])
+
+      result =
+        Alva.Dispatcher.dispatch("meta.get", %{"id" => record.id}, domains: [MetadataDomain])
 
       assert result.ok == true
       # __metadata__ from ETS is empty by default, so no exposed keys in meta
@@ -573,10 +615,15 @@ defmodule Alva.DispatcherTest do
       record = Ash.create!(Ash.Changeset.for_create(MetadataResource, :create, %{name: "Test"}))
 
       # Simulate a record with __metadata__ set (as Ash would in production)
-      record_with_meta = %{record | __metadata__: Map.put(record.__metadata__, :sync_token, "tok_abc123")}
+      record_with_meta = %{
+        record
+        | __metadata__: Map.put(record.__metadata__, :sync_token, "tok_abc123")
+      }
 
       event_def = %Alva.Resource.Event{expose_metadata: [:sync_token]}
-      {stripped, exposed_meta} = Alva.Dispatcher.strip_and_extract_metadata(record_with_meta, event_def)
+
+      {stripped, exposed_meta} =
+        Alva.Dispatcher.strip_and_extract_metadata(record_with_meta, event_def)
 
       assert stripped == %{id: record.id, name: "Test"}
       assert exposed_meta == %{sync_token: "tok_abc123"}
@@ -585,14 +632,19 @@ defmodule Alva.DispatcherTest do
     test "strips unexposed metadata keys" do
       record = Ash.create!(Ash.Changeset.for_create(MetadataResource, :create, %{name: "Test"}))
 
-      record_with_meta = %{record | __metadata__: %{
-        sync_token: "tok_abc123",
-        internal_secret: "hidden",
-        other: "also_hidden"
-      }}
+      record_with_meta = %{
+        record
+        | __metadata__: %{
+            sync_token: "tok_abc123",
+            internal_secret: "hidden",
+            other: "also_hidden"
+          }
+      }
 
       event_def = %Alva.Resource.Event{expose_metadata: [:sync_token]}
-      {_stripped, exposed_meta} = Alva.Dispatcher.strip_and_extract_metadata(record_with_meta, event_def)
+
+      {_stripped, exposed_meta} =
+        Alva.Dispatcher.strip_and_extract_metadata(record_with_meta, event_def)
 
       assert exposed_meta == %{sync_token: "tok_abc123"}
       refute Map.has_key?(exposed_meta, :internal_secret)
@@ -662,7 +714,7 @@ defmodule Alva.DispatcherTest do
     defmodule MockUploadConsumer do
       def consume_uploaded_entries(socket, name, func) do
         entries = get_in(socket.assigns.uploads, [name, :entries]) || []
-        
+
         Enum.map(entries, fn entry ->
           {:ok, result} = func.(%{path: "/tmp/#{entry.client_name}"}, entry)
           result
@@ -683,13 +735,14 @@ defmodule Alva.DispatcherTest do
         }
       }
 
-      result = Alva.Dispatcher.dispatch(
-        "test.upload",
-        %{},
-        socket: socket,
-        domains: [TestDomain],
-        upload_consumer: MockUploadConsumer
-      )
+      result =
+        Alva.Dispatcher.dispatch(
+          "test.upload",
+          %{},
+          socket: socket,
+          domains: [TestDomain],
+          upload_consumer: MockUploadConsumer
+        )
 
       assert result.ok == true
       assert result.data.name == "test.png"

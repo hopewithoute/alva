@@ -303,6 +303,11 @@ defmodule Alva.Dispatcher do
 
   defp extract_exposed_metadata(_, _), do: %{}
 
+  def strip_metadata(%DateTime{} = datetime), do: DateTime.to_iso8601(datetime)
+  def strip_metadata(%NaiveDateTime{} = datetime), do: NaiveDateTime.to_iso8601(datetime)
+  def strip_metadata(%Date{} = date), do: Date.to_iso8601(date)
+  def strip_metadata(%Time{} = time), do: Time.to_iso8601(time)
+
   def strip_metadata(%module{} = record) do
     if Ash.Resource.Info.resource?(module) do
       fields = public_fields(module)
@@ -318,6 +323,8 @@ defmodule Alva.Dispatcher do
       record
       |> Map.from_struct()
       |> drop_metadata()
+      |> Enum.map(fn {k, v} -> {k, strip_metadata(v)} end)
+      |> Enum.into(%{})
     end
   end
 
@@ -326,7 +333,20 @@ defmodule Alva.Dispatcher do
   end
 
   def strip_metadata(%{} = map) when not is_struct(map) do
-    drop_metadata(map)
+    map
+    |> drop_metadata()
+    |> Enum.map(fn {k, v} -> {k, strip_metadata(v)} end)
+    |> Enum.into(%{})
+  end
+
+  def strip_metadata(atom) when is_atom(atom) and atom not in [nil, true, false] do
+    Atom.to_string(atom)
+  end
+
+  def strip_metadata(tuple) when is_tuple(tuple) do
+    tuple
+    |> Tuple.to_list()
+    |> strip_metadata()
   end
 
   def strip_metadata(other), do: other
