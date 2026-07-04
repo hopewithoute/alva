@@ -6,6 +6,7 @@ config :alva_demo,
   generators: [timestamp_type: :utc_datetime]
 
 config :alva_demo, AlvaDemoWeb.Endpoint,
+  adapter: Bandit.PhoenixAdapter,
   url: [host: "localhost"],
   render_errors: [
     formats: [html: AlvaDemoWeb.ErrorHTML, json: AlvaDemoWeb.ErrorJSON],

@@ -1,5 +1,5 @@
 import { computed, watch } from "vue";
-import { useLiveUpload } from "live_vue";
+import { useLiveUpload, useLiveVue } from "live_vue";
 
 export interface UploadEntry {
     ref: string;
@@ -25,8 +25,28 @@ export interface AshUploadOptions {
 }
 
 export function ashUpload(name: string, options?: AshUploadOptions) {
+    const live = useLiveVue();
+
+    // Provide a dummy config if the upload prop is not passed from LiveView
+    // This prevents crashes in live_vue's useLiveUpload which expects a valid config.
+    const getUploadConfig = () => {
+        return live.vue.props[name] || {
+            ref: "dummy-ref",
+            name: name,
+            accept: false,
+            max_entries: options?.maxFiles || 1,
+            auto_upload: false,
+            entries: [],
+            errors: []
+        };
+    };
+
     // @ts-ignore
-    const upload = useLiveUpload(name, options || {}) as unknown as UseLiveUploadReturn;
+    const upload = useLiveUpload(getUploadConfig, {
+        changeEvent: "validate_upload",
+        submitEvent: "save_upload",
+        ...(options || {})
+    }) as unknown as UseLiveUploadReturn;
 
     const files = computed(() => upload.entries?.value || []);
     const errors = computed(() => upload.errors?.value || []);
