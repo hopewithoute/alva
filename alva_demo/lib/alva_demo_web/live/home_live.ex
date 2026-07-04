@@ -1,40 +1,30 @@
 defmodule AlvaDemoWeb.HomeLive do
   use AlvaDemoWeb, :live_view
-  use Alva.LiveView, domains: [AlvaDemo.Academics]
 
-  @impl true
-  def mount(_params, _session, socket) do
-    if connected?(socket) do
-      Alva.LiveView.subscribe(socket, "students:all")
-    end
-
-    %{ok: true, data: students} = Alva.Dispatcher.dispatch("students.list", %{}, domains: [AlvaDemo.Academics])
-
-    socket =
-      socket
-      |> Alva.LiveView.activate_stream(:students)
-      |> Alva.LiveView.activate_signal("students.created")
-      |> Alva.LiveView.bind_stream_query("students.list", :students, mode: :reset)
-      |> stream(:students, students)
-
-    {:ok, socket}
-  end
-
-  @impl true
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen bg-gray-50 p-10">
-      <div class="max-w-2xl mx-auto mb-8 bg-white p-6 rounded-lg shadow-sm">
-        <h2 class="text-2xl font-bold mb-4 text-gray-800">Alva Realtime Primitives Demos</h2>
-        <ul class="flex gap-4">
-          <li><.link navigate="/demo/chat" class="text-indigo-600 hover:underline bg-indigo-50 px-3 py-2 rounded-md">Chat Demo (Streams)</.link></li>
-          <li><.link navigate="/demo/notifications" class="text-indigo-600 hover:underline bg-indigo-50 px-3 py-2 rounded-md">Notifications (Signals)</.link></li>
-          <li><.link navigate="/demo/load-more" class="text-indigo-600 hover:underline bg-indigo-50 px-3 py-2 rounded-md">Load-More (Queries)</.link></li>
-        </ul>
-      </div>
-
-      <.vue v-component="StudentsIndex" v-ssr={false} />
-    </div>
+    <Layouts.app flash={@flash}>
+      <section id="commerce-showcase-entry" class="grid gap-6 md:grid-cols-[1.2fr_0.8fr]">
+        <div class="space-y-4">
+          <p class="text-sm font-medium uppercase text-zinc-500">Alva Commerce Showcase</p>
+          <h1 class="text-4xl font-semibold tracking-tight">Commerce operations over Ash, LiveView, and Vue.</h1>
+          <p class="max-w-2xl text-base text-zinc-600">
+            Start from either side of the sample: the Customer Storefront for shopper activity, or the Merchant Console for operational work.
+          </p>
+          <div class="flex flex-wrap gap-3">
+            <.link navigate={~p"/shop"} class="rounded-md bg-zinc-950 px-4 py-2 text-sm font-medium text-white">
+              Open Customer Storefront
+            </.link>
+            <.link navigate={~p"/console"} class="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium">
+              Open Merchant Console
+            </.link>
+          </div>
+        </div>
+        <div class="rounded-lg border border-zinc-200 bg-white p-5">
+          <.vue v-component="ShowcaseStatus" surface="entry" />
+        </div>
+      </section>
+    </Layouts.app>
     """
   end
 end
