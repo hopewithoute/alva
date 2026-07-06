@@ -2,7 +2,6 @@ defmodule AlvaDemoWeb.DemoChatLive do
   use AlvaDemoWeb, :live_view
 
   use Alva.LiveView,
-    domains: [AlvaDemo.Demos],
     collections: [:chat_messages]
 
   def render(assigns) do

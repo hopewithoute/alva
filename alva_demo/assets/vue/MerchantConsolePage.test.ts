@@ -267,6 +267,7 @@ describe("MerchantConsolePage tabs", () => {
   it("shows upload progress and submits product media when the upload completes", async () => {
     const wrapper = mountPage();
     const uploadedFile = { name: "mug.jpg" };
+    const uploadedRef = "phx-upload-ref-1";
 
     await wrapper.get('[data-testid="merchant-console-tab-inventory"]').trigger("click");
     await wrapper.get('[data-testid="merchant-upload-media-product-mug"]').trigger("click");
@@ -284,13 +285,13 @@ describe("MerchantConsolePage tabs", () => {
     ).toContain("width: 45%");
 
     uploadMock.files.value = [uploadedFile];
-    uploadMock.getFileReferences.mockReturnValue([uploadedFile]);
+    uploadMock.getFileReferences.mockReturnValue([uploadedRef]);
     uploadMock.progress.value = 100;
     await flushPromises();
 
     expect(apiCall).toHaveBeenCalledWith("catalog.upload_media", {
       id: "product-mug",
-      media: uploadedFile
+      media: uploadedRef
     });
     expect(uploadMock.clear).toHaveBeenCalledTimes(1);
     expect(wrapper.get('[data-testid="merchant-upload-media-product-mug"]').text()).toBe(
@@ -301,6 +302,7 @@ describe("MerchantConsolePage tabs", () => {
   it("surfaces upload failures and clears the pending upload state", async () => {
     const wrapper = mountPage();
     const uploadedFile = { name: "broken-upload.jpg" };
+    const uploadedRef = "phx-upload-ref-2";
 
     apiCall.mockImplementation(async (event: string, payload?: Record<string, unknown>) => {
       if (event === "catalog.upload_media") {
@@ -328,7 +330,7 @@ describe("MerchantConsolePage tabs", () => {
     await wrapper.get('[data-testid="merchant-upload-media-product-mug"]').trigger("click");
 
     uploadMock.files.value = [uploadedFile];
-    uploadMock.getFileReferences.mockReturnValue([uploadedFile]);
+    uploadMock.getFileReferences.mockReturnValue([uploadedRef]);
     uploadMock.progress.value = 100;
     await flushPromises();
 

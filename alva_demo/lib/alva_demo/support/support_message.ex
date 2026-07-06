@@ -16,11 +16,8 @@ defmodule AlvaDemo.Support.SupportMessage do
     event(:support_send_message, name: "support.send_message", action: :create)
 
     # Message history is scoped by the conversation selected in Vue, so it stays
-    # command-driven. Live messages stream through props and are filtered by the
-    # active conversation on each chat surface.
-    stream :support_messages do
-      insert(on: :create)
-    end
+    # command-driven. Live messages arrive through raw Phoenix PubSub props and
+    # are filtered by the active conversation on each chat surface.
   end
 
   actions do

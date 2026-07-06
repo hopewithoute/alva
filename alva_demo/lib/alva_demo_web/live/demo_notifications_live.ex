@@ -2,7 +2,6 @@ defmodule AlvaDemoWeb.DemoNotificationsLive do
   use AlvaDemoWeb, :live_view
 
   use Alva.LiveView,
-    domains: [AlvaDemo.Demos],
     signals: [:demo_notifications_sent]
 
   def render(assigns) do

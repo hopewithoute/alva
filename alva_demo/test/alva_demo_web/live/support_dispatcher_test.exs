@@ -6,7 +6,7 @@ defmodule AlvaDemoWeb.SupportDispatcherTest do
   describe "support.create and support.list_conversations events" do
     test "creates conversation by customer name and lists them" do
       socket = %Socket{
-        private: %{alva: %{domains: [AlvaDemo.Support]}},
+        endpoint: AlvaDemoWeb.Endpoint,
         assigns: %{}
       }
 
@@ -35,7 +35,7 @@ defmodule AlvaDemoWeb.SupportDispatcherTest do
         })
 
       socket = %Socket{
-        private: %{alva: %{domains: [AlvaDemo.Support]}},
+        endpoint: AlvaDemoWeb.Endpoint,
         assigns: %{}
       }
 
@@ -79,7 +79,7 @@ defmodule AlvaDemoWeb.SupportDispatcherTest do
         })
 
       socket = %Socket{
-        private: %{alva: %{domains: [AlvaDemo.Support]}},
+        endpoint: AlvaDemoWeb.Endpoint,
         assigns: %{}
       }
 

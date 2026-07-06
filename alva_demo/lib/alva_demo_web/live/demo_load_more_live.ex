@@ -2,7 +2,6 @@ defmodule AlvaDemoWeb.DemoLoadMoreLive do
   use AlvaDemoWeb, :live_view
 
   use Alva.LiveView,
-    domains: [AlvaDemo.Demos],
     collections: [
       {:feed_entries, source_input: :feed_entry_collection_source_input, reload_on: :route_change}
     ],

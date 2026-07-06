@@ -261,7 +261,7 @@ defmodule AlvaDemoWeb.SynchronizationTest do
 
   defp list_messages_for(conversation) do
     socket = %Socket{
-      private: %{alva: %{domains: [AlvaDemo.Support]}},
+      endpoint: AlvaDemoWeb.Endpoint,
       assigns: %{}
     }
 

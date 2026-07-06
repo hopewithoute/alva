@@ -16,7 +16,7 @@ defmodule AlvaDemoWeb.SalesOrderDispatcherTest do
       })
 
     socket = %Socket{
-      private: %{alva: %{domains: [AlvaDemo.Sales, AlvaDemo.Catalog]}},
+      endpoint: AlvaDemoWeb.Endpoint,
       assigns: %{}
     }
 
@@ -46,7 +46,7 @@ defmodule AlvaDemoWeb.SalesOrderDispatcherTest do
             "product_id" => product.id,
             "quantity" => 1
           },
-          domains: [AlvaDemo.Sales, AlvaDemo.Catalog],
+          otp_app: :alva_demo,
           socket: socket
         )
 
@@ -65,7 +65,7 @@ defmodule AlvaDemoWeb.SalesOrderDispatcherTest do
             "quantity" => 1,
             "lifecycle_status" => "fulfilled"
           },
-          domains: [AlvaDemo.Sales, AlvaDemo.Catalog],
+          otp_app: :alva_demo,
           socket: socket
         )
 
@@ -193,7 +193,7 @@ defmodule AlvaDemoWeb.SalesOrderDispatcherTest do
         Alva.Dispatcher.dispatch(
           "sales.fulfill",
           %{"id" => order.id},
-          domains: [AlvaDemo.Sales, AlvaDemo.Catalog],
+          otp_app: :alva_demo,
           socket: socket
         )
 

@@ -66,6 +66,32 @@ defmodule AlvaDemoWeb.MerchantConsoleLiveTest do
            end)
   end
 
+  test "passes the live upload config into the merchant console page", %{conn: conn} do
+    {:ok, _page_live, html} = live(conn, "/console")
+
+    vue = LiveVueTest.get_vue(html, id: "merchant-console-page")
+
+    assert %{
+             "name" => "media",
+             "ref" => ref,
+             "max_entries" => 1,
+             "auto_upload" => true
+           } = vue.props["media"]
+
+    assert is_binary(ref)
+    refute ref == "dummy-ref"
+  end
+
+  test "accepts LiveView upload lifecycle events without crashing" do
+    socket = %Phoenix.LiveView.Socket{assigns: %{}, private: %{}}
+
+    assert {:noreply, ^socket} =
+             AlvaDemoWeb.MerchantConsoleLive.handle_event("validate_upload", %{}, socket)
+
+    assert {:noreply, ^socket} =
+             AlvaDemoWeb.MerchantConsoleLive.handle_event("save_upload", %{}, socket)
+  end
+
   test "merchant console advances the order lifecycle through the route stream", %{
     conn: conn
   } do
