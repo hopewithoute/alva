@@ -68,37 +68,42 @@ defmodule Alva.LiveViewTest do
     end
 
     live_vue do
-      event("upload", action: :upload_file)
-      event("students.list", action: :read)
-      event("students.custom_envelope", action: :custom_envelope)
-      event("students.create", action: :create)
-      event("students.rename", action: :rename)
-      event("students.destroy", action: :destroy)
+      event(:upload, name: "upload", action: :upload_file)
+      event(:students_list, name: "students.list", action: :read)
+      event(:students_custom_envelope, name: "students.custom_envelope", action: :custom_envelope)
+      event(:students_create, name: "students.create", action: :create)
+      event(:students_rename, name: "students.rename", action: :rename)
+      event(:students_destroy, name: "students.destroy", action: :destroy)
 
       stream :students do
-        insert(on: "student_created")
-        update(on: "student_updated")
-        delete(on: "student_deleted")
+        insert(on: :upload_file)
+        insert(on: :create)
+        update(on: :rename)
+        delete(on: :destroy)
       end
 
       collection :sales_orders do
-        source(event: "students.list", mode: :reset)
-        insert(on: "student_created", at: 0, limit: -10)
-        update(on: "student_updated")
-        delete(on: "student_deleted")
+        source(event: :students_list, mode: :reset)
+        insert(on: :upload_file, at: 0, limit: -10)
+        insert(on: :create, at: 0, limit: -10)
+        update(on: :rename)
+        delete(on: :destroy)
       end
 
       collection :priority_orders do
-        source(event: "students.list", mode: :reset)
+        source(event: :students_list, mode: :reset)
+        insert(on: :create)
       end
 
       collection :enveloped_orders do
-        source(event: "students.custom_envelope", mode: :reset)
-        insert(on: "student_created")
+        source(event: :students_custom_envelope, mode: :reset)
+        insert(on: :upload_file)
+        insert(on: :create)
       end
 
-      signal("students.created",
-        on: "student_created",
+      signal(:students_created,
+        name: "students.created",
+        on: :upload_file,
         expose_metadata: [:sync_token]
       )
     end
@@ -139,11 +144,12 @@ defmodule Alva.LiveViewTest do
 
     live_vue do
       stream :other_students do
-        insert(on: "student_created")
+        insert(on: :create)
       end
 
-      signal("other_students.created",
-        on: "student_created"
+      signal(:other_students_created,
+        name: "other_students.created",
+        on: :create
       )
     end
   end
@@ -183,8 +189,9 @@ defmodule Alva.LiveViewTest do
     end
 
     live_vue do
-      signal("scoped.created",
-        on: "scoped_created"
+      signal(:scoped_created,
+        name: "scoped.created",
+        on: :create
       )
     end
   end
@@ -218,8 +225,82 @@ defmodule Alva.LiveViewTest do
     end
 
     live_vue do
-      signal("jobs.completed",
-        on: "job_completed"
+      signal(:jobs_completed,
+        name: "jobs.completed",
+        on: :complete
+      )
+    end
+  end
+
+  defmodule MultiTopicResource do
+    use Ash.Resource,
+      domain: Alva.LiveViewTest.TestDomain,
+      validate_domain_inclusion?: false,
+      data_layer: Ash.DataLayer.Ets,
+      extensions: [Alva.Resource],
+      notifiers: [Ash.Notifier.PubSub]
+
+    ets do
+      private?(true)
+    end
+
+    resource do
+      require_primary_key?(false)
+    end
+
+    actions do
+      create :create do
+        accept([])
+      end
+    end
+
+    pub_sub do
+      module(Alva.LiveViewTest.Endpoint)
+
+      publish("multi_topic_created", :create, ["students", ["all", "tenant"]])
+    end
+
+    live_vue do
+      signal(:multi_topic_students_created,
+        name: "students.multi_topic_created",
+        on: :create
+      )
+    end
+  end
+
+  defmodule AmbiguousResource do
+    use Ash.Resource,
+      domain: Alva.LiveViewTest.TestDomain,
+      validate_domain_inclusion?: false,
+      data_layer: Ash.DataLayer.Ets,
+      extensions: [Alva.Resource],
+      notifiers: [Ash.Notifier.PubSub]
+
+    ets do
+      private?(true)
+    end
+
+    resource do
+      require_primary_key?(false)
+    end
+
+    actions do
+      create :create do
+        accept([])
+      end
+    end
+
+    pub_sub do
+      module(Alva.LiveViewTest.Endpoint)
+
+      publish("ambiguous_created", :create, "students:all")
+      publish("ambiguous_created", :create, "students:tenant")
+    end
+
+    live_vue do
+      signal(:ambiguous_students_created,
+        name: "students.ambiguous_created",
+        on: :create
       )
     end
   end
@@ -265,12 +346,32 @@ defmodule Alva.LiveViewTest do
 
     def order_topics(_socket), do: {:ok, ["orders:new", "orders:tenant"]}
     def raw_order_topic, do: "orders:raw"
+    def ok_raw_order_topic(_socket), do: {:ok, "orders:ok"}
+    def duplicate_order_topics(_socket), do: {:ok, ["orders:new", "orders:new", "orders:tenant"]}
     def invalid_order_topics, do: [123]
     def student_topics(_socket), do: {:ok, ["students", "students:tenant"]}
+    def shared_student_topics(_socket), do: {:ok, ["students", "students"]}
     def raw_student_topic, do: "students:raw"
     def invalid_student_topics, do: [123]
     def no_topics(_socket), do: {:ok, []}
+    def nil_topics, do: nil
     def scoped_signal_topics(_socket), do: {:ok, ["scoped:tenant:alpha"]}
+
+    def route_scoped_student_topics(socket) do
+      tenant =
+        socket
+        |> Alva.LiveView.route_params()
+        |> Map.get("tenant", "alpha")
+
+      {:ok, ["students:tenant:#{tenant}"]}
+    end
+
+    def route_scoped_student_topics_or_fail(socket) do
+      case socket |> Alva.LiveView.route_params() |> Map.get("tenant", "alpha") do
+        "explode" -> {:error, :missing_context}
+        tenant -> {:ok, ["students:tenant:#{tenant}"]}
+      end
+    end
 
     defp route_limit(socket, key) do
       socket
@@ -298,6 +399,8 @@ defmodule Alva.LiveViewTest do
       resource(OtherResource)
       resource(ScopedResource)
       resource(JobResource)
+      resource(MultiTopicResource)
+      resource(AmbiguousResource)
     end
   end
 
@@ -329,34 +432,35 @@ defmodule Alva.LiveViewTest do
     assert socket.assigns.uploads != nil
   end
 
-  test "subscribe/3 subscribes to a concrete PubSub topic and records route subscription" do
-    start_supervised!({Phoenix.PubSub, name: Alva.LiveViewTest.RoutePubSub})
+  test "route_subscriptions/1 reports declarative projection topics on disconnected sockets" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          signals: [:students_created],
+          route_subscriptions: [
+            {:students_created, :route_scoped_student_topics}
+          ]
+        },
+        %{"tenant" => "alpha"},
+        %{},
+        base_socket(view: CollectionLive, router: Router)
+      )
 
-    socket = base_socket()
-    socket = Alva.LiveView.subscribe(socket, "students", pubsub: Alva.LiveViewTest.RoutePubSub)
-
-    assert "students" in Alva.LiveView.route_subscriptions(socket)
-
-    Phoenix.PubSub.broadcast(
-      Alva.LiveViewTest.RoutePubSub,
-      "students",
-      {:route_subscription_seen, self()}
-    )
-
-    assert_receive {:route_subscription_seen, _}
+    assert ["students:tenant:alpha"] == Alva.LiveView.route_subscriptions(socket)
   end
 
-  test "activates stream and signal projections by domain-unique name" do
+  test "activates stream and signal projections by declaration key" do
     {:cont, socket} =
       Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, base_socket())
 
     socket =
       socket
       |> Alva.LiveView.activate_stream(:students)
-      |> Alva.LiveView.activate_signal("students.created")
+      |> Alva.LiveView.activate_signal(:students_created)
 
     assert Alva.LiveView.projection_active?(socket, :stream, :students)
-    assert Alva.LiveView.projection_active?(socket, :signal, "students.created")
+    assert Alva.LiveView.projection_active?(socket, :signal, :students_created)
   end
 
   test "activates collection manually by dispatching its source event into a LiveView stream" do
@@ -417,7 +521,7 @@ defmodule Alva.LiveViewTest do
       Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, base_socket())
 
     assert_raise ArgumentError,
-                 ~r/Alva collection :enveloped_orders source event "students.custom_envelope" returned a custom envelope whose records could not be inferred/,
+                 ~r/Alva collection :enveloped_orders source event :students_custom_envelope returned a custom envelope whose records could not be inferred/,
                  fn ->
                    Alva.LiveView.collection(socket, :enveloped_orders)
                  end
@@ -428,7 +532,7 @@ defmodule Alva.LiveViewTest do
 
     {:cont, socket} =
       Alva.LiveView.on_mount(
-        {[Alva.LiveViewTest.TestDomain], [:sales_orders]},
+        %{domains: [Alva.LiveViewTest.TestDomain], collections: [:sales_orders]},
         %{},
         %{},
         base_socket()
@@ -445,15 +549,75 @@ defmodule Alva.LiveViewTest do
 
     {:cont, socket} =
       Alva.LiveView.on_mount(
-        {[Alva.LiveViewTest.TestDomain],
-         [sales_orders: [source_input: %{"page" => %{"limit" => 1}}]]},
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          collections: [sales_orders: [source_input: %{"page" => %{"limit" => 1}}]]
+        },
         %{},
         %{},
         base_socket()
-    )
+      )
 
     assert [_one_record] = stream_items(socket, :sales_orders)
     assert active_collection_source_input(socket, :sales_orders) == %{"page" => %{"limit" => 1}}
+  end
+
+  test "legacy tuple mount config fails loudly" do
+    assert_raise ArgumentError,
+                 ~r/no longer supports legacy tuple mount config/,
+                 fn ->
+                   apply(Alva.LiveView, :on_mount, [
+                     {[Alva.LiveViewTest.TestDomain], [:sales_orders]},
+                     %{},
+                     %{},
+                     base_socket()
+                   ])
+                 end
+  end
+
+  test "keyword-list mount config fails loudly" do
+    assert_raise ArgumentError,
+                 ~r/maps must be passed as a map, not a keyword list/,
+                 fn ->
+                   apply(Alva.LiveView, :on_mount, [
+                     [domains: [Alva.LiveViewTest.TestDomain], collections: [:sales_orders]],
+                     %{},
+                     %{},
+                     base_socket()
+                   ])
+                 end
+  end
+
+  test "runtime mount config rejects browser-facing signal names" do
+    assert_raise ArgumentError,
+                 ~r/no longer accepts browser-facing string names/,
+                 fn ->
+                   Alva.LiveView.on_mount(
+                     %{
+                       domains: [Alva.LiveViewTest.TestDomain],
+                       signals: ["students.created"]
+                     },
+                     %{},
+                     %{},
+                     base_socket()
+                   )
+                 end
+  end
+
+  test "runtime mount config rejects tuple signal entries" do
+    assert_raise ArgumentError,
+                 ~r/only accepts atom declaration keys/,
+                 fn ->
+                   Alva.LiveView.on_mount(
+                     %{
+                       domains: [Alva.LiveViewTest.TestDomain],
+                       signals: [{:students_created, []}]
+                     },
+                     %{},
+                     %{},
+                     base_socket()
+                   )
+                 end
   end
 
   test "route_params/1 defaults to an empty map before route params are observed" do
@@ -478,7 +642,10 @@ defmodule Alva.LiveViewTest do
 
     {:cont, socket} =
       Alva.LiveView.on_mount(
-        {[Alva.LiveViewTest.TestDomain], [sales_orders: [source_input: :sales_order_params]]},
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          collections: [sales_orders: [source_input: :sales_order_params]]
+        },
         %{},
         %{},
         base_socket(view: CollectionLive)
@@ -493,8 +660,11 @@ defmodule Alva.LiveViewTest do
 
     {:cont, socket} =
       Alva.LiveView.on_mount(
-        {[Alva.LiveViewTest.TestDomain],
-         [sales_orders: [source_input: :route_aware_sales_order_source_input]]},
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          collections: [sales_orders: [source_input: :route_aware_sales_order_source_input]],
+          route_subscriptions: [{:sales_orders, []}]
+        },
         %{"limit" => "1"},
         %{},
         base_socket(view: CollectionLive)
@@ -510,7 +680,10 @@ defmodule Alva.LiveViewTest do
 
     {:cont, socket} =
       Alva.LiveView.on_mount(
-        {[Alva.LiveViewTest.TestDomain], [sales_orders: [source_input: :raw_sales_order_params]]},
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          collections: [sales_orders: [source_input: :raw_sales_order_params]]
+        },
         %{},
         %{},
         base_socket(view: CollectionLive)
@@ -603,13 +776,16 @@ defmodule Alva.LiveViewTest do
 
     {:cont, socket} =
       Alva.LiveView.on_mount(
-        {[Alva.LiveViewTest.TestDomain],
-         [
-           sales_orders: [
-             source_input: :sales_order_route_reload_input,
-             reload_on: :route_change
-           ]
-         ]},
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          collections: [
+            sales_orders: [
+              source_input: :sales_order_route_reload_input,
+              reload_on: :route_change
+            ]
+          ],
+          route_subscriptions: [{:sales_orders, []}]
+        },
         %{"sales_limit" => "1"},
         %{},
         base_socket(view: CollectionLive, router: Router)
@@ -649,13 +825,16 @@ defmodule Alva.LiveViewTest do
 
     {:cont, socket} =
       Alva.LiveView.on_mount(
-        {[Alva.LiveViewTest.TestDomain],
-         [
-           sales_orders: [
-             source_input: :sales_order_route_reload_input,
-             reload_on: :route_change
-           ]
-         ]},
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          collections: [
+            sales_orders: [
+              source_input: :sales_order_route_reload_input,
+              reload_on: :route_change
+            ]
+          ],
+          route_subscriptions: [{:sales_orders, []}]
+        },
         %{"sales_limit" => "1"},
         %{},
         base_socket(view: CollectionLive, router: Router)
@@ -671,6 +850,78 @@ defmodule Alva.LiveViewTest do
     refute_receive {:dispatch_seen, "students.list", _}, 50
     assert Alva.LiveView.route_params(socket) == %{"sales_limit" => "1", "tab" => "summary"}
     assert active_collection_source_input(socket, :sales_orders) == %{"page" => %{"limit" => 1}}
+  end
+
+  test "callback route_subscriptions attach route lifecycle handling and diff topics on route change" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          signals: [:students_created],
+          route_subscriptions: [
+            {:students_created, :route_scoped_student_topics}
+          ]
+        },
+        %{"tenant" => "alpha"},
+        %{},
+        connected_socket(view: CollectionLive, router: Router)
+      )
+
+    assert ["students:tenant:alpha"] == Alva.LiveView.route_subscriptions(socket)
+    [%{function: callback}] = socket.private.lifecycle.handle_params
+
+    Phoenix.PubSub.broadcast(
+      Alva.PubSub,
+      "students:tenant:alpha",
+      {:initial_route_subscription_seen, self()}
+    )
+
+    assert_receive {:initial_route_subscription_seen, _}
+
+    assert {:cont, socket} = callback.(%{"tenant" => "beta"}, "/orders?tenant=beta", socket)
+
+    assert ["students:tenant:beta"] == Alva.LiveView.route_subscriptions(socket)
+    assert Alva.LiveView.route_params(socket) == %{"tenant" => "beta"}
+
+    Phoenix.PubSub.broadcast(
+      Alva.PubSub,
+      "students:tenant:alpha",
+      {:stale_route_subscription_seen, self()}
+    )
+
+    refute_receive {:stale_route_subscription_seen, _}, 50
+
+    Phoenix.PubSub.broadcast(
+      Alva.PubSub,
+      "students:tenant:beta",
+      {:fresh_route_subscription_seen, self()}
+    )
+
+    assert_receive {:fresh_route_subscription_seen, _}
+  end
+
+  test "callback route_subscriptions fail loudly during route lifecycle recompute" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          signals: [:students_created],
+          route_subscriptions: [
+            {:students_created, :route_scoped_student_topics_or_fail}
+          ]
+        },
+        %{"tenant" => "alpha"},
+        %{},
+        connected_socket(view: CollectionLive, router: Router)
+      )
+
+    [%{function: callback}] = socket.private.lifecycle.handle_params
+
+    assert_raise ArgumentError,
+                 ~r/Alva route subscription callback :route_scoped_student_topics_or_fail failed: :missing_context/,
+                 fn ->
+                   callback.(%{"tenant" => "explode"}, "/orders?tenant=explode", socket)
+                 end
   end
 
   test "multiple route-change collections refresh independently based on their source input" do
@@ -693,17 +944,23 @@ defmodule Alva.LiveViewTest do
 
     {:cont, socket} =
       Alva.LiveView.on_mount(
-        {[Alva.LiveViewTest.TestDomain],
-         [
-           sales_orders: [
-             source_input: :sales_order_route_reload_input,
-             reload_on: :route_change
-           ],
-           priority_orders: [
-             source_input: :priority_order_route_reload_input,
-             reload_on: :route_change
-           ]
-         ]},
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          collections: [
+            sales_orders: [
+              source_input: :sales_order_route_reload_input,
+              reload_on: :route_change
+            ],
+            priority_orders: [
+              source_input: :priority_order_route_reload_input,
+              reload_on: :route_change
+            ]
+          ],
+          route_subscriptions: [
+            {:sales_orders, []},
+            {:priority_orders, []}
+          ]
+        },
         %{"sales_limit" => "1", "priority_limit" => "1"},
         %{},
         base_socket(view: CollectionLive, router: Router)
@@ -724,7 +981,10 @@ defmodule Alva.LiveViewTest do
     refute_receive {:dispatch_seen, "students.list", _}, 50
 
     assert active_collection_source_input(socket, :sales_orders) == %{"page" => %{"limit" => 2}}
-    assert active_collection_source_input(socket, :priority_orders) == %{"page" => %{"limit" => 1}}
+
+    assert active_collection_source_input(socket, :priority_orders) == %{
+             "page" => %{"limit" => 1}
+           }
   end
 
   test "collection source input callback failure raises a clear activation error" do
@@ -732,8 +992,10 @@ defmodule Alva.LiveViewTest do
                  ~r/Alva collection :sales_orders source input callback :failing_params failed: :missing_context/,
                  fn ->
                    Alva.LiveView.on_mount(
-                     {[Alva.LiveViewTest.TestDomain],
-                      [sales_orders: [source_input: :failing_params]]},
+                     %{
+                       domains: [Alva.LiveViewTest.TestDomain],
+                       collections: [sales_orders: [source_input: :failing_params]]
+                     },
                      %{},
                      %{},
                      base_socket(view: CollectionLive)
@@ -747,7 +1009,7 @@ defmodule Alva.LiveViewTest do
         %{
           domains: [Alva.LiveViewTest.TestDomain],
           collections: [:sales_orders],
-          signals: ["students.created"]
+          signals: [:students_created]
         },
         %{},
         %{},
@@ -755,11 +1017,61 @@ defmodule Alva.LiveViewTest do
       )
 
     assert Alva.LiveView.projection_active?(socket, :collection, :sales_orders)
-    assert Alva.LiveView.projection_active?(socket, :signal, "students.created")
+    assert Alva.LiveView.projection_active?(socket, :signal, :students_created)
     assert ["students"] == Enum.sort(Alva.LiveView.route_subscriptions(socket))
 
     Phoenix.PubSub.broadcast(Alva.PubSub, "students", {:inferred_route_subscription_seen, self()})
     assert_receive {:inferred_route_subscription_seen, _}
+  end
+
+  test "a collection with one static publication infers route subscriptions" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          collections: [:priority_orders]
+        },
+        %{},
+        %{},
+        connected_socket()
+      )
+
+    assert Alva.LiveView.projection_active?(socket, :collection, :priority_orders)
+    assert ["students"] == Alva.LiveView.route_subscriptions(socket)
+  end
+
+  test "a signal with one static publication infers route subscriptions" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          signals: [:jobs_completed]
+        },
+        %{},
+        %{},
+        connected_socket()
+      )
+
+    assert Alva.LiveView.projection_active?(socket, :signal, :jobs_completed)
+    assert ["jobs"] == Alva.LiveView.route_subscriptions(socket)
+  end
+
+  test "a single publication may expand into multiple static route subscriptions" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          signals: [:multi_topic_students_created]
+        },
+        %{},
+        %{},
+        connected_socket()
+      )
+
+    assert Alva.LiveView.projection_active?(socket, :signal, :multi_topic_students_created)
+
+    assert ["students:all", "students:tenant"] ==
+             Enum.sort(Alva.LiveView.route_subscriptions(socket))
   end
 
   test "route_subscriptions override only the named projection and keep inference for the rest" do
@@ -768,7 +1080,7 @@ defmodule Alva.LiveViewTest do
         %{
           domains: [Alva.LiveViewTest.TestDomain],
           collections: [:sales_orders],
-          signals: ["students.created"],
+          signals: [:students_created],
           route_subscriptions: [
             {:sales_orders, ["orders:new"]}
           ]
@@ -817,6 +1129,88 @@ defmodule Alva.LiveViewTest do
     assert ["orders:raw"] == Alva.LiveView.route_subscriptions(socket)
   end
 
+  test "route_subscriptions callbacks may return {:ok, binary_topic}" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          collections: [:sales_orders],
+          route_subscriptions: [
+            {:sales_orders, :ok_raw_order_topic}
+          ]
+        },
+        %{},
+        %{},
+        connected_socket(view: CollectionLive)
+      )
+
+    assert ["orders:ok"] == Alva.LiveView.route_subscriptions(socket)
+  end
+
+  test "route_subscriptions callbacks may return [] as an authoritative dynamic opt-out" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          collections: [:sales_orders],
+          route_subscriptions: [
+            {:sales_orders, :no_topics}
+          ]
+        },
+        %{},
+        %{},
+        connected_socket(view: CollectionLive)
+      )
+
+    assert Alva.LiveView.projection_active?(socket, :collection, :sales_orders)
+    assert [] == Alva.LiveView.route_subscriptions(socket)
+  end
+
+  test "route_subscriptions callbacks normalize duplicate topics before subscribing" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          collections: [:sales_orders],
+          route_subscriptions: [
+            {:sales_orders, :duplicate_order_topics}
+          ]
+        },
+        %{},
+        %{},
+        connected_socket(view: CollectionLive)
+      )
+
+    assert ["orders:new", "orders:tenant"] == Enum.sort(Alva.LiveView.route_subscriptions(socket))
+  end
+
+  test "route_subscriptions accept an explicit binary topic for a signal projection" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          signals: [:students_created],
+          route_subscriptions: [
+            {:students_created, "students:direct"}
+          ]
+        },
+        %{},
+        %{},
+        connected_socket()
+      )
+
+    assert Alva.LiveView.projection_active?(socket, :signal, :students_created)
+    assert ["students:direct"] == Alva.LiveView.route_subscriptions(socket)
+
+    Phoenix.PubSub.broadcast(
+      Alva.PubSub,
+      "students:direct",
+      {:explicit_signal_route_subscription_seen, self()}
+    )
+
+    assert_receive {:explicit_signal_route_subscription_seen, _}
+  end
+
   test "route_subscriptions allow an explicit empty list to opt out of realtime wiring" do
     {:cont, socket} =
       Alva.LiveView.on_mount(
@@ -849,14 +1243,14 @@ defmodule Alva.LiveViewTest do
       Alva.LiveView.on_mount(
         %{
           domains: [Alva.LiveViewTest.TestDomain],
-          signals: ["students.created"]
+          signals: [:students_created]
         },
         %{},
         %{},
         socket
       )
 
-    assert Alva.LiveView.projection_active?(socket, :signal, "students.created")
+    assert Alva.LiveView.projection_active?(socket, :signal, :students_created)
 
     [%{function: callback}] = socket.private.lifecycle.handle_info
 
@@ -872,10 +1266,10 @@ defmodule Alva.LiveViewTest do
         %{
           domains: [Alva.LiveViewTest.TestDomain],
           collections: [:sales_orders],
-          signals: ["students.created"],
+          signals: [:students_created],
           route_subscriptions: [
             {:sales_orders, ["orders:new"]},
-            {"students.created", :student_topics}
+            {:students_created, :student_topics}
           ]
         },
         %{},
@@ -884,24 +1278,29 @@ defmodule Alva.LiveViewTest do
       )
 
     assert Alva.LiveView.projection_active?(socket, :collection, :sales_orders)
-    assert Alva.LiveView.projection_active?(socket, :signal, "students.created")
+    assert Alva.LiveView.projection_active?(socket, :signal, :students_created)
     assert "orders:new" in Alva.LiveView.route_subscriptions(socket)
     assert "students" in Alva.LiveView.route_subscriptions(socket)
     assert "students:tenant" in Alva.LiveView.route_subscriptions(socket)
 
-    Phoenix.PubSub.broadcast(Alva.PubSub, "orders:new", {:projection_route_subscription_seen, self()})
+    Phoenix.PubSub.broadcast(
+      Alva.PubSub,
+      "orders:new",
+      {:projection_route_subscription_seen, self()}
+    )
+
     assert_receive {:projection_route_subscription_seen, _}
   end
 
   test "route_subscriptions fail loud when a projection is not active" do
     assert_raise ArgumentError,
-                 ~r/Alva route_subscriptions entry "students.created" must reference an active Signal projection/,
+                 ~r/Alva route_subscriptions entry :students_created must reference an active Collection or Signal projection/,
                  fn ->
                    Alva.LiveView.on_mount(
                      %{
                        domains: [Alva.LiveViewTest.TestDomain],
                        route_subscriptions: [
-                         {"students.created", ["students"]}
+                         {:students_created, ["students"]}
                        ]
                      },
                      %{},
@@ -969,6 +1368,66 @@ defmodule Alva.LiveViewTest do
                  end
   end
 
+  test "route_subscriptions callbacks fail loudly when they return nil" do
+    assert_raise ArgumentError,
+                 ~r/Alva route subscription callback :nil_topics must return a binary topic or list of binary topics, got: nil/,
+                 fn ->
+                   Alva.LiveView.on_mount(
+                     %{
+                       domains: [Alva.LiveViewTest.TestDomain],
+                       collections: [:sales_orders],
+                       route_subscriptions: [
+                         {:sales_orders, :nil_topics}
+                       ]
+                     },
+                     %{},
+                     %{},
+                     connected_socket(view: CollectionLive)
+                   )
+                 end
+  end
+
+  test "shared callback topics subscribe once while preserving collection and signal semantics" do
+    socket = %Phoenix.LiveView.Socket{
+      endpoint: Alva.LiveViewTest.Endpoint,
+      transport_pid: self(),
+      view: CollectionLive,
+      assigns: %{__changed__: %{}},
+      private: %{
+        lifecycle: %Phoenix.LiveView.Lifecycle{},
+        live_temp: %{push_events: []}
+      }
+    }
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          collections: [:sales_orders],
+          signals: [:students_created],
+          route_subscriptions: [
+            {:sales_orders, :shared_student_topics},
+            {:students_created, :shared_student_topics}
+          ]
+        },
+        %{},
+        %{},
+        socket
+      )
+
+    assert ["students"] == Alva.LiveView.route_subscriptions(socket)
+
+    [%{function: callback}] = socket.private.lifecycle.handle_info
+
+    {:halt, final_socket} = callback.(student_created_notification(), socket)
+
+    assert [{_dom_id, 0, %{id: "123", name: "test"}, -10, false}] =
+             stream_inserts(final_socket, :sales_orders)
+
+    assert [["students.created", %{id: "123", name: "test"}]] =
+             final_socket.private.live_temp.push_events
+  end
+
   test "automatic route subscription inference fails loudly for dynamic publication topics" do
     assert_raise ArgumentError,
                  ~r/Alva could not infer deterministic route_subscriptions for Signal "scoped.created"/,
@@ -976,11 +1435,45 @@ defmodule Alva.LiveViewTest do
                    Alva.LiveView.on_mount(
                      %{
                        domains: [Alva.LiveViewTest.TestDomain],
-                       signals: ["scoped.created"]
+                       signals: [:scoped_created]
                      },
                      %{},
                      %{},
                      connected_socket()
+                   )
+                 end
+  end
+
+  test "automatic route subscription inference fails loudly for ambiguous publications" do
+    assert_raise ArgumentError,
+                 ~r/Alva could not infer deterministic route_subscriptions for Signal "students.ambiguous_created" from trigger :create because multiple Ash PubSub publications match/,
+                 fn ->
+                   Alva.LiveView.on_mount(
+                     %{
+                       domains: [Alva.LiveViewTest.TestDomain],
+                       signals: [:ambiguous_students_created]
+                     },
+                     %{},
+                     %{},
+                     connected_socket()
+                   )
+                 end
+  end
+
+  test "automatic route subscription inference fails loudly when collection topic wiring depends on page scope" do
+    assert_raise ArgumentError,
+                 ~r/Alva could not infer deterministic route_subscriptions for Collection :sales_orders because its source_input callback :route_aware_sales_order_source_input may depend on Page Scope route params/,
+                 fn ->
+                   Alva.LiveView.on_mount(
+                     %{
+                       domains: [Alva.LiveViewTest.TestDomain],
+                       collections: [
+                         sales_orders: [source_input: :route_aware_sales_order_source_input]
+                       ]
+                     },
+                     %{"limit" => "1"},
+                     %{},
+                     base_socket(view: CollectionLive)
                    )
                  end
   end
@@ -990,9 +1483,9 @@ defmodule Alva.LiveViewTest do
       Alva.LiveView.on_mount(
         %{
           domains: [Alva.LiveViewTest.TestDomain],
-          signals: ["scoped.created"],
+          signals: [:scoped_created],
           route_subscriptions: [
-            {"scoped.created", :scoped_signal_topics}
+            {:scoped_created, :scoped_signal_topics}
           ]
         },
         %{},
@@ -1000,8 +1493,25 @@ defmodule Alva.LiveViewTest do
         connected_socket(view: CollectionLive)
       )
 
-    assert Alva.LiveView.projection_active?(socket, :signal, "scoped.created")
+    assert Alva.LiveView.projection_active?(socket, :signal, :scoped_created)
     assert ["scoped:tenant:alpha"] == Alva.LiveView.route_subscriptions(socket)
+  end
+
+  test "on_mount fails loudly when collections and signals share a projection key" do
+    assert_raise ArgumentError,
+                 ~r/cannot activate the same projection key in both `collections:` and `signals:`: :sales_orders/,
+                 fn ->
+                   Alva.LiveView.on_mount(
+                     %{
+                       domains: [Alva.LiveViewTest.TestDomain],
+                       collections: [:sales_orders],
+                       signals: [:sales_orders]
+                     },
+                     %{},
+                     %{},
+                     base_socket()
+                   )
+                 end
   end
 
   test "mounting a domain does not activate collections by default" do
@@ -1028,7 +1538,7 @@ defmodule Alva.LiveViewTest do
 
     {:cont, socket} =
       Alva.LiveView.on_mount(
-        {[Alva.LiveViewTest.TestDomain], [:sales_orders]},
+        %{domains: [Alva.LiveViewTest.TestDomain], collections: [:sales_orders]},
         %{},
         %{},
         base_socket()
@@ -1046,14 +1556,14 @@ defmodule Alva.LiveViewTest do
       Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, base_socket())
 
     list_socket = Alva.LiveView.activate_stream(list_socket, :students)
-    notice_socket = Alva.LiveView.activate_signal(notice_socket, "students.created")
+    notice_socket = Alva.LiveView.activate_signal(notice_socket, :students_created)
 
     notification = student_created_notification()
 
     assert %{streams: [:students], signals: []} =
              Alva.LiveView.active_projections(list_socket, notification)
 
-    assert %{streams: [], signals: ["students.created"]} =
+    assert %{streams: [], signals: [:students_created]} =
              Alva.LiveView.active_projections(notice_socket, notification)
   end
 
@@ -1064,7 +1574,7 @@ defmodule Alva.LiveViewTest do
     socket =
       socket
       |> Alva.LiveView.activate_stream(:other_students)
-      |> Alva.LiveView.activate_signal("other_students.created")
+      |> Alva.LiveView.activate_signal(:other_students_created)
 
     assert %{streams: [], signals: []} =
              Alva.LiveView.active_projections(socket, student_created_notification())
@@ -1096,7 +1606,7 @@ defmodule Alva.LiveViewTest do
     }
 
     {:cont, socket} = Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, socket)
-    socket = Alva.LiveView.activate_signal(socket, "students.created")
+    socket = Alva.LiveView.activate_signal(socket, :students_created)
 
     [%{function: callback}] = socket.private.lifecycle.handle_info
 
@@ -1124,7 +1634,7 @@ defmodule Alva.LiveViewTest do
         {:cont, socket} = Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, socket)
         socket
       end)
-      |> Alva.LiveView.activate_signal("students.created")
+      |> Alva.LiveView.activate_signal(:students_created)
 
     [%{function: callback}] = socket.private.lifecycle.handle_info
 
@@ -1267,7 +1777,7 @@ defmodule Alva.LiveViewTest do
         socket
       end)
       |> Phoenix.Component.assign(:students, [])
-      |> Alva.LiveView.activate_signal("students.created")
+      |> Alva.LiveView.activate_signal(:students_created)
 
     [%{function: callback}] = socket.private.lifecycle.handle_info
 
@@ -1282,7 +1792,7 @@ defmodule Alva.LiveViewTest do
   test "the same occurrence can update a stream and push a signal when both are active" do
     socket =
       active_stream_socket()
-      |> Alva.LiveView.activate_signal("students.created")
+      |> Alva.LiveView.activate_signal(:students_created)
 
     [%{function: callback}] = socket.private.lifecycle.handle_info
 
@@ -1508,7 +2018,7 @@ defmodule Alva.LiveViewTest do
     }
 
     {:cont, socket} = Alva.LiveView.on_mount([Alva.LiveViewTest.TestDomain], %{}, %{}, socket)
-    socket = Alva.LiveView.activate_signal(socket, "jobs.completed")
+    socket = Alva.LiveView.activate_signal(socket, :jobs_completed)
 
     [%{function: callback}] = socket.private.lifecycle.handle_info
 

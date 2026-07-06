@@ -4,38 +4,28 @@ defmodule Alva.LiveView do
   """
 
   @alva_private_key :alva
+  @public_activation_keys [:domains, :collections, :signals, :route_subscriptions]
+  @public_collection_option_keys [:source_input, :reload_on]
 
   defmacro __using__(opts) do
+    validate_use_opts!(opts, __CALLER__)
+
     quote do
       import Alva.LiveView
       @alva_domains Keyword.get(unquote(opts), :domains, [])
       @alva_collections Keyword.get(unquote(opts), :collections, [])
-      @alva_streams Keyword.get(unquote(opts), :streams, [])
       @alva_signals Keyword.get(unquote(opts), :signals, [])
-      @alva_subscriptions Keyword.get(unquote(opts), :subscriptions, [])
       @alva_route_subscriptions Keyword.get(unquote(opts), :route_subscriptions, [])
       on_mount(
         {Alva.LiveView,
          %{
            domains: @alva_domains,
            collections: @alva_collections,
-           streams: @alva_streams,
            signals: @alva_signals,
-           subscriptions: @alva_subscriptions,
            route_subscriptions: @alva_route_subscriptions
          }}
       )
     end
-  end
-
-  def subscribe(socket, topic, opts \\ []) when is_binary(topic) do
-    pubsub = Keyword.get(opts, :pubsub) || endpoint_pubsub!(socket)
-
-    :ok = Phoenix.PubSub.subscribe(pubsub, topic)
-
-    update_alva(socket, fn state ->
-      update_in(state.route_subscriptions, &MapSet.put(&1, topic))
-    end)
   end
 
   def activate_stream(socket, name) when is_atom(name) do
@@ -52,10 +42,11 @@ defmodule Alva.LiveView do
 
   def collection(socket, name, opts) when is_atom(name) and is_list(opts) do
     {_resource, collection} = find_projection!(socket, :collection, name)
+    {_event_resource, source_event} = find_event_declaration!(socket, collection.source.event)
     source_input = collection_source_input!(socket, name, collection_source_input_option(opts))
 
     result =
-      Alva.Dispatcher.dispatch(collection.source.event, source_input,
+      Alva.Dispatcher.dispatch(source_event.name, source_input,
         domains: alva_state(socket).domains,
         socket: socket
       )
@@ -79,11 +70,11 @@ defmodule Alva.LiveView do
     end
   end
 
-  def activate_signal(socket, name) when is_binary(name) do
-    ensure_projection!(socket, :signal, name)
+  def activate_signal(socket, key) when is_atom(key) do
+    ensure_projection!(socket, :signal, key)
 
     update_alva(socket, fn state ->
-      update_in(state.signals, &MapSet.put(&1, name))
+      update_in(state.signals, &MapSet.put(&1, key))
     end)
   end
 
@@ -138,40 +129,39 @@ defmodule Alva.LiveView do
   end
 
   def active_projections(socket, %Ash.Notifier.Notification{} = notification) do
-    active_projections(socket, notification, notification_events(notification))
+    active_projections(socket, notification, notification_occurrence_keys(notification))
   end
 
   def active_projections(
         socket,
-        %Phoenix.Socket.Broadcast{
-          event: event,
-          payload: %Ash.Notifier.Notification{} = notification
-        }
+        %Phoenix.Socket.Broadcast{payload: %Ash.Notifier.Notification{} = notification}
       ) do
-    active_projections(socket, notification, MapSet.new([to_string(event)]))
+    active_projections(socket, notification, notification_occurrence_keys(notification))
   end
 
   defp active_projections(
          socket,
          %Ash.Notifier.Notification{resource: notification_resource},
-         events
+         occurrence_keys
        ) do
     %{
       streams:
         socket
         |> active_stream_projections()
-        |> Enum.filter(&stream_projection_matches?(&1, notification_resource, events))
+        |> Enum.filter(&stream_projection_matches?(&1, notification_resource, occurrence_keys))
         |> Enum.map(fn {name, _projection} -> name end),
       collections:
         socket
         |> active_collection_projections()
-        |> Enum.filter(&stream_projection_matches?(&1, notification_resource, events))
+        |> Enum.filter(
+          &collection_projection_matches?(&1, notification_resource, occurrence_keys)
+        )
         |> Enum.map(fn {name, _projection} -> name end),
       signals:
         socket
         |> active_signal_projections()
         |> Enum.filter(fn {_name, {resource, signal}} ->
-          resource == notification_resource and MapSet.member?(events, signal.on)
+          resource == notification_resource and MapSet.member?(occurrence_keys, signal.on)
         end)
         |> Enum.map(fn {name, _projection} -> name end)
     }
@@ -181,20 +171,21 @@ defmodule Alva.LiveView do
     %{
       domains: domains,
       collections: collections,
-      streams: streams,
       signals: signals,
-      subscriptions: subscriptions,
       route_subscriptions: route_subscriptions
     } = normalize_mount_config(config)
 
     route_params = normalize_route_params(params)
+    collection_specs = collection_activation_specs(collections)
     route_change_collections = route_change_collection_specs(collections)
+    route_subscription_callbacks = callback_route_subscriptions?(route_subscriptions)
 
     socket =
       update_alva(socket, fn state ->
         %{
           state
           | domains: domains,
+            collection_specs: collection_specs,
             route_params: route_params,
             route_change_collections: route_change_collections
         }
@@ -234,30 +225,38 @@ defmodule Alva.LiveView do
     socket =
       Phoenix.LiveView.attach_hook(socket, :alva_handle_info, :handle_info, fn
         %Ash.Notifier.Notification{} = notification, sock ->
-          handle_notification(notification, sock, notification_events(notification))
+          handle_notification(notification, sock, notification_occurrence_keys(notification))
 
         %Phoenix.Socket.Broadcast{payload: %Ash.Notifier.Notification{} = notification} =
             broadcast,
         sock ->
-          handle_notification(notification, sock, broadcast_events(broadcast))
+          _ = broadcast
+          handle_notification(notification, sock, notification_occurrence_keys(notification))
 
         _msg, sock ->
           {:cont, sock}
       end)
 
     socket =
-      if map_size(route_change_collections) == 0 do
-        socket
-      else
-        Phoenix.LiveView.attach_hook(socket, :alva_handle_params, :handle_params, fn
-          params, _uri, sock ->
-            sock =
-              sock
-              |> put_route_params(params)
-              |> refresh_route_change_collections()
+      cond do
+        map_size(route_change_collections) == 0 and not route_subscription_callbacks ->
+          socket
 
-            {:cont, sock}
-        end)
+        map_size(route_change_collections) == 0 and route_subscription_callbacks and
+            not route_lifecycle_available?(socket) ->
+          socket
+
+        true ->
+          Phoenix.LiveView.attach_hook(socket, :alva_handle_params, :handle_params, fn
+            params, _uri, sock ->
+              sock =
+                sock
+                |> put_route_params(params)
+                |> sync_projection_route_topics(route_subscriptions)
+                |> refresh_route_change_collections()
+
+              {:cont, sock}
+          end)
       end
 
     socket =
@@ -267,35 +266,29 @@ defmodule Alva.LiveView do
       end)
 
     socket =
-      Enum.reduce(streams, socket, fn stream_name, acc_socket ->
-        activate_stream(acc_socket, stream_name)
-      end)
-
-    socket =
       Enum.reduce(signals, socket, fn signal_name, acc_socket ->
         activate_signal(acc_socket, signal_name)
       end)
 
-    socket = subscribe_route_topics(socket, subscriptions)
-    socket = subscribe_projection_route_topics(socket, route_subscriptions)
+    socket = sync_projection_route_topics(socket, route_subscriptions)
 
     {:cont, socket}
   end
 
-  defp handle_notification(notification, sock, events) do
-    projections = active_projections(sock, notification, events)
+  defp handle_notification(notification, sock, occurrence_keys) do
+    projections = active_projections(sock, notification, occurrence_keys)
 
     case projections do
       %{streams: [], collections: [], signals: []} ->
         {:cont, sock}
 
       %{signals: signals} ->
-        sock = apply_stream_operations(sock, notification, events)
+        sock = apply_stream_operations(sock, notification, occurrence_keys)
 
         if signals == [] do
           {:halt, sock}
         else
-          {:halt, push_signals(sock, notification, events)}
+          {:halt, push_signals(sock, notification, occurrence_keys)}
         end
     end
   end
@@ -303,12 +296,12 @@ defmodule Alva.LiveView do
   defp endpoint_pubsub!(%{endpoint: endpoint}) when is_atom(endpoint) and not is_nil(endpoint) do
     endpoint.config(:pubsub_server) ||
       raise ArgumentError,
-            "Alva.LiveView.subscribe/3 requires :pubsub when socket endpoint has no :pubsub_server"
+            "Alva.LiveView realtime subscription transport requires a socket endpoint with :pubsub_server"
   end
 
   defp endpoint_pubsub!(_socket) do
     raise ArgumentError,
-          "Alva.LiveView.subscribe/3 requires :pubsub when socket has no endpoint"
+          "Alva.LiveView realtime subscription transport requires socket.endpoint to be set"
   end
 
   defp active_stream_projections(socket) do
@@ -397,7 +390,12 @@ defmodule Alva.LiveView do
 
     case event_projection do
       {resource, %{action: action_name}} ->
-        apply_stream_operations(socket, resource, action_events(resource, action_name), data)
+        apply_stream_operations(
+          socket,
+          resource,
+          action_occurrence_keys(resource, action_name),
+          data
+        )
 
       _ ->
         socket
@@ -466,7 +464,7 @@ defmodule Alva.LiveView do
 
     if Phoenix.LiveView.connected?(socket) do
       Enum.reduce(topics, socket, fn topic, acc_socket ->
-        subscribe(acc_socket, topic)
+        subscribe_transport_topic(acc_socket, topic)
       end)
     else
       socket
@@ -506,34 +504,57 @@ defmodule Alva.LiveView do
           "Alva collection #{inspect(name)} subscription callback #{inspect(callback)} must return a binary topic or list of binary topics, got: #{inspect(topics)}"
   end
 
-  defp subscribe_route_topics(socket, subscriptions) do
-    topics =
-      subscriptions
-      |> List.wrap()
-      |> Enum.flat_map(&route_subscription_topics!(socket, &1))
+  defp sync_projection_route_topics(socket, route_subscriptions) do
+    previous_topics =
+      socket
+      |> route_subscriptions()
+      |> MapSet.new()
+
+    next_topics =
+      socket
+      |> projection_route_topics!(route_subscriptions)
+      |> MapSet.new()
+
+    socket =
+      update_alva(socket, fn state ->
+        %{state | route_subscriptions: next_topics}
+      end)
 
     if Phoenix.LiveView.connected?(socket) do
-      Enum.reduce(topics, socket, fn topic, acc_socket ->
-        subscribe(acc_socket, topic)
-      end)
+      socket
+      |> unsubscribe_projection_route_topics(previous_topics, next_topics)
+      |> subscribe_projection_route_topics(previous_topics, next_topics)
     else
       socket
     end
   end
 
-  defp subscribe_projection_route_topics(socket, route_subscriptions) do
-    topics =
-      socket
-      |> projection_route_topics!(route_subscriptions)
-      |> Enum.uniq()
+  defp unsubscribe_projection_route_topics(socket, previous_topics, next_topics) do
+    previous_topics
+    |> MapSet.difference(next_topics)
+    |> Enum.reduce(socket, fn topic, acc_socket ->
+      unsubscribe_transport_topic(acc_socket, topic)
+    end)
+  end
 
-    if Phoenix.LiveView.connected?(socket) do
-      Enum.reduce(topics, socket, fn topic, acc_socket ->
-        subscribe(acc_socket, topic)
-      end)
-    else
-      socket
-    end
+  defp subscribe_projection_route_topics(socket, previous_topics, next_topics) do
+    next_topics
+    |> MapSet.difference(previous_topics)
+    |> Enum.reduce(socket, fn topic, acc_socket ->
+      subscribe_transport_topic(acc_socket, topic)
+    end)
+  end
+
+  defp subscribe_transport_topic(socket, topic) when is_binary(topic) do
+    pubsub = endpoint_pubsub!(socket)
+    :ok = Phoenix.PubSub.subscribe(pubsub, topic)
+    socket
+  end
+
+  defp unsubscribe_transport_topic(socket, topic) when is_binary(topic) do
+    pubsub = endpoint_pubsub!(socket)
+    :ok = Phoenix.PubSub.unsubscribe(pubsub, topic)
+    socket
   end
 
   defp projection_route_topics!(socket, route_subscriptions) do
@@ -578,28 +599,24 @@ defmodule Alva.LiveView do
           "Alva route_subscriptions entries must be {projection, topics} tuples, got: #{inspect(spec)}"
   end
 
-  defp ensure_projection_route_subscription_target!(socket, projection) when is_atom(projection) do
-    if projection_active?(socket, :collection, projection) do
-      :ok
-    else
-      raise ArgumentError,
-            "Alva route_subscriptions entry #{inspect(projection)} must reference an active Collection projection"
-    end
-  end
-
   defp ensure_projection_route_subscription_target!(socket, projection)
-       when is_binary(projection) do
-    if projection_active?(socket, :signal, projection) do
-      :ok
-    else
-      raise ArgumentError,
-            "Alva route_subscriptions entry #{inspect(projection)} must reference an active Signal projection"
+       when is_atom(projection) do
+    cond do
+      projection_active?(socket, :collection, projection) ->
+        :ok
+
+      projection_active?(socket, :signal, projection) ->
+        :ok
+
+      true ->
+        raise ArgumentError,
+              "Alva route_subscriptions entry #{inspect(projection)} must reference an active Collection or Signal projection"
     end
   end
 
   defp ensure_projection_route_subscription_target!(_socket, projection) do
     raise ArgumentError,
-          "Alva route_subscriptions keys must be Collection atoms or Signal names, got: #{inspect(projection)}"
+          "Alva route_subscriptions keys must be Collection or Signal declaration key atoms, got: #{inspect(projection)}"
   end
 
   defp normalize_projection_route_subscription_topics!(_socket, _projection, topic)
@@ -628,48 +645,80 @@ defmodule Alva.LiveView do
   end
 
   defp inferred_projection_route_topics!(socket, projection) when is_atom(projection) do
-    {resource, collection} = find_projection!(socket, :collection, projection)
+    cond do
+      projection_active?(socket, :collection, projection) ->
+        ensure_collection_route_inference_static!(socket, projection)
+        {resource, collection} = find_projection!(socket, :collection, projection)
 
-    collection
-    |> Map.get(:operations, [])
-    |> Enum.map(& &1.on)
-    |> Enum.uniq()
-    |> Enum.flat_map(&publication_topics_for_trigger!(resource, &1, {:collection, projection}))
-    |> Enum.uniq()
-  end
+        collection
+        |> Map.get(:operations, [])
+        |> Enum.map(& &1.on)
+        |> Enum.uniq()
+        |> Enum.flat_map(
+          &publication_topics_for_trigger!(resource, &1, {:collection, projection})
+        )
+        |> Enum.uniq()
 
-  defp inferred_projection_route_topics!(socket, projection) when is_binary(projection) do
-    {resource, signal} = find_projection!(socket, :signal, projection)
+      projection_active?(socket, :signal, projection) ->
+        {resource, signal} = find_projection!(socket, :signal, projection)
 
-    resource
-    |> publication_topics_for_trigger!(signal.on, {:signal, projection})
-    |> Enum.uniq()
+        resource
+        |> publication_topics_for_trigger!(signal.on, {:signal, projection, signal.name})
+        |> Enum.uniq()
+
+      true ->
+        raise ArgumentError,
+              "Alva could not infer route_subscriptions for unknown projection #{inspect(projection)}"
+    end
   end
 
   defp publication_topics_for_trigger!(resource, trigger, projection_ref) do
     publications =
       resource
       |> Ash.Notifier.PubSub.Info.publications()
-      |> Enum.filter(&(publication_identity(&1) == trigger))
+      |> Enum.filter(&(publication_occurrence_key(&1) == trigger))
 
     case publications do
       [] ->
         raise ArgumentError,
               "Alva could not infer route_subscriptions for #{route_projection_label(projection_ref)} because no Ash PubSub publication matches trigger #{inspect(trigger)}"
 
-      publications ->
-        publications
-        |> Enum.flat_map(fn publication ->
-          case deterministic_publication_topics(resource, publication) do
-            {:ok, topics} ->
-              topics
+      [publication] ->
+        case deterministic_publication_topics(resource, publication) do
+          {:ok, topics} ->
+            Enum.uniq(topics)
 
-            :dynamic ->
-              raise ArgumentError,
-                    "Alva could not infer deterministic route_subscriptions for #{route_projection_label(projection_ref)} from trigger #{inspect(trigger)}. Declare route_subscriptions explicitly for this projection."
-          end
-        end)
-        |> Enum.uniq()
+          :dynamic ->
+            raise ArgumentError,
+                  "Alva could not infer deterministic route_subscriptions for #{route_projection_label(projection_ref)} from trigger #{inspect(trigger)}. Declare route_subscriptions explicitly for this projection."
+        end
+
+      _publications ->
+        raise ArgumentError,
+              "Alva could not infer deterministic route_subscriptions for #{route_projection_label(projection_ref)} from trigger #{inspect(trigger)} because multiple Ash PubSub publications match. Declare route_subscriptions explicitly for this projection."
+    end
+  end
+
+  defp ensure_collection_route_inference_static!(socket, projection) do
+    opts =
+      socket
+      |> alva_state()
+      |> Map.get(:collection_specs, %{})
+      |> Map.get(projection, [])
+
+    source_input = Keyword.get(opts, :source_input)
+
+    cond do
+      Keyword.get(opts, :reload_on) == :route_change ->
+        raise ArgumentError,
+              "Alva could not infer deterministic route_subscriptions for Collection #{inspect(projection)} because its Topic wiring depends on Page Scope (`reload_on: :route_change`). Declare route_subscriptions explicitly for this projection."
+
+      is_atom(source_input) and route_params(socket) != %{} ->
+        raise ArgumentError,
+              "Alva could not infer deterministic route_subscriptions for Collection #{inspect(projection)} because its source_input callback #{inspect(source_input)} may depend on Page Scope route params. Declare route_subscriptions explicitly for this projection."
+
+      true ->
+        :ok
     end
   end
 
@@ -694,7 +743,10 @@ defmodule Alva.LiveView do
 
   defp deterministic_topic_template?(topic) when is_binary(topic) or is_nil(topic), do: true
   defp deterministic_topic_template?(topic) when is_atom(topic), do: false
-  defp deterministic_topic_template?(topic) when is_list(topic), do: Enum.all?(topic, &deterministic_topic_template?/1)
+
+  defp deterministic_topic_template?(topic) when is_list(topic),
+    do: Enum.all?(topic, &deterministic_topic_template?/1)
+
   defp deterministic_topic_template?(_topic), do: false
 
   defp expand_static_topic_template(nil, _delimiter), do: [""]
@@ -707,7 +759,9 @@ defmodule Alva.LiveView do
   end
 
   defp expand_static_topic_segments([], trail), do: [Enum.reverse(trail)]
-  defp expand_static_topic_segments([nil | rest], trail), do: expand_static_topic_segments(rest, trail)
+
+  defp expand_static_topic_segments([nil | rest], trail),
+    do: expand_static_topic_segments(rest, trail)
 
   defp expand_static_topic_segments([item | rest], trail) when is_binary(item) do
     expand_static_topic_segments(rest, [item | trail])
@@ -727,18 +781,8 @@ defmodule Alva.LiveView do
   defp route_projection_label({:collection, projection}),
     do: "Collection #{inspect(projection)}"
 
+  defp route_projection_label({:signal, _projection, name}), do: "Signal #{inspect(name)}"
   defp route_projection_label({:signal, projection}), do: "Signal #{inspect(projection)}"
-
-  defp route_subscription_topics!(_socket, topic) when is_binary(topic), do: [topic]
-
-  defp route_subscription_topics!(_socket, topics) when is_list(topics) do
-    if Enum.all?(topics, &is_binary/1) do
-      topics
-    else
-      raise ArgumentError,
-            "Alva route subscriptions must be binary topics, lists of binary topics, or local callback names, got: #{inspect(topics)}"
-    end
-  end
 
   defp route_subscription_topics!(socket, callback) when is_atom(callback) do
     callback
@@ -749,7 +793,7 @@ defmodule Alva.LiveView do
 
   defp route_subscription_topics!(_socket, topic) do
     raise ArgumentError,
-          "Alva route subscriptions must be binary topics, lists of binary topics, or local callback names, got: #{inspect(topic)}"
+          "Alva route subscriptions expect a local callback name when callback normalization is required, got: #{inspect(topic)}"
   end
 
   defp normalize_route_subscription_topics!(topic, _callback) when is_binary(topic), do: [topic]
@@ -839,8 +883,8 @@ defmodule Alva.LiveView do
     |> Enum.filter(fn {_name, {resource, signal}} ->
       resource == notification_resource and MapSet.member?(events, signal.on)
     end)
-    |> Enum.reduce(socket, fn {name, {_resource, signal}}, acc_socket ->
-      Phoenix.LiveView.push_event(acc_socket, name, signal_payload(data, signal))
+    |> Enum.reduce(socket, fn {_key, {_resource, signal}}, acc_socket ->
+      Phoenix.LiveView.push_event(acc_socket, signal.name, signal_payload(data, signal))
     end)
   end
 
@@ -870,18 +914,18 @@ defmodule Alva.LiveView do
   end
 
   defp apply_stream_operations(socket, notification_resource, event, data)
-       when is_binary(event) do
+       when is_atom(event) or is_binary(event) do
     apply_stream_operations(socket, notification_resource, MapSet.new([event]), data)
   end
 
-  defp apply_stream_operations(socket, notification_resource, events, data) do
+  defp apply_stream_operations(socket, notification_resource, occurrence_keys, data) do
     socket =
       socket
       |> active_collection_projections()
       |> Enum.flat_map(fn {name, {resource, collection}} ->
         if resource == notification_resource do
           collection.operations
-          |> Enum.filter(&MapSet.member?(events, &1.on))
+          |> Enum.filter(&MapSet.member?(occurrence_keys, &1.on))
           |> Enum.map(&{name, &1})
         else
           []
@@ -896,7 +940,7 @@ defmodule Alva.LiveView do
     |> Enum.flat_map(fn {name, {resource, stream}} ->
       if resource == notification_resource do
         stream.operations
-        |> Enum.filter(&MapSet.member?(events, &1.on))
+        |> Enum.filter(&MapSet.member?(occurrence_keys, &1.on))
         |> Enum.map(&{name, &1.op})
       else
         []
@@ -990,10 +1034,19 @@ defmodule Alva.LiveView do
   defp stream_projection_matches?(
          {_name, {resource, stream}},
          notification_resource,
-         events
+         occurrence_keys
        ) do
     resource == notification_resource and
-      Enum.any?(stream.operations, &MapSet.member?(events, &1.on))
+      Enum.any?(stream.operations, &MapSet.member?(occurrence_keys, &1.on))
+  end
+
+  defp collection_projection_matches?(
+         {_name, {resource, collection}},
+         notification_resource,
+         occurrence_keys
+       ) do
+    resource == notification_resource and
+      Enum.any?(collection.operations, &MapSet.member?(occurrence_keys, &1.on))
   end
 
   defp ensure_projection!(socket, kind, name) do
@@ -1025,75 +1078,81 @@ defmodule Alva.LiveView do
   defp projection_map(domain, :collection), do: Alva.Domain.Info.alva_collection_map(domain)
   defp projection_map(domain, :signal), do: Alva.Domain.Info.alva_signal_map(domain)
 
+  defp find_event_declaration!(socket, key) do
+    domains = alva_state(socket).domains
+
+    event_projection =
+      Enum.find_value(domains, fn domain ->
+        domain
+        |> Alva.Domain.Info.alva_event_key_map()
+        |> Map.get(key)
+      end)
+
+    case event_projection do
+      nil ->
+        raise ArgumentError,
+              "Unknown Alva event declaration #{inspect(key)} for mounted domains #{inspect(domains)}"
+
+      event_projection ->
+        event_projection
+    end
+  end
+
   defp normalize_mount_config(%{domains: domains} = config) when is_list(domains) do
+    validate_mount_config_keys!(config)
+    collections = Map.get(config, :collections, [])
+    signals = Map.get(config, :signals, [])
+
+    validate_collection_activation_specs!(collections)
+    validate_signal_activation_specs!(signals)
+    validate_projection_namespace_activation_specs!(collections, signals)
+
     %{
       domains: domains,
-      collections: Map.get(config, :collections, []),
-      streams: Map.get(config, :streams, []),
-      signals: Map.get(config, :signals, []),
-      subscriptions: Map.get(config, :subscriptions, []),
+      collections: collections,
+      signals: signals,
       route_subscriptions: Map.get(config, :route_subscriptions, [])
     }
   end
 
-  defp normalize_mount_config({domains, collections})
-       when is_list(domains) and is_list(collections) do
-    %{
-      domains: domains,
-      collections: collections,
-      streams: [],
-      signals: [],
-      subscriptions: [],
-      route_subscriptions: []
-    }
-  end
-
-  defp normalize_mount_config({domains, collections, streams, subscriptions})
-       when is_list(domains) and is_list(collections) and is_list(streams) and
-              is_list(subscriptions) do
-    %{
-      domains: domains,
-      collections: collections,
-      streams: streams,
-      signals: [],
-      subscriptions: subscriptions,
-      route_subscriptions: []
-    }
-  end
-
-  defp normalize_mount_config({
-         domains,
-         collections,
-         streams,
-         signals,
-         subscriptions,
-         route_subscriptions
-       })
-       when is_list(domains) and is_list(collections) and is_list(streams) and
-              is_list(signals) and is_list(subscriptions) and is_list(route_subscriptions) do
-    %{
-      domains: domains,
-      collections: collections,
-      streams: streams,
-      signals: signals,
-      subscriptions: subscriptions,
-      route_subscriptions: route_subscriptions
-    }
+  defp normalize_mount_config(config) when is_tuple(config) do
+    raise ArgumentError,
+          "Alva declarative page activation no longer supports legacy tuple mount config. Use keyword-form `use Alva.LiveView` or pass a map with :domains, :collections, :signals, and :route_subscriptions."
   end
 
   defp normalize_mount_config(domains) when is_list(domains) do
-    %{
-      domains: domains,
-      collections: [],
-      streams: [],
-      signals: [],
-      subscriptions: [],
-      route_subscriptions: []
-    }
+    if Keyword.keyword?(domains) do
+      raise ArgumentError,
+            "Alva declarative page activation maps must be passed as a map, not a keyword list. Use keyword-form `use Alva.LiveView` or pass %{domains: ..., collections: ..., signals: ..., route_subscriptions: ...}."
+    else
+      %{
+        domains: domains,
+        collections: [],
+        signals: [],
+        route_subscriptions: []
+      }
+    end
+  end
+
+  defp normalize_mount_config(config) do
+    raise ArgumentError,
+          "Alva declarative page activation must be configured with keyword-form `use Alva.LiveView` or a map containing :domains, :collections, :signals, and :route_subscriptions. Got: #{inspect(config)}"
   end
 
   defp normalize_route_params(params) when is_map(params), do: params
   defp normalize_route_params(_params), do: %{}
+
+  defp route_lifecycle_available?(%{router: router}) when not is_nil(router), do: true
+  defp route_lifecycle_available?(_socket), do: false
+
+  defp callback_route_subscriptions?(route_subscriptions) when is_list(route_subscriptions) do
+    Enum.any?(route_subscriptions, fn
+      {_projection, topic_spec} -> is_atom(topic_spec)
+      _other -> false
+    end)
+  end
+
+  defp callback_route_subscriptions?(_route_subscriptions), do: false
 
   defp route_change_collection_specs(collections) do
     collections
@@ -1105,6 +1164,7 @@ defmodule Alva.LiveView do
   defp normalize_collection_spec!(name) when is_atom(name), do: {name, []}
 
   defp normalize_collection_spec!({name, opts}) when is_atom(name) and is_list(opts) do
+    validate_collection_activation_opts!(name, opts)
     {name, opts}
   end
 
@@ -1113,39 +1173,490 @@ defmodule Alva.LiveView do
           "Alva collection activation must be an atom name or {name, opts}, got: #{inspect(spec)}"
   end
 
-  defp notification_events(%Ash.Notifier.Notification{resource: resource, action: action})
-       when is_atom(resource) and not is_nil(action) do
-    publication_events(resource, action)
+  defp collection_activation_specs(collections) do
+    collections
+    |> Enum.map(&normalize_collection_spec!/1)
+    |> Map.new()
   end
 
-  defp notification_events(%Ash.Notifier.Notification{action: %{name: name}}) do
-    MapSet.new([to_string(name)])
-  end
+  defp validate_use_opts!(opts, caller) when is_list(opts) do
+    if Keyword.keyword?(opts) do
+      opts
+      |> Keyword.keys()
+      |> Enum.each(&validate_public_activation_key!(&1, caller))
 
-  defp notification_events(_notification), do: MapSet.new()
+      collections =
+        case Keyword.fetch(opts, :collections) do
+          {:ok, collections} -> validate_collection_use_declarations!(collections, caller)
+          :error -> []
+        end
 
-  defp broadcast_events(%Phoenix.Socket.Broadcast{event: event}) do
-    MapSet.new([to_string(event)])
-  end
+      signals =
+        case Keyword.fetch(opts, :signals) do
+          {:ok, signals} -> validate_signal_use_declarations!(signals, caller)
+          :error -> []
+        end
 
-  defp action_events(resource, action_name) when is_atom(resource) do
-    case Ash.Resource.Info.action(resource, action_name) do
-      nil ->
-        MapSet.new([to_string(action_name)])
+      validate_projection_namespace_use_declarations!(collections, signals, caller)
 
-      action ->
-        publication_events(resource, action)
+      case Keyword.fetch(opts, :route_subscriptions) do
+        {:ok, route_subscriptions} ->
+          validate_route_subscription_use_declarations!(
+            route_subscriptions,
+            collections,
+            signals,
+            caller
+          )
+
+        :error ->
+          :ok
+      end
+    else
+      raise CompileError,
+        file: caller.file,
+        line: caller.line,
+        description:
+          "use Alva.LiveView expects keyword options. Use keyword-form declarative activation with :domains, :collections, :signals, and :route_subscriptions."
     end
   end
 
-  defp publication_events(resource, action) do
+  defp validate_use_opts!(_opts, caller) do
+    raise CompileError,
+      file: caller.file,
+      line: caller.line,
+      description:
+        "use Alva.LiveView expects keyword options. Use keyword-form declarative activation with :domains, :collections, :signals, and :route_subscriptions."
+  end
+
+  defp validate_public_activation_key!(:streams, caller) do
+    raise CompileError,
+      file: caller.file,
+      line: caller.line,
+      description:
+        "Alva declarative page activation no longer accepts top-level `streams:`. Activate collections declaratively with `collections:` or use imperative `Alva.LiveView.activate_stream/2`."
+  end
+
+  defp validate_public_activation_key!(:subscriptions, caller) do
+    raise CompileError,
+      file: caller.file,
+      line: caller.line,
+      description:
+        "Alva declarative page activation no longer accepts top-level `subscriptions:`. Move topic wiring to top-level `route_subscriptions:` or use raw Phoenix PubSub outside Alva projections."
+  end
+
+  defp validate_public_activation_key!(key, caller) do
+    unless key in @public_activation_keys do
+      raise CompileError,
+        file: caller.file,
+        line: caller.line,
+        description:
+          "Alva declarative page activation only accepts :domains, :collections, :signals, and :route_subscriptions. Unsupported key: #{inspect(key)}"
+    end
+  end
+
+  defp validate_collection_use_declarations!(collections, caller) when is_list(collections) do
+    names =
+      Enum.map(collections, fn
+        name when is_atom(name) ->
+          name
+
+        {name, opts} when is_atom(name) and is_list(opts) ->
+          validate_collection_use_opts!(name, opts, caller)
+          name
+
+        other ->
+          raise CompileError,
+            file: caller.file,
+            line: caller.line,
+            description:
+              "Alva declarative `collections:` entries must be atoms or keyword entries like `collections: [sales_orders: [source_input: :callback]]`. Got: #{inspect(other)}"
+      end)
+
+    validate_unique_activation_names!(names, :collection, caller)
+    names
+  end
+
+  defp validate_collection_use_declarations!(_collections, caller) do
+    raise CompileError,
+      file: caller.file,
+      line: caller.line,
+      description: "Alva declarative `collections:` must be a list."
+  end
+
+  defp validate_collection_use_opts!(name, opts, caller) when is_list(opts) do
+    if Keyword.keyword?(opts) do
+      Enum.each(Keyword.keys(opts), fn
+        :source_input ->
+          :ok
+
+        :reload_on ->
+          :ok
+
+        :params ->
+          raise CompileError,
+            file: caller.file,
+            line: caller.line,
+            description:
+              "Alva declarative collection #{inspect(name)} no longer accepts `params:`. Use `source_input:` instead."
+
+        :subscriptions ->
+          raise CompileError,
+            file: caller.file,
+            line: caller.line,
+            description:
+              "Alva declarative collection #{inspect(name)} no longer accepts nested `subscriptions:`. Move topic wiring to top-level `route_subscriptions:`."
+
+        key ->
+          raise CompileError,
+            file: caller.file,
+            line: caller.line,
+            description:
+              "Alva declarative collection #{inspect(name)} only accepts :source_input and :reload_on options. Unsupported option: #{inspect(key)}"
+      end)
+    else
+      raise CompileError,
+        file: caller.file,
+        line: caller.line,
+        description:
+          "Alva declarative collection #{inspect(name)} options must be a keyword list containing only :source_input and :reload_on."
+    end
+  end
+
+  defp validate_collection_use_opts!(name, _opts, caller) do
+    raise CompileError,
+      file: caller.file,
+      line: caller.line,
+      description:
+        "Alva declarative collection #{inspect(name)} options must be a keyword list containing only :source_input and :reload_on."
+  end
+
+  defp validate_signal_use_declarations!(signals, caller) when is_list(signals) do
+    keys =
+      Enum.map(signals, fn
+        key when is_atom(key) ->
+          key
+
+        name when is_binary(name) ->
+          raise CompileError,
+            file: caller.file,
+            line: caller.line,
+            description:
+              "Alva declarative `signals:` no longer accepts browser-facing string names like #{inspect(name)}. Use the signal declaration key atom instead."
+
+        {key, _opts} when is_atom(key) ->
+          raise CompileError,
+            file: caller.file,
+            line: caller.line,
+            description:
+              "Alva declarative `signals:` only accepts atom declaration keys. Remove tuple options for #{inspect(key)} and keep client-facing names in the resource declaration."
+
+        other ->
+          raise CompileError,
+            file: caller.file,
+            line: caller.line,
+            description:
+              "Alva declarative `signals:` entries must be atom declaration keys, got: #{inspect(other)}"
+      end)
+
+    validate_unique_activation_names!(keys, :signal, caller)
+    keys
+  end
+
+  defp validate_signal_use_declarations!(_signals, caller) do
+    raise CompileError,
+      file: caller.file,
+      line: caller.line,
+      description: "Alva declarative `signals:` must be a list of atom declaration keys."
+  end
+
+  defp validate_unique_activation_names!(names, kind, caller) do
+    names
+    |> Enum.frequencies()
+    |> Enum.each(fn
+      {_name, 1} ->
+        :ok
+
+      {name, _count} ->
+        raise CompileError,
+          file: caller.file,
+          line: caller.line,
+          description:
+            "Alva declarative #{kind} activation contains duplicate entries for #{inspect(name)}."
+    end)
+  end
+
+  defp validate_projection_namespace_use_declarations!(collections, signals, caller) do
+    collections
+    |> MapSet.new()
+    |> MapSet.intersection(MapSet.new(signals))
+    |> Enum.each(fn key ->
+      raise CompileError,
+        file: caller.file,
+        line: caller.line,
+        description:
+          "Alva declarative page activation cannot activate the same projection key in both `collections:` and `signals:`: #{inspect(key)}"
+    end)
+  end
+
+  defp validate_route_subscription_use_declarations!(
+         route_subscriptions,
+         collections,
+         signals,
+         caller
+       )
+       when is_list(route_subscriptions) do
+    active_projections = MapSet.new(collections ++ signals)
+
+    projections =
+      Enum.map(route_subscriptions, fn
+        {projection, topics} when is_atom(projection) ->
+          unless MapSet.member?(active_projections, projection) do
+            raise CompileError,
+              file: caller.file,
+              line: caller.line,
+              description:
+                "Alva declarative route_subscriptions entry #{inspect(projection)} must reference an activated Collection or Signal projection on the same page."
+          end
+
+          validate_route_subscription_use_topics!(projection, topics, caller)
+          projection
+
+        {projection, _topics} ->
+          raise CompileError,
+            file: caller.file,
+            line: caller.line,
+            description:
+              "Alva route_subscriptions keys must be Collection or Signal declaration key atoms, got: #{inspect(projection)}"
+
+        spec ->
+          raise CompileError,
+            file: caller.file,
+            line: caller.line,
+            description:
+              "Alva route_subscriptions entries must be {projection, topics} tuples, got: #{inspect(spec)}"
+      end)
+
+    validate_unique_route_subscription_names!(projections, caller)
+  end
+
+  defp validate_route_subscription_use_declarations!(
+         _route_subscriptions,
+         _collections,
+         _signals,
+         caller
+       ) do
+    raise CompileError,
+      file: caller.file,
+      line: caller.line,
+      description:
+        "Alva declarative `route_subscriptions:` must be a list of {projection, topics} tuples."
+  end
+
+  defp validate_route_subscription_use_topics!(_projection, topic, _caller)
+       when is_binary(topic) or is_atom(topic),
+       do: :ok
+
+  defp validate_route_subscription_use_topics!(projection, topics, caller) when is_list(topics) do
+    if Enum.all?(topics, &is_binary/1) do
+      :ok
+    else
+      raise CompileError,
+        file: caller.file,
+        line: caller.line,
+        description:
+          "Alva route_subscriptions entry #{inspect(projection)} must provide a binary topic or list of binary topics, got: #{inspect(topics)}"
+    end
+  end
+
+  defp validate_route_subscription_use_topics!(projection, topics, caller) do
+    raise CompileError,
+      file: caller.file,
+      line: caller.line,
+      description:
+        "Alva route_subscriptions entry #{inspect(projection)} must provide a binary topic or list of binary topics, got: #{inspect(topics)}"
+  end
+
+  defp validate_unique_route_subscription_names!(projections, caller) do
+    projections
+    |> Enum.frequencies()
+    |> Enum.each(fn
+      {_projection, 1} ->
+        :ok
+
+      {projection, _count} ->
+        raise CompileError,
+          file: caller.file,
+          line: caller.line,
+          description:
+            "Alva route_subscriptions contains duplicate entries for #{inspect(projection)}"
+    end)
+  end
+
+  defp validate_mount_config_keys!(config) do
+    config
+    |> Map.keys()
+    |> Enum.each(fn
+      :domains ->
+        :ok
+
+      :collections ->
+        :ok
+
+      :signals ->
+        :ok
+
+      :route_subscriptions ->
+        :ok
+
+      :streams ->
+        raise ArgumentError,
+              "Alva declarative page activation no longer accepts top-level `streams:`. Activate collections declaratively with `collections:` or use imperative `Alva.LiveView.activate_stream/2`."
+
+      :subscriptions ->
+        raise ArgumentError,
+              "Alva declarative page activation no longer accepts top-level `subscriptions:`. Move topic wiring to top-level `route_subscriptions:` or use raw Phoenix PubSub outside Alva projections."
+
+      key ->
+        raise ArgumentError,
+              "Alva declarative page activation only accepts :domains, :collections, :signals, and :route_subscriptions. Unsupported key: #{inspect(key)}"
+    end)
+  end
+
+  defp validate_collection_activation_specs!(collections) when is_list(collections) do
+    names =
+      collections
+      |> Enum.map(&normalize_collection_spec!/1)
+      |> Enum.map(&elem(&1, 0))
+
+    validate_unique_activation_specs!(names, :collection)
+  end
+
+  defp validate_collection_activation_specs!(collections) do
+    raise ArgumentError,
+          "Alva declarative `collections:` must be a list, got: #{inspect(collections)}"
+  end
+
+  defp validate_collection_activation_opts!(name, opts) do
+    unless Keyword.keyword?(opts) do
+      raise ArgumentError,
+            "Alva collection #{inspect(name)} activation options must be a keyword list containing only :source_input and :reload_on."
+    end
+
+    Enum.each(Keyword.keys(opts), fn
+      key when key in @public_collection_option_keys ->
+        :ok
+
+      :params ->
+        raise ArgumentError,
+              "Alva declarative collection #{inspect(name)} no longer accepts `params:`. Use `source_input:` instead."
+
+      :subscriptions ->
+        raise ArgumentError,
+              "Alva declarative collection #{inspect(name)} no longer accepts nested `subscriptions:`. Move topic wiring to top-level `route_subscriptions:`."
+
+      key ->
+        raise ArgumentError,
+              "Alva declarative collection #{inspect(name)} only accepts :source_input and :reload_on options. Unsupported option: #{inspect(key)}"
+    end)
+  end
+
+  defp validate_signal_activation_specs!(signals) when is_list(signals) do
+    keys =
+      Enum.map(signals, fn
+        key when is_atom(key) ->
+          key
+
+        name when is_binary(name) ->
+          raise ArgumentError,
+                "Alva declarative `signals:` no longer accepts browser-facing string names like #{inspect(name)}. Use the signal declaration key atom instead."
+
+        {key, _opts} when is_atom(key) ->
+          raise ArgumentError,
+                "Alva declarative `signals:` only accepts atom declaration keys. Remove tuple options for #{inspect(key)} and keep client-facing names in the resource declaration."
+
+        other ->
+          raise ArgumentError,
+                "Alva declarative `signals:` entries must be atom declaration keys, got: #{inspect(other)}"
+      end)
+
+    validate_unique_activation_specs!(keys, :signal)
+  end
+
+  defp validate_signal_activation_specs!(signals) do
+    raise ArgumentError,
+          "Alva declarative `signals:` must be a list of atom declaration keys, got: #{inspect(signals)}"
+  end
+
+  defp validate_unique_activation_specs!(names, kind) do
+    names
+    |> Enum.frequencies()
+    |> Enum.each(fn
+      {_name, 1} ->
+        :ok
+
+      {name, _count} ->
+        raise ArgumentError,
+              "Alva declarative #{kind} activation contains duplicate entries for #{inspect(name)}."
+    end)
+  end
+
+  defp validate_projection_namespace_activation_specs!(collections, signals) do
+    collections
+    |> Enum.map(&normalize_collection_spec!/1)
+    |> Enum.map(&elem(&1, 0))
+    |> MapSet.new()
+    |> MapSet.intersection(MapSet.new(signals))
+    |> Enum.each(fn key ->
+      raise ArgumentError,
+            "Alva declarative page activation cannot activate the same projection key in both `collections:` and `signals:`: #{inspect(key)}"
+    end)
+  end
+
+  defp notification_occurrence_keys(%Ash.Notifier.Notification{
+         resource: resource,
+         action: %{name: action_name}
+       })
+       when is_atom(resource) and is_atom(action_name) do
+    action_occurrence_keys(resource, action_name)
+  end
+
+  defp notification_occurrence_keys(%Ash.Notifier.Notification{
+         resource: resource,
+         action: action_name
+       })
+       when is_atom(resource) and is_atom(action_name) do
+    action_occurrence_keys(resource, action_name)
+  end
+
+  defp notification_occurrence_keys(%Ash.Notifier.Notification{action: %{name: name}})
+       when is_atom(name) do
+    MapSet.new([name])
+  end
+
+  defp notification_occurrence_keys(%Ash.Notifier.Notification{action: action_name})
+       when is_atom(action_name),
+       do: MapSet.new([action_name])
+
+  defp notification_occurrence_keys(_notification), do: MapSet.new()
+
+  defp action_occurrence_keys(resource, action_name) when is_atom(resource) do
+    case Ash.Resource.Info.action(resource, action_name) do
+      nil ->
+        MapSet.new([action_name])
+
+      action ->
+        publication_occurrence_keys(resource, action)
+    end
+  end
+
+  defp publication_occurrence_keys(resource, action) do
     resource
     |> Ash.Notifier.PubSub.Info.publications()
     |> Enum.filter(&publication_matches?(&1, action))
-    |> Enum.map(&publication_identity/1)
+    |> Enum.map(&publication_occurrence_key/1)
     |> case do
-      [] -> [to_string(action.name)]
-      events -> events
+      [] -> [action.name]
+      occurrence_keys -> occurrence_keys
     end
     |> MapSet.new()
   end
@@ -1159,9 +1670,9 @@ defmodule Alva.LiveView do
 
   defp publication_matches?(_publication, _action), do: false
 
-  defp publication_identity(%{event: event}) when not is_nil(event), do: to_string(event)
-  defp publication_identity(%{action: action}) when not is_nil(action), do: to_string(action)
-  defp publication_identity(%{type: type}), do: to_string(type)
+  defp publication_occurrence_key(%{action: action}) when not is_nil(action), do: action
+  defp publication_occurrence_key(%{type: type}) when not is_nil(type), do: type
+  defp publication_occurrence_key(_publication), do: nil
 
   defp update_alva(socket, fun) do
     state =
@@ -1191,6 +1702,7 @@ defmodule Alva.LiveView do
   defp alva_state(socket) do
     Map.get(socket.private, @alva_private_key, %{
       domains: [],
+      collection_specs: %{},
       route_subscriptions: MapSet.new(),
       route_params: %{},
       route_change_collections: %{},

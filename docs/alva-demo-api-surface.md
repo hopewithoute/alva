@@ -28,11 +28,11 @@ that is not owned by the route as a full list. In this demo, support messages
 are intentionally not a Collection because their history source depends on the
 conversation selected in Vue. The chat surfaces fetch history with
 `support.list_messages` for the active `conversation_id` and should use
-imperative `Alva.LiveView.subscribe/2` or raw Phoenix PubSub wiring for live
-`support_messages` pushes until that behavior is modeled as a proper
-Collection or Signal. Declarative `subscriptions:` and declarative `streams:`
-are not part of the recommended public activation surface. Filter those live
-messages by the active conversation before rendering the transcript.
+raw Phoenix PubSub wiring for live `support_messages` pushes until that
+behavior is modeled as a proper Collection or Signal. Declarative
+`subscriptions:` and declarative `streams:` are not part of the recommended
+public activation surface. Filter those live messages by the active
+conversation before rendering the transcript.
 
 Do not reintroduce route-owned list setup like:
 
