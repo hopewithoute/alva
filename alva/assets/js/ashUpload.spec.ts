@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ashUpload } from "./ashUpload";
 import { ref } from "vue";
 
@@ -32,9 +32,30 @@ vi.mock("live_vue", () => {
     };
 });
 
-import { useLiveUpload } from "live_vue";
+import { useLiveUpload, useLiveVue } from "live_vue";
+
+const uploadConfig = (name: string) => ({
+    ref: `phx-${name}-ref`,
+    name,
+    accept: "image/*",
+    max_entries: 2,
+    auto_upload: true,
+    entries: [],
+    errors: [],
+});
 
 describe("ashUpload", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(useLiveVue).mockReturnValue({
+            vue: {
+                props: {
+                    avatar: uploadConfig("avatar"),
+                },
+            },
+        } as any);
+    });
+
     it("should initialize and map refs correctly", () => {
         const { files, errors, progress, name } = ashUpload("avatar");
 
@@ -48,8 +69,20 @@ describe("ashUpload", () => {
         vi.mocked(useLiveUpload).mockReturnValueOnce({
             name: "avatar",
             entries: ref([
-                { ref: "1", progress: 100, size: 1000, name: "", type: "" },
-                { ref: "2", progress: 0, size: 99000, name: "", type: "" },
+                {
+                    ref: "1",
+                    progress: 100,
+                    client_size: 1000,
+                    client_name: "one.png",
+                    client_type: "image/png",
+                },
+                {
+                    ref: "2",
+                    progress: 0,
+                    client_size: 99000,
+                    client_name: "two.png",
+                    client_type: "image/png",
+                },
             ]),
             errors: ref([]),
             cancel: vi.fn(),
@@ -67,9 +100,9 @@ describe("ashUpload", () => {
         vi.mocked(useLiveUpload).mockReturnValueOnce({
             name: "avatar",
             entries: ref([
-                { ref: "1", size: 10, name: "", type: "", progress: 0 },
-                { ref: "2", size: 10, name: "", type: "", progress: 0 },
-                { ref: "3", size: 10, name: "", type: "", progress: 0 },
+                { ref: "1", client_size: 10, progress: 0 },
+                { ref: "2", client_size: 10, progress: 0 },
+                { ref: "3", client_size: 10, progress: 0 },
             ]),
             errors: ref([]),
             cancel: mockCancel,
@@ -84,8 +117,8 @@ describe("ashUpload", () => {
         vi.mocked(useLiveUpload).mockReturnValueOnce({
             name: "avatar",
             entries: ref([
-                { ref: "1", size: 1000, name: "", type: "", progress: 0 },
-                { ref: "2", size: 5000, name: "", type: "", progress: 0 },
+                { ref: "1", client_size: 1000, progress: 0 },
+                { ref: "2", client_size: 5000, progress: 0 },
             ]),
             errors: ref([]),
             cancel: mockCancel,
@@ -99,8 +132,8 @@ describe("ashUpload", () => {
         vi.mocked(useLiveUpload).mockReturnValueOnce({
             name: "avatar",
             entries: ref([
-                { ref: "ref-123", size: 10, name: "", type: "", progress: 0 },
-                { ref: "ref-456", size: 10, name: "", type: "", progress: 0 },
+                { ref: "ref-123", client_size: 10, progress: 0 },
+                { ref: "ref-456", client_size: 10, progress: 0 },
             ]),
             errors: ref([]),
             cancel: vi.fn(),
@@ -108,5 +141,26 @@ describe("ashUpload", () => {
 
         const { getFileReferences } = ashUpload("avatar");
         expect(getFileReferences()).toEqual(["ref-123", "ref-456"]);
+    });
+
+    it("fails loud without sending a dummy upload ref when config is missing", () => {
+        const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+        vi.mocked(useLiveVue).mockReturnValueOnce({
+            vue: {
+                props: {},
+            },
+        } as any);
+
+        const upload = ashUpload("avatar");
+        upload.showFilePicker();
+
+        expect(vi.mocked(useLiveUpload)).not.toHaveBeenCalled();
+        expect(upload.getFileReferences()).toEqual([]);
+        expect(warning).toHaveBeenCalledWith(
+            expect.stringContaining('Missing LiveView upload config for "avatar"'),
+        );
+
+        warning.mockRestore();
     });
 });

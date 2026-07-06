@@ -1,11 +1,14 @@
-import { computed, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useLiveUpload, useLiveVue } from "live_vue";
 
 export interface UploadEntry {
     ref: string;
-    name: string;
-    size: number;
-    type: string;
+    client_name?: string;
+    client_size?: number;
+    client_type?: string;
+    name?: string;
+    size?: number;
+    type?: string;
     progress: number;
     error?: string;
 }
@@ -24,24 +27,25 @@ export interface AshUploadOptions {
     maxSize?: number; // in bytes
 }
 
+type UploadConfigShape = {
+    ref: string;
+    name: string;
+    accept: string | false;
+    max_entries: number;
+    auto_upload: boolean;
+    entries: UploadEntry[];
+    errors: unknown[];
+};
+
 export function ashUpload(name: string, options?: AshUploadOptions) {
     const live = useLiveVue();
 
-    // Provide a dummy config if the upload prop is not passed from LiveView
-    // This prevents crashes in live_vue's useLiveUpload which expects a valid config.
-    const getUploadConfig = () => {
-        const uploadProps = live.vue?.props;
+    const getUploadConfig = () => resolveUploadConfig(live.vue?.props, name);
+    const initialConfig = getUploadConfig();
 
-        return uploadProps?.[name] || {
-            ref: "dummy-ref",
-            name: name,
-            accept: false,
-            max_entries: options?.maxFiles || 1,
-            auto_upload: false,
-            entries: [],
-            errors: []
-        };
-    };
+    if (!initialConfig) {
+        return missingUpload(name);
+    }
 
     // @ts-ignore
     const upload = useLiveUpload(getUploadConfig, {
@@ -58,8 +62,9 @@ export function ashUpload(name: string, options?: AshUploadOptions) {
         let totalSize = 0;
         let totalUploaded = 0;
         for (const file of files.value) {
-            totalSize += file.size || 0;
-            totalUploaded += (file.size || 0) * ((file.progress || 0) / 100);
+            const size = uploadEntrySize(file);
+            totalSize += size;
+            totalUploaded += size * ((file.progress || 0) / 100);
         }
         return totalSize === 0
             ? 0
@@ -77,7 +82,7 @@ export function ashUpload(name: string, options?: AshUploadOptions) {
 
         if (options.maxSize) {
             files.value.forEach((file: UploadEntry) => {
-                if (file.size > options.maxSize!) {
+                if (uploadEntrySize(file) > options.maxSize!) {
                     upload.cancel(file.ref);
                 }
             });
@@ -104,5 +109,79 @@ export function ashUpload(name: string, options?: AshUploadOptions) {
         errors,
         progress,
         getFileReferences,
+    };
+}
+
+function uploadEntrySize(file: UploadEntry) {
+    return file.client_size ?? file.size ?? 0;
+}
+
+function resolveUploadConfig(
+    uploadProps: Record<string, unknown> | null | undefined,
+    name: string,
+): UploadConfigShape | null {
+    const directConfig = uploadProps?.[name];
+
+    if (isUploadConfig(directConfig)) {
+        return directConfig;
+    }
+
+    const nestedUploads = uploadProps?.uploads;
+
+    if (
+        nestedUploads &&
+        typeof nestedUploads === "object" &&
+        !Array.isArray(nestedUploads)
+    ) {
+        const nestedConfig = (nestedUploads as Record<string, unknown>)[name];
+
+        if (isUploadConfig(nestedConfig)) {
+            return nestedConfig;
+        }
+    }
+
+    return null;
+}
+
+function isUploadConfig(value: unknown): value is UploadConfigShape {
+    return Boolean(
+        value &&
+            typeof value === "object" &&
+            typeof (value as UploadConfigShape).ref === "string" &&
+            typeof (value as UploadConfigShape).name === "string" &&
+            Array.isArray((value as UploadConfigShape).entries) &&
+            Array.isArray((value as UploadConfigShape).errors),
+    );
+}
+
+function missingUpload(name: string) {
+    const files = ref<UploadEntry[]>([]);
+    const errors = computed(() => []);
+    const progress = computed(() => 0);
+    const inputEl = ref<HTMLInputElement | null>(null);
+    const valid = computed(() => false);
+    const warning =
+        `[alva/ashUpload] Missing LiveView upload config for "${name}". ` +
+        `Pass the matching upload prop to the LiveVue component, for example ` +
+        `${name}={@uploads.${name}}.`;
+
+    const warn = () => {
+        console.warn(warning);
+    };
+
+    return {
+        name,
+        entries: files,
+        files,
+        errors,
+        progress,
+        inputEl,
+        valid,
+        showFilePicker: warn,
+        addFiles: warn,
+        submit: warn,
+        cancel: () => {},
+        clear: () => {},
+        getFileReferences: () => [],
     };
 }

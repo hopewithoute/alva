@@ -3,92 +3,21 @@ defmodule Alva.Error do
   Normalizes Ash errors into a standard format for LiveVue.
   """
 
-  def format(%Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{} | _]}) do
-    %{
-      type: "not_found",
-      message: "Resource not found"
-    }
-  end
-
-  def format(%Ash.Error.Query.NotFound{}) do
-    %{
-      type: "not_found",
-      message: "Resource not found"
-    }
-  end
+  def format(%Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{} | _]}), do: not_found()
+  def format(%Ash.Error.Query.NotFound{}), do: not_found()
 
   def format(%Ash.Error.Invalid{} = error) do
     case find_conflict(error.errors) do
       nil ->
-        fields =
-          error.errors
-          |> Enum.reduce(%{}, fn
-            %{field: field} = sub_error, acc when not is_nil(field) ->
-              clean_error =
-                if Map.has_key?(sub_error, :bread_crumbs),
-                  do: %{sub_error | bread_crumbs: []},
-                  else: sub_error
-
-              msg = String.trim(Exception.message(clean_error))
-
-              # clean up "attribute " prefix that Ash sometimes inserts
-              msg = Regex.replace(~r/^(attribute|argument)\s+#{field}\s+/i, msg, "")
-
-              path = Map.get(sub_error, :path) || []
-
-              field_key =
-                case path do
-                  [] ->
-                    to_string(field)
-
-                  p ->
-                    if List.last(p) == field do
-                      Enum.map_join(p, ".", &to_string/1)
-                    else
-                      Enum.map_join(p ++ [field], ".", &to_string/1)
-                    end
-                end
-
-              Map.update(acc, field_key, [msg], &[msg | &1])
-
-            _, acc ->
-              acc
-          end)
-
-        %{
-          type: "validation",
-          message: "Validation failed",
-          fields: fields
-        }
+        validation_error(validation_fields(error.errors))
 
       conflict_error ->
-        code =
-          case Map.get(conflict_error, :code) do
-            nil -> "conflict"
-            val -> val
-          end
-
-        message = Exception.message(conflict_error)
-
-        %{
-          type: "conflict",
-          code: code,
-          message: message
-        }
+        conflict_error(conflict_error)
     end
   end
 
   def format(%Ash.Error.Forbidden{} = error) do
-    message =
-      case String.trim(Exception.message(error)) do
-        "" -> "Forbidden"
-        msg -> msg
-      end
-
-    %{
-      type: "forbidden",
-      message: message
-    }
+    %{type: "forbidden", message: forbidden_message(error)}
   end
 
   def format(error, stacktrace \\ nil) do
@@ -133,5 +62,77 @@ defmodule Alva.Error do
       # It's a conflict if it doesn't have a field (global error)
       is_nil(Map.get(sub_error, :field))
     end)
+  end
+
+  defp not_found do
+    %{
+      type: "not_found",
+      message: "Resource not found"
+    }
+  end
+
+  defp validation_error(fields) do
+    %{
+      type: "validation",
+      message: "Validation failed",
+      fields: fields
+    }
+  end
+
+  defp validation_fields(errors) do
+    Enum.reduce(errors, %{}, fn
+      %{field: field} = sub_error, acc when not is_nil(field) ->
+        field_key = validation_field_key(sub_error, field)
+        message = validation_message(sub_error, field)
+
+        Map.update(acc, field_key, [message], &[message | &1])
+
+      _, acc ->
+        acc
+    end)
+  end
+
+  defp validation_message(sub_error, field) do
+    message =
+      sub_error
+      |> clean_validation_error()
+      |> Exception.message()
+      |> String.trim()
+
+    Regex.replace(~r/^(attribute|argument)\s+#{field}\s+/i, message, "")
+  end
+
+  defp clean_validation_error(%{bread_crumbs: _} = sub_error), do: %{sub_error | bread_crumbs: []}
+  defp clean_validation_error(sub_error), do: sub_error
+
+  defp validation_field_key(sub_error, field) do
+    case Map.get(sub_error, :path) || [] do
+      [] ->
+        to_string(field)
+
+      path ->
+        path
+        |> maybe_append_field(field)
+        |> Enum.map_join(".", &to_string/1)
+    end
+  end
+
+  defp maybe_append_field(path, field) do
+    if List.last(path) == field, do: path, else: path ++ [field]
+  end
+
+  defp conflict_error(conflict_error) do
+    %{
+      type: "conflict",
+      code: Map.get(conflict_error, :code) || "conflict",
+      message: Exception.message(conflict_error)
+    }
+  end
+
+  defp forbidden_message(error) do
+    case String.trim(Exception.message(error)) do
+      "" -> "Forbidden"
+      message -> message
+    end
   end
 end
