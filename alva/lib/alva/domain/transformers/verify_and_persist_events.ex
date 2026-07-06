@@ -19,9 +19,6 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEvents do
         identity_label: :key
       )
 
-    stream_map =
-      persist_projection_map(resources, module, :stream, &Alva.Resource.Info.streams/1)
-
     collection_map =
       persist_projection_map(resources, module, :collection, &Alva.Resource.Info.collections/1)
 
@@ -31,22 +28,23 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEvents do
         identity_label: :key
       )
 
-    validate_unique_projection_identities!(
-      resources,
-      module,
-      :signal,
-      &Alva.Resource.Info.signals/1,
-      identity_fun: & &1.name,
-      identity_label: "exposed name"
-    )
+    signal_name_map =
+      persist_projection_map(resources, module, :signal, &Alva.Resource.Info.signals/1,
+        identity_fun: & &1.name,
+        identity_label: "exposed name"
+      )
 
     dsl_state =
       dsl_state
       |> Spark.Dsl.Transformer.persist(:alva_event_key_map, event_key_map)
       |> Spark.Dsl.Transformer.persist(:alva_event_map, event_map)
-      |> Spark.Dsl.Transformer.persist(:alva_stream_map, stream_map)
       |> Spark.Dsl.Transformer.persist(:alva_collection_map, collection_map)
       |> Spark.Dsl.Transformer.persist(:alva_signal_map, signal_map)
+
+    Alva.App.Info.verify_host_app_command_uniqueness!(module, event_map)
+    Alva.App.Info.verify_host_app_collection_uniqueness!(module, collection_map)
+    Alva.App.Info.verify_host_app_signal_key_uniqueness!(module, signal_map)
+    Alva.App.Info.verify_host_app_signal_name_uniqueness!(module, signal_name_map)
 
     {:ok, dsl_state}
   end
@@ -66,11 +64,6 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEvents do
         identity_label
       )
     end)
-  end
-
-  defp validate_unique_projection_identities!(resources, module, kind, fetcher, opts) do
-    _ = persist_projection_map(resources, module, kind, fetcher, opts)
-    :ok
   end
 
   defp persist_unique(

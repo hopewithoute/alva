@@ -7,7 +7,6 @@ defmodule Alva.LiveViewActivationTest do
       use Phoenix.LiveView
 
       use Alva.LiveView,
-        domains: [TestDomain.Valid],
         collections: [sales_orders: [source_input: :sales_order_source_input]],
         signals: [:sales_orders_updated],
         route_subscriptions: [{:sales_orders, ["orders:all"]}]
@@ -27,7 +26,6 @@ defmodule Alva.LiveViewActivationTest do
       use Phoenix.LiveView
 
       use Alva.LiveView,
-        domains: [TestDomain.Valid],
         signals: [:sales_orders_updated],
         route_subscriptions: [{:sales_orders_updated, "orders:updated"}]
 
@@ -51,7 +49,6 @@ defmodule Alva.LiveViewActivationTest do
       ]
 
       use Alva.LiveView,
-        domains: [TestDomain.Valid],
         collections: @collections,
         signals: @signals,
         route_subscriptions: @route_subscriptions
@@ -74,8 +71,27 @@ defmodule Alva.LiveViewActivationTest do
                      use Phoenix.LiveView
 
                      use Alva.LiveView,
-                       domains: [TestDomain.Invalid],
                        streams: [:sales_orders]
+
+                     def render(assigns) do
+                       ~H"<div />"
+                     end
+                   end
+                   """)
+                 end
+  end
+
+  test "fails to compile when page-scoped domains are declared" do
+    assert_raise CompileError,
+                 ~r/no longer accepts `domains:`/,
+                 fn ->
+                   compile_module("""
+                   defmodule TestLiveViewActivation.DomainsLive do
+                     use Phoenix.LiveView
+
+                     use Alva.LiveView,
+                       domains: [TestDomain.Invalid],
+                       collections: [:sales_orders]
 
                      def render(assigns) do
                        ~H"<div />"
@@ -94,7 +110,6 @@ defmodule Alva.LiveViewActivationTest do
                      use Phoenix.LiveView
 
                      use Alva.LiveView,
-                       domains: [TestDomain.Invalid],
                        subscriptions: ["orders:all"]
 
                      def render(assigns) do
@@ -114,7 +129,6 @@ defmodule Alva.LiveViewActivationTest do
                      use Phoenix.LiveView
 
                      use Alva.LiveView,
-                       domains: [TestDomain.Invalid],
                        collections: [sales_orders: [params: %{"page" => %{"limit" => 1}}]]
 
                      def render(assigns) do
@@ -134,7 +148,6 @@ defmodule Alva.LiveViewActivationTest do
                      use Phoenix.LiveView
 
                      use Alva.LiveView,
-                       domains: [TestDomain.Invalid],
                        collections: [sales_orders: [subscriptions: ["orders:all"]]]
 
                      def render(assigns) do
@@ -154,7 +167,6 @@ defmodule Alva.LiveViewActivationTest do
                      use Phoenix.LiveView
 
                      use Alva.LiveView,
-                       domains: [TestDomain.Invalid],
                        signals: ["orders.fulfill"]
 
                      def render(assigns) do
@@ -174,7 +186,6 @@ defmodule Alva.LiveViewActivationTest do
                      use Phoenix.LiveView
 
                      use Alva.LiveView,
-                       domains: [TestDomain.Invalid],
                        signals: [{:orders_fulfilled, []}]
 
                      def render(assigns) do
@@ -194,7 +205,6 @@ defmodule Alva.LiveViewActivationTest do
                      use Phoenix.LiveView
 
                      use Alva.LiveView,
-                       domains: [TestDomain.Invalid],
                        collections: [:sales_orders, :sales_orders]
 
                      def render(assigns) do
@@ -214,7 +224,6 @@ defmodule Alva.LiveViewActivationTest do
                      use Phoenix.LiveView
 
                      use Alva.LiveView,
-                       domains: [TestDomain.Invalid],
                        signals: [:orders_fulfilled, :orders_fulfilled]
 
                      def render(assigns) do
@@ -234,7 +243,6 @@ defmodule Alva.LiveViewActivationTest do
                      use Phoenix.LiveView
 
                      use Alva.LiveView,
-                       domains: [TestDomain.Invalid],
                        collections: [:sales_orders],
                        route_subscriptions: [
                          {:sales_orders, ["orders:all"]},
@@ -258,7 +266,6 @@ defmodule Alva.LiveViewActivationTest do
                      use Phoenix.LiveView
 
                      use Alva.LiveView,
-                       domains: [TestDomain.Invalid],
                        collections: [:sales_orders],
                        route_subscriptions: [{:students_created, ["students"]}]
 
@@ -279,7 +286,6 @@ defmodule Alva.LiveViewActivationTest do
                      use Phoenix.LiveView
 
                      use Alva.LiveView,
-                       domains: [TestDomain.Invalid],
                        collections: [:sales_orders],
                        signals: [:sales_orders]
 
@@ -311,6 +317,7 @@ defmodule Alva.LiveViewActivationTest do
   after
     purge_modules([
       TestLiveViewActivation.StreamsLive,
+      TestLiveViewActivation.DomainsLive,
       TestLiveViewActivation.SubscriptionsLive,
       TestLiveViewActivation.ParamsLive,
       TestLiveViewActivation.NestedSubscriptionsLive,

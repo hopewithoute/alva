@@ -9,12 +9,6 @@ defmodule Alva.Resource.Info do
     |> Enum.filter(&match?(%Alva.Resource.Event{}, &1))
   end
 
-  def streams(resource) do
-    resource
-    |> Spark.Dsl.Extension.get_entities([:live_vue])
-    |> Enum.filter(&match?(%Alva.Resource.Stream{}, &1))
-  end
-
   def collections(resource) do
     resource
     |> Spark.Dsl.Extension.get_entities([:live_vue])

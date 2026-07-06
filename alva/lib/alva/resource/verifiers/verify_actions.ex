@@ -40,17 +40,11 @@ defmodule Alva.Resource.Verifiers.VerifyActions do
     end)
 
     Enum.each(streams, fn stream ->
-      Enum.each(stream.operations || [], fn operation ->
-        verify_occurrence_key!(
-          module,
-          [:live_vue, :stream, stream.name, operation.op],
-          "Stream",
-          operation.on,
-          publication_occurrence_keys,
-          event_keys,
-          event_names
-        )
-      end)
+      raise Spark.Error.DslError,
+        module: module,
+        path: [:live_vue, :stream, stream.name],
+        message:
+          "Alva stream projections have been removed. Replace #{inspect(stream.name)} with a Collection declaration or use raw Phoenix PubSub outside Alva."
     end)
 
     Enum.each(collections, fn collection ->

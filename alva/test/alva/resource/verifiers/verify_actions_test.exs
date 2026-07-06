@@ -34,7 +34,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
     """)
   end
 
-  test "compiles successfully with stream and signal projections" do
+  test "compiles successfully with collection and signal projections" do
     assert_compile("""
     defmodule TestResource.RealtimeValid do
       use Ash.Resource,
@@ -53,7 +53,8 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
       live_vue do
         event :valid_realtime_read, name: "valid.realtime.read", action: :read
 
-        stream :students do
+        collection :students do
+          source event: :valid_realtime_read, mode: :reset
           insert on: :create
           update on: :update
           delete on: :destroy
@@ -66,8 +67,21 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
     end
     """)
 
-    assert [%Alva.Resource.Stream{name: :students}] =
-             Alva.Resource.Info.streams(TestResource.RealtimeValid)
+    assert [
+             %Alva.Resource.Collection{
+               name: :students,
+               source: %Alva.Resource.CollectionSource{
+                 event: :valid_realtime_read,
+                 mode: :reset
+               },
+               operations: [
+                 %Alva.Resource.CollectionOperation{op: :insert, on: :create},
+                 %Alva.Resource.CollectionOperation{op: :update, on: :update},
+                 %Alva.Resource.CollectionOperation{op: :delete, on: :destroy}
+               ]
+             }
+           ] =
+             Alva.Resource.Info.collections(TestResource.RealtimeValid)
 
     assert [
              %Alva.Resource.Signal{
@@ -193,7 +207,8 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
       live_vue do
         event :valid_pubsub_read, name: "valid.pubsub.read", action: :read
 
-        stream :students do
+        collection :students do
+          source event: :valid_pubsub_read, mode: :reset
           insert on: :create
           update on: :read
         end
@@ -297,7 +312,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
     assert stderr =~ "must be public? true"
   end
 
-  test "fails to compile when stream projection trigger is blank" do
+  test "fails to compile when legacy stream declarations are used" do
     stderr =
       capture_io(:stderr, fn ->
         compile_module("""
@@ -324,7 +339,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
         """)
       end)
 
-    assert stderr =~ "Stream projection occurrence key must be a non-empty atom"
+    assert stderr =~ "Alva stream projections have been removed"
   end
 
   test "fails to compile when collection source is missing" do
@@ -591,7 +606,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
     assert stderr =~ "concrete PubSub topic"
   end
 
-  test "fails to compile when stream trigger does not match a declared pubsub publication" do
+  test "fails to compile when legacy stream declarations are used even with pubsub" do
     stderr =
       capture_io(:stderr, fn ->
         compile_module("""
@@ -629,9 +644,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
         """)
       end)
 
-    assert stderr =~ "Stream projection occurrence key"
-    assert stderr =~ "does not match a declared Ash PubSub occurrence key"
-    assert stderr =~ ":create"
+    assert stderr =~ "Alva stream projections have been removed"
   end
 
   test "fails to compile when signal trigger does not match a declared pubsub publication" do

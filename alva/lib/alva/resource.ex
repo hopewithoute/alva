@@ -44,13 +44,14 @@ defmodule Alva.Resource do
     on: [
       type: {:or, [:atom, :string]},
       required: true,
-      doc: "The Ash PubSub occurrence key that triggers this stream operation."
+      doc:
+        "The legacy Ash PubSub occurrence key captured only so Alva can raise a migration error."
     ]
   ]
 
   @insert %Spark.Dsl.Entity{
     name: :insert,
-    describe: "Insert or update a record in this stream when a published event occurs.",
+    describe: "Legacy stream insert shim kept only so Alva can raise a migration error.",
     target: Alva.Resource.StreamOperation,
     schema:
       Keyword.put(@stream_operation_schema, :op, type: {:one_of, [:insert]}, default: :insert)
@@ -58,7 +59,7 @@ defmodule Alva.Resource do
 
   @update %Spark.Dsl.Entity{
     name: :update,
-    describe: "Update a record in this stream when a published event occurs.",
+    describe: "Legacy stream update shim kept only so Alva can raise a migration error.",
     target: Alva.Resource.StreamOperation,
     schema:
       Keyword.put(@stream_operation_schema, :op, type: {:one_of, [:update]}, default: :update)
@@ -66,7 +67,7 @@ defmodule Alva.Resource do
 
   @delete %Spark.Dsl.Entity{
     name: :delete,
-    describe: "Delete a record from this stream when a published event occurs.",
+    describe: "Legacy stream delete shim kept only so Alva can raise a migration error.",
     target: Alva.Resource.StreamOperation,
     schema:
       Keyword.put(@stream_operation_schema, :op, type: {:one_of, [:delete]}, default: :delete)
@@ -149,15 +150,9 @@ defmodule Alva.Resource do
 
   @stream %Spark.Dsl.Entity{
     name: :stream,
-    describe: "A LiveVue stream projection mapped to Ash PubSub published events.",
+    describe: "Legacy Alva stream declaration kept only to raise a compile-time migration error.",
     examples: [
-      """
-      stream :students do
-        insert on: :create
-        update on: :rename
-        delete on: :destroy
-      end
-      """
+      "Legacy `stream` declarations are rejected. Replace them with `collection` declarations or raw Phoenix PubSub outside Alva."
     ],
     target: Alva.Resource.Stream,
     args: [:name],
@@ -168,7 +163,7 @@ defmodule Alva.Resource do
       name: [
         type: :atom,
         required: true,
-        doc: "The domain-unique stream projection name."
+        doc: "The legacy stream declaration key, kept only so Alva can raise a migration error."
       ]
     ]
   }
@@ -196,7 +191,7 @@ defmodule Alva.Resource do
       name: [
         type: :atom,
         required: true,
-        doc: "The domain-unique collection name."
+        doc: "The application-wide collection name used for page activation."
       ]
     ]
   }
@@ -217,12 +212,12 @@ defmodule Alva.Resource do
       key: [
         type: :atom,
         required: true,
-        doc: "The domain-unique signal declaration key used by LiveView activation."
+        doc: "The application-wide signal declaration key used by LiveView activation."
       ],
       name: [
         type: :string,
         required: true,
-        doc: "The client-facing signal event name delivered to Vue."
+        doc: "The application-wide client-facing signal event name delivered to Vue."
       ],
       on: [
         type: {:or, [:atom, :string]},
@@ -259,7 +254,7 @@ defmodule Alva.Resource do
       name: [
         type: :string,
         required: true,
-        doc: "The client-facing event name that the Vue client will call."
+        doc: "The application-wide client-facing event name that the Vue client will call."
       ],
       action: [
         type: :atom,
