@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ashForm } from "./ashForm";
-import { nextTick } from "vue";
+import { effectScope, nextTick } from "vue";
 
 describe("ashForm", () => {
     const mockApi = () => {
@@ -308,6 +308,25 @@ describe("ashForm", () => {
         expect(rollbackFn).toHaveBeenCalled();
     });
 
+    it("should invoke rollback if submit throws after optimistic submit", async () => {
+        const api = mockApi();
+        api.call.mockRejectedValue(new Error("network down"));
+
+        const rollbackFn = vi.fn();
+        const onOptimisticSubmit = vi.fn().mockReturnValue(rollbackFn);
+
+        const { values, submit } = ashForm(api as any, "students.create", {
+            initialValues: { name: "A" },
+            onOptimisticSubmit,
+        });
+
+        values.name = "B";
+
+        await expect(submit()).rejects.toThrow("network down");
+        expect(onOptimisticSubmit).toHaveBeenCalledWith({ name: "B" });
+        expect(rollbackFn).toHaveBeenCalledTimes(1);
+    });
+
     it("should cache validation responses and skip api calls for identical payloads", async () => {
         const api = mockApi();
         api.call.mockResolvedValue({ ok: true });
@@ -330,5 +349,32 @@ describe("ashForm", () => {
 
         // Should hit cache
         expect(api.call).toHaveBeenCalledTimes(1);
+    });
+
+    it("should clear the validation cache when the form scope is disposed", async () => {
+        const api = mockApi();
+        api.call.mockResolvedValue({ ok: true });
+
+        const scope = effectScope();
+
+        const { validate } = scope.run(() =>
+            ashForm(api as any, "students.create", {
+                initialValues: { name: "A" },
+                validateEvent: "students.validate",
+            }),
+        )!;
+
+        const first = validate();
+        vi.advanceTimersByTime(300);
+        await first;
+        expect(api.call).toHaveBeenCalledTimes(1);
+
+        scope.stop();
+
+        const second = validate();
+        vi.advanceTimersByTime(300);
+        await second;
+
+        expect(api.call).toHaveBeenCalledTimes(2);
     });
 });

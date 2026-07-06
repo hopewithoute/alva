@@ -1,3 +1,5 @@
+Status: completed
+
 ## What to build
 
 Implement a native Filter AST generator in `Alva.Codegen.DtoGenerator` for events that specify `enable_filter: true`. 

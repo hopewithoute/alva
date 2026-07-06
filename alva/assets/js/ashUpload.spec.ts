@@ -4,13 +4,31 @@ import { ref } from "vue";
 
 // Mock useLiveUpload
 vi.mock("live_vue", () => {
-    return {
-        useLiveUpload: vi.fn((name: string) => ({
-            name,
+    const buildUpload = (configOrFactory: any) => {
+        const config =
+            typeof configOrFactory === "function"
+                ? configOrFactory()
+                : configOrFactory;
+
+        return {
+            name: config?.name || "avatar",
             entries: ref([]),
             errors: ref([]),
             cancel: vi.fn(),
+            showFilePicker: vi.fn(),
+            clear: vi.fn(),
+        };
+    };
+
+    return {
+        useLiveVue: vi.fn(() => ({
+            vue: {
+                props: {},
+            },
         })),
+        useLiveUpload: vi.fn((configOrFactory: any) =>
+            buildUpload(configOrFactory),
+        ),
     };
 });
 

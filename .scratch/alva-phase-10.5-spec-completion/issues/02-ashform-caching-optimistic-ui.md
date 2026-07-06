@@ -1,3 +1,5 @@
+Status: completed
+
 ## What to build
 
 Update the `ashForm` Vue composable (`alva/assets/js/ashForm.ts`) to include an in-memory database validation cache and explicit Optimistic UI support. 

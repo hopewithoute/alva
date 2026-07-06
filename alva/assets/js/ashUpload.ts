@@ -30,7 +30,9 @@ export function ashUpload(name: string, options?: AshUploadOptions) {
     // Provide a dummy config if the upload prop is not passed from LiveView
     // This prevents crashes in live_vue's useLiveUpload which expects a valid config.
     const getUploadConfig = () => {
-        return live.vue.props[name] || {
+        const uploadProps = live.vue?.props;
+
+        return uploadProps?.[name] || {
             ref: "dummy-ref",
             name: name,
             accept: false,

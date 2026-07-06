@@ -1,4 +1,4 @@
-import { ref, reactive, watch, onUnmounted, getCurrentInstance } from "vue";
+import { ref, reactive, watch, onScopeDispose, getCurrentScope } from "vue";
 
 export interface AshFormOptions<FormValues, EventKeys> {
     initialValues: FormValues;
@@ -34,8 +34,8 @@ export function ashForm<
     // Use a strict type for the cache instead of any
     const validationCache = new Map<string, LiveResult>();
 
-    if (getCurrentInstance()) {
-        onUnmounted(() => {
+    if (getCurrentScope()) {
+        onScopeDispose(() => {
             validationCache.clear();
         });
     }

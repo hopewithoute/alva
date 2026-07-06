@@ -7,10 +7,10 @@ export interface AshQueryOptions<T> {
 }
 
 /**
- * `ashQuery` is designed for ad hoc command/read fetching that is not owned by a route stream.
+ * `ashQuery` is designed for ad hoc command/read fetching that is not owned by a route Collection.
  * It fetches data on mount (if autoFetch is true) and manages loading/error states.
  *
- * Note: For Route Collection stream props (canonical list updates via server),
+ * Note: For Route Collection props (canonical list updates via server),
  * rely on LiveView stream diffs instead of ashQuery. `ashQuery` does not automatically
  * reconcile stream events (insert/delete).
  */
