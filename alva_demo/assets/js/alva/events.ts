@@ -14,7 +14,10 @@ export type AlvaEvents = {
   };
 
   "catalog.list_products": {
-    input: Record<string, never>;
+    input: {
+              query?: string;
+              max_stock?: number;
+            };
     output: LiveResult<Types.Product[]>;
   };
 
@@ -24,6 +27,32 @@ export type AlvaEvents = {
               id: string;
             };
     output: LiveResult<Types.Product>;
+  };
+
+  "demo_chat.list_messages": {
+    input: Record<string, never>;
+    output: LiveResult<Types.ChatMessage[]>;
+  };
+
+  "demo_chat.send_message": {
+    input: {
+              author: string;
+              text: string;
+            };
+    output: LiveResult<Types.ChatMessage>;
+  };
+
+  "demo_feed.list_entries": {
+    input: Record<string, never>;
+    output: LiveResult<Types.FeedEntry[]>;
+  };
+
+  "demo_notifications.send": {
+    input: {
+              title: string;
+              severity: "info" | "success" | "warning";
+            };
+    output: LiveResult<Types.Notification>;
   };
 
   "sales.begin_processing": {
@@ -50,7 +79,11 @@ export type AlvaEvents = {
   };
 
   "sales.list_orders": {
-    input: Record<string, never>;
+    input: {
+              status?: "new" | "processing" | "fulfilled";
+              customer_query?: string;
+              product_query?: string;
+            };
     output: LiveResult<Types.Order[]>;
   };
 
@@ -69,7 +102,10 @@ export type AlvaEvents = {
   };
 
   "support.list_conversations": {
-    input: Record<string, never>;
+    input: {
+              customer_query?: string;
+              needs_merchant_reply?: boolean;
+            };
     output: LiveResult<Types.Conversation[]>;
   };
 

@@ -42,11 +42,36 @@ export interface Product {
 }
 
 
+export interface ChatMessage {
+  id: string;
+  author: string;
+  text: string;
+  created_at: string;
+}
+
+
+export interface FeedEntry {
+  id: string;
+  title: string;
+  summary: string;
+  position: number;
+}
+
+
+export interface Notification {
+  id: string;
+  title: string;
+  severity: "info" | "success" | "warning";
+  created_at: string;
+}
+
+
 export interface Order {
   id: string;
   customer_name: string;
   quantity: number;
   lifecycle_status: "new" | "processing" | "fulfilled";
+  created_at: string;
   product_id: string;
   product?: Product;
 }
@@ -55,6 +80,11 @@ export interface Order {
 export interface Conversation {
   id: string;
   customer_name: string;
+  last_message_at?: string;
+  last_message_preview?: string;
+  last_message_sender?: "shopper" | "merchant";
+  needs_merchant_reply: boolean;
+  message_count: number;
   messages?: SupportMessage[];
 }
 
