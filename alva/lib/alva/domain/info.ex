@@ -12,6 +12,14 @@ defmodule Alva.Domain.Info do
   end
 
   @doc """
+  Returns a static O(1) map of all LiveVue event declaration keys registered across all resources in the domain.
+  The map structure is: %{ :event_key => {ResourceModule, EventStruct} }
+  """
+  def alva_event_key_map(domain) do
+    Spark.Dsl.Extension.get_persisted(domain, :alva_event_key_map, %{})
+  end
+
+  @doc """
   Returns a static O(1) map of all LiveVue stream projections registered across all resources in the domain.
   The map structure is: %{ :stream_name => {ResourceModule, StreamStruct} }
   """
@@ -29,7 +37,7 @@ defmodule Alva.Domain.Info do
 
   @doc """
   Returns a static O(1) map of all LiveVue signal projections registered across all resources in the domain.
-  The map structure is: %{ "signal_name" => {ResourceModule, SignalStruct} }
+  The map structure is: %{ :signal_key => {ResourceModule, SignalStruct} }
   """
   def alva_signal_map(domain) do
     Spark.Dsl.Extension.get_persisted(domain, :alva_signal_map, %{})

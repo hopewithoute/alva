@@ -27,8 +27,8 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
       end
 
       live_vue do
-        event "valid.read", action: :read
-        event "valid.create", action: :create
+        event :valid_read, name: "valid.read", action: :read
+        event :valid_create, name: "valid.create", action: :create
       end
     end
     """)
@@ -51,16 +51,17 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
       end
 
       live_vue do
-        event "valid.realtime.read", action: :read
+        event :valid_realtime_read, name: "valid.realtime.read", action: :read
 
         stream :students do
-          insert on: "student_created"
-          update on: "student_updated"
-          delete on: "student_deleted"
+          insert on: :create
+          update on: :update
+          delete on: :destroy
         end
 
-        signal "students.import_completed",
-          on: "student_import_completed"
+        signal :students_import_completed,
+          name: "students.import_completed",
+          on: :import_completed
       end
     end
     """)
@@ -68,7 +69,12 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
     assert [%Alva.Resource.Stream{name: :students}] =
              Alva.Resource.Info.streams(TestResource.RealtimeValid)
 
-    assert [%Alva.Resource.Signal{name: "students.import_completed"}] =
+    assert [
+             %Alva.Resource.Signal{
+               key: :students_import_completed,
+               name: "students.import_completed"
+             }
+           ] =
              Alva.Resource.Info.signals(TestResource.RealtimeValid)
   end
 
@@ -100,11 +106,11 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
       end
 
       live_vue do
-        event "students.list", action: :read
+        event :students_list, name: "students.list", action: :read
 
         collection :students do
-          source event: "students.list", mode: :reset
-          insert on: "student_created"
+          source event: :students_list, mode: :reset
+          insert on: :create
         end
       end
     end
@@ -113,9 +119,9 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
     assert [
              %Alva.Resource.Collection{
                name: :students,
-               source: %Alva.Resource.CollectionSource{event: "students.list", mode: :reset},
+               source: %Alva.Resource.CollectionSource{event: :students_list, mode: :reset},
                operations: [
-                 %Alva.Resource.CollectionOperation{op: :insert, on: "student_created"}
+                 %Alva.Resource.CollectionOperation{op: :insert, on: :create}
                ]
              }
            ] = Alva.Resource.Info.collections(TestResource.CollectionValid)
@@ -142,10 +148,10 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
           end
 
           live_vue do
-            event "students.list", action: :read
+            event :students_list, name: "students.list", action: :read
 
             collection :students do
-              source event: "students.list", mode: :reset
+              source event: :students_list, mode: :reset
             end
           end
         end
@@ -185,15 +191,16 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
       end
 
       live_vue do
-        event "valid.pubsub.read", action: :read
+        event :valid_pubsub_read, name: "valid.pubsub.read", action: :read
 
         stream :students do
-          insert on: "student_created"
-          update on: "read"
+          insert on: :create
+          update on: :read
         end
 
-        signal "students.read",
-          on: "read"
+        signal :students_read,
+          name: "students.read",
+          on: :read
       end
     end
     """)
@@ -218,7 +225,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
           end
 
           live_vue do
-            event "missing", action: :missing
+            event :missing, name: "missing", action: :missing
           end
         end
         """)
@@ -250,7 +257,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
           end
 
           live_vue do
-            event "empty", action: :empty_read
+            event :empty, name: "empty", action: :empty_read
           end
         end
         """)
@@ -281,7 +288,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
           end
 
           live_vue do
-            event "internal", action: :internal_read
+            event :internal, name: "internal", action: :internal_read
           end
         end
         """)
@@ -317,7 +324,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
         """)
       end)
 
-    assert stderr =~ "Stream projection trigger must be a non-empty string"
+    assert stderr =~ "Stream projection occurrence key must be a non-empty atom"
   end
 
   test "fails to compile when collection source is missing" do
@@ -340,7 +347,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
 
           live_vue do
             collection :students do
-              insert on: "student_created"
+              insert on: :create
             end
           end
         end
@@ -370,6 +377,39 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
 
           live_vue do
             collection :students do
+              source event: :students_list, mode: :reset
+            end
+          end
+        end
+        """)
+      end)
+
+    assert stderr =~
+             "Collection :students source event :students_list must reference a declared live_vue event declaration key."
+  end
+
+  test "fails to compile when collection source event uses a browser-facing name" do
+    stderr =
+      capture_io(:stderr, fn ->
+        compile_module("""
+        defmodule TestResource.CollectionStringSourceEvent do
+          use Ash.Resource,
+            domain: TestDomain,
+            validate_domain_inclusion?: false,
+            extensions: [Alva.Resource]
+
+          resource do
+            require_primary_key? false
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          live_vue do
+            event :students_list, name: "students.list", action: :read
+
+            collection :students do
               source event: "students.list", mode: :reset
             end
           end
@@ -378,7 +418,51 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
       end)
 
     assert stderr =~
-             "Collection :students source event \"students.list\" must reference a declared live_vue event."
+             "Collection :students source event must be an event declaration key atom"
+  end
+
+  test "fails to compile when collection trigger uses an event declaration key" do
+    stderr =
+      capture_io(:stderr, fn ->
+        compile_module("""
+        defmodule TestResource.CollectionEventKeyTrigger do
+          use Ash.Resource,
+            domain: TestDomain,
+            validate_domain_inclusion?: false,
+            extensions: [Alva.Resource],
+            notifiers: [Ash.Notifier.PubSub]
+
+          resource do
+            require_primary_key? false
+          end
+
+          actions do
+            defaults [:read]
+
+            create :create do
+              accept []
+            end
+          end
+
+          pub_sub do
+            module TestPubSub
+
+            publish "student_created", :create, "students"
+          end
+
+          live_vue do
+            event :students_list, name: "students.list", action: :read
+
+            collection :students do
+              source event: :students_list, mode: :reset
+              insert on: :students_list
+            end
+          end
+        end
+        """)
+      end)
+
+    assert stderr =~ "looks like a live_vue event declaration key"
   end
 
   test "fails to compile when collection operation trigger is blank" do
@@ -400,10 +484,10 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
           end
 
           live_vue do
-            event "students.list", action: :read
+            event :students_list, name: "students.list", action: :read
 
             collection :students do
-              source event: "students.list", mode: :reset
+              source event: :students_list, mode: :reset
               insert on: ""
             end
           end
@@ -411,7 +495,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
         """)
       end)
 
-    assert stderr =~ "Collection projection trigger must be a non-empty string"
+    assert stderr =~ "Collection projection occurrence key must be a non-empty atom"
   end
 
   test "fails to compile when signal projection trigger is blank" do
@@ -433,14 +517,78 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
           end
 
           live_vue do
-            signal "students.import_completed",
+            signal :students_import_completed,
+              name: "students.import_completed",
               on: ""
           end
         end
         """)
       end)
 
-    assert stderr =~ "Signal projection trigger must be a non-empty string"
+    assert stderr =~ "Signal projection occurrence key must be a non-empty atom"
+  end
+
+  test "fails to compile when signal trigger uses a browser-facing event name" do
+    stderr =
+      capture_io(:stderr, fn ->
+        compile_module("""
+        defmodule TestResource.SignalBrowserNameTrigger do
+          use Ash.Resource,
+            domain: TestDomain,
+            validate_domain_inclusion?: false,
+            extensions: [Alva.Resource]
+
+          resource do
+            require_primary_key? false
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          live_vue do
+            signal :students_import_completed,
+              name: "students.import_completed",
+              on: "orders.fulfill"
+          end
+        end
+        """)
+      end)
+
+    assert stderr =~ "browser-facing live_vue event name"
+  end
+
+  test "fails to compile when collection trigger uses a concrete topic string" do
+    stderr =
+      capture_io(:stderr, fn ->
+        compile_module("""
+        defmodule TestResource.CollectionTopicTrigger do
+          use Ash.Resource,
+            domain: TestDomain,
+            validate_domain_inclusion?: false,
+            extensions: [Alva.Resource]
+
+          resource do
+            require_primary_key? false
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          live_vue do
+            event :students_list, name: "students.list", action: :read
+
+            collection :students do
+              source event: :students_list, mode: :reset
+              insert on: "students:all"
+            end
+          end
+        end
+        """)
+      end)
+
+    assert stderr =~ "concrete PubSub topic"
   end
 
   test "fails to compile when stream trigger does not match a declared pubsub publication" do
@@ -474,16 +622,16 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
 
           live_vue do
             stream :students do
-              insert on: "student_cretaed"
+              insert on: :student_cretaed
             end
           end
         end
         """)
       end)
 
-    assert stderr =~ "Stream projection trigger"
-    assert stderr =~ "does not match a declared Ash PubSub publication"
-    assert stderr =~ "student_created"
+    assert stderr =~ "Stream projection occurrence key"
+    assert stderr =~ "does not match a declared Ash PubSub occurrence key"
+    assert stderr =~ ":create"
   end
 
   test "fails to compile when signal trigger does not match a declared pubsub publication" do
@@ -512,16 +660,58 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
           end
 
           live_vue do
-            signal "students.import_completed",
-              on: "student_import_completed"
+            signal :students_import_completed,
+              name: "students.import_completed",
+              on: :student_import_completed
           end
         end
         """)
       end)
 
-    assert stderr =~ "Signal projection trigger"
-    assert stderr =~ "does not match a declared Ash PubSub publication"
-    assert stderr =~ "read"
+    assert stderr =~ "Signal projection occurrence key"
+    assert stderr =~ "does not match a declared Ash PubSub occurrence key"
+    assert stderr =~ ":read"
+  end
+
+  test "fails to compile when signal trigger uses a raw pubsub event string" do
+    stderr =
+      capture_io(:stderr, fn ->
+        compile_module("""
+        defmodule TestResource.SignalRawPubSubTrigger do
+          use Ash.Resource,
+            domain: TestDomain,
+            validate_domain_inclusion?: false,
+            extensions: [Alva.Resource],
+            notifiers: [Ash.Notifier.PubSub]
+
+          resource do
+            require_primary_key? false
+          end
+
+          actions do
+            defaults [:read]
+
+            create :create do
+              accept []
+            end
+          end
+
+          pub_sub do
+            module TestPubSub
+
+            publish "student_created", :create, "students"
+          end
+
+          live_vue do
+            signal :students_import_completed,
+              name: "students.import_completed",
+              on: "student_created"
+          end
+        end
+        """)
+      end)
+
+    assert stderr =~ "raw PubSub event string"
   end
 
   setup_all do
@@ -550,10 +740,15 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
         TestResource.BlankStreamTrigger,
         TestResource.CollectionMissingSource,
         TestResource.CollectionUnknownSourceEvent,
+        TestResource.CollectionStringSourceEvent,
+        TestResource.CollectionEventKeyTrigger,
         TestResource.BlankCollectionTrigger,
         TestResource.BlankSignalTrigger,
+        TestResource.SignalBrowserNameTrigger,
+        TestResource.CollectionTopicTrigger,
         TestResource.UnknownStreamPublication,
-        TestResource.UnknownSignalPublication
+        TestResource.UnknownSignalPublication,
+        TestResource.SignalRawPubSubTrigger
       ],
       fn mod ->
         :code.purge(mod)

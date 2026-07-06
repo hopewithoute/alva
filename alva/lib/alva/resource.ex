@@ -1,5 +1,6 @@
 defmodule Alva.Resource.Event do
   defstruct [
+    :key,
     :name,
     :action,
     :lookup,
@@ -31,7 +32,7 @@ defmodule Alva.Resource.Collection do
 end
 
 defmodule Alva.Resource.Signal do
-  defstruct [:name, :on, :expose_metadata, :__spark_metadata__]
+  defstruct [:key, :name, :on, :expose_metadata, :__spark_metadata__]
 end
 
 defmodule Alva.Resource do
@@ -41,9 +42,9 @@ defmodule Alva.Resource do
 
   @stream_operation_schema [
     on: [
-      type: :string,
+      type: {:or, [:atom, :string]},
       required: true,
-      doc: "The Ash PubSub published event name that triggers this stream operation."
+      doc: "The Ash PubSub occurrence key that triggers this stream operation."
     ]
   ]
 
@@ -73,9 +74,9 @@ defmodule Alva.Resource do
 
   @collection_operation_schema [
     on: [
-      type: :string,
+      type: {:or, [:atom, :string]},
       required: true,
-      doc: "The Ash PubSub published event name that triggers this collection operation."
+      doc: "The Ash PubSub occurrence key that triggers this collection operation."
     ],
     at: [
       type: :integer,
@@ -133,9 +134,9 @@ defmodule Alva.Resource do
     target: Alva.Resource.CollectionSource,
     schema: [
       event: [
-        type: :string,
+        type: {:or, [:atom, :string]},
         required: true,
-        doc: "The Alva command event that returns this collection's records."
+        doc: "The Alva event declaration key that returns this collection's records."
       ],
       mode: [
         type: {:one_of, [:reset]},
@@ -152,9 +153,9 @@ defmodule Alva.Resource do
     examples: [
       """
       stream :students do
-        insert on: "student_created"
-        update on: "student_updated"
-        delete on: "student_deleted"
+        insert on: :create
+        update on: :rename
+        delete on: :destroy
       end
       """
     ],
@@ -178,10 +179,10 @@ defmodule Alva.Resource do
     examples: [
       """
       collection :students do
-        source event: "students.list", mode: :reset
-        insert on: "student_created"
-        update on: "student_updated"
-        delete on: "student_deleted"
+        source event: :students_list, mode: :reset
+        insert on: :create
+        update on: :rename
+        delete on: :destroy
       end
       """
     ],
@@ -205,22 +206,28 @@ defmodule Alva.Resource do
     describe: "A semantic non-collection callback mapped to an Ash PubSub published event.",
     examples: [
       """
-      signal "students.import_completed",
-        on: "student_import_completed"
+      signal :students_import_completed,
+        name: "students.import_completed",
+        on: :import_completed
       """
     ],
     target: Alva.Resource.Signal,
-    args: [:name],
+    args: [:key],
     schema: [
+      key: [
+        type: :atom,
+        required: true,
+        doc: "The domain-unique signal declaration key used by LiveView activation."
+      ],
       name: [
         type: :string,
         required: true,
-        doc: "The domain-unique signal event name delivered to Vue."
+        doc: "The client-facing signal event name delivered to Vue."
       ],
       on: [
-        type: :string,
+        type: {:or, [:atom, :string]},
         required: true,
-        doc: "The Ash PubSub published event name that triggers this signal."
+        doc: "The Ash PubSub occurrence key that triggers this signal."
       ],
       expose_metadata: [
         type: {:list, :atom},
@@ -236,16 +243,23 @@ defmodule Alva.Resource do
     describe: "A LiveVue event mapped to an Ash action",
     examples: [
       """
-      event "students.list", action: :read
+      event :students_list,
+        name: "students.list",
+        action: :read
       """
     ],
     target: Alva.Resource.Event,
-    args: [:name],
+    args: [:key],
     schema: [
+      key: [
+        type: :atom,
+        required: true,
+        doc: "The atom declaration key used by collection sources and other resource projections."
+      ],
       name: [
         type: :string,
         required: true,
-        doc: "The string event name that the Vue client will call."
+        doc: "The client-facing event name that the Vue client will call."
       ],
       action: [
         type: :atom,

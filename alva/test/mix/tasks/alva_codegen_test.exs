@@ -35,8 +35,8 @@ defmodule Mix.Tasks.Alva.CodegenTest do
     end
 
     live_vue do
-      event("test.create", action: :create)
-      event("test.read", action: :read)
+      event(:test_create, name: "test.create", action: :create)
+      event(:test_read, name: "test.read", action: :read)
     end
   end
 

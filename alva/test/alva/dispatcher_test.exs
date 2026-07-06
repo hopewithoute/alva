@@ -133,19 +133,19 @@ defmodule Alva.DispatcherTest do
     end
 
     live_vue do
-      event("test.archive", action: :archive, lookup: :id)
-      event("test.say_hello", action: :say_hello)
-      event("test.get_context", action: :get_context)
-      event("test.get", action: :read, lookup: :id)
-      event("test.list", action: :read)
-      event("test.search", action: :search)
-      event("test.create", action: :create)
-      event("test.validate_create", action: :create, validate_only: true)
-      event("test.update", action: :update, lookup: :id)
-      event("test.validate_update", action: :update, lookup: :id, validate_only: true)
-      event("test.read_tenant", action: :read_with_tenant)
-      event("test.get_tenant", action: :read_with_tenant, lookup: :id)
-      event("test.upload", action: :upload_file)
+      event(:test_archive, name: "test.archive", action: :archive, lookup: :id)
+      event(:test_say_hello, name: "test.say_hello", action: :say_hello)
+      event(:test_get_context, name: "test.get_context", action: :get_context)
+      event(:test_get, name: "test.get", action: :read, lookup: :id)
+      event(:test_list, name: "test.list", action: :read)
+      event(:test_search, name: "test.search", action: :search)
+      event(:test_create, name: "test.create", action: :create)
+      event(:test_validate_create, name: "test.validate_create", action: :create, validate_only: true)
+      event(:test_update, name: "test.update", action: :update, lookup: :id)
+      event(:test_validate_update, name: "test.validate_update", action: :update, lookup: :id, validate_only: true)
+      event(:test_read_tenant, name: "test.read_tenant", action: :read_with_tenant)
+      event(:test_get_tenant, name: "test.get_tenant", action: :read_with_tenant, lookup: :id)
+      event(:test_upload, name: "test.upload", action: :upload_file)
     end
   end
 
@@ -582,13 +582,13 @@ defmodule Alva.DispatcherTest do
       end
     end
 
-    live_vue do
-      event("meta.get", action: :read, lookup: :id, expose_metadata: [:sync_token])
-      event("meta.list", action: :read, expose_metadata: [:sync_token])
-      event("meta.create", action: :create, expose_metadata: [:sync_token])
-      event("meta.update", action: :update, lookup: :id, expose_metadata: [:sync_token])
-      event("meta.none", action: :read, lookup: :id)
-    end
+      live_vue do
+        event(:meta_get, name: "meta.get", action: :read, lookup: :id, expose_metadata: [:sync_token])
+        event(:meta_list, name: "meta.list", action: :read, expose_metadata: [:sync_token])
+        event(:meta_create, name: "meta.create", action: :create, expose_metadata: [:sync_token])
+        event(:meta_update, name: "meta.update", action: :update, lookup: :id, expose_metadata: [:sync_token])
+        event(:meta_none, name: "meta.none", action: :read, lookup: :id)
+      end
   end
 
   defmodule MetadataDomain do
