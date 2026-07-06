@@ -41,8 +41,11 @@ defmodule Alva.LiveView do
   def collection(socket, name, opts \\ [])
 
   def collection(socket, name, opts) when is_atom(name) and is_list(opts) do
-    {_resource, collection} = find_projection!(socket, :collection, name)
-    {_event_resource, source_event} = find_event_declaration!(socket, collection.source.event)
+    {resource, collection} = find_projection!(socket, :collection, name)
+
+    {_event_resource, source_event} =
+      find_resource_event_declaration!(resource, collection.source.event)
+
     source_input = collection_source_input!(socket, name, collection_source_input_option(opts))
 
     result =
@@ -461,10 +464,28 @@ defmodule Alva.LiveView do
       subscriptions
       |> List.wrap()
       |> Enum.flat_map(&collection_subscription_topics!(socket, name, &1))
+      |> Enum.uniq()
+
+    previously_owned_topics = collection_subscription_topics(socket)
+    previous_topics = Map.get(previously_owned_topics, name, MapSet.new())
+    next_topics = MapSet.union(previous_topics, MapSet.new(topics))
+
+    socket =
+      update_alva(socket, fn state ->
+        collection_subscription_topics =
+          Map.put(state.collection_subscription_topics, name, next_topics)
+
+        %{state | collection_subscription_topics: collection_subscription_topics}
+      end)
 
     if Phoenix.LiveView.connected?(socket) do
-      Enum.reduce(topics, socket, fn topic, acc_socket ->
-        subscribe_transport_topic(acc_socket, topic)
+      Enum.reduce(MapSet.difference(next_topics, previous_topics), socket, fn topic, acc_socket ->
+        if route_subscription_topic_owned?(acc_socket, topic) or
+             collection_subscription_topic_owned?(previously_owned_topics, topic) do
+          acc_socket
+        else
+          subscribe_transport_topic(acc_socket, topic)
+        end
       end)
     else
       socket
@@ -533,7 +554,11 @@ defmodule Alva.LiveView do
     previous_topics
     |> MapSet.difference(next_topics)
     |> Enum.reduce(socket, fn topic, acc_socket ->
-      unsubscribe_transport_topic(acc_socket, topic)
+      if collection_subscription_topic_owned?(acc_socket, topic) do
+        acc_socket
+      else
+        unsubscribe_transport_topic(acc_socket, topic)
+      end
     end)
   end
 
@@ -541,7 +566,11 @@ defmodule Alva.LiveView do
     next_topics
     |> MapSet.difference(previous_topics)
     |> Enum.reduce(socket, fn topic, acc_socket ->
-      subscribe_transport_topic(acc_socket, topic)
+      if collection_subscription_topic_owned?(acc_socket, topic) do
+        acc_socket
+      else
+        subscribe_transport_topic(acc_socket, topic)
+      end
     end)
   end
 
@@ -1078,23 +1107,19 @@ defmodule Alva.LiveView do
   defp projection_map(domain, :collection), do: Alva.Domain.Info.alva_collection_map(domain)
   defp projection_map(domain, :signal), do: Alva.Domain.Info.alva_signal_map(domain)
 
-  defp find_event_declaration!(socket, key) do
-    domains = alva_state(socket).domains
-
+  defp find_resource_event_declaration!(resource, key) do
     event_projection =
-      Enum.find_value(domains, fn domain ->
-        domain
-        |> Alva.Domain.Info.alva_event_key_map()
-        |> Map.get(key)
-      end)
+      resource
+      |> Alva.Resource.Info.events()
+      |> Enum.find(fn event -> event.key == key or event.name == key end)
 
     case event_projection do
       nil ->
         raise ArgumentError,
-              "Unknown Alva event declaration #{inspect(key)} for mounted domains #{inspect(domains)}"
+              "Unknown Alva event declaration #{inspect(key)} for resource #{inspect(resource)}"
 
       event_projection ->
-        event_projection
+        {resource, event_projection}
     end
   end
 
@@ -1187,21 +1212,21 @@ defmodule Alva.LiveView do
 
       collections =
         case Keyword.fetch(opts, :collections) do
-          {:ok, collections} -> validate_collection_use_declarations!(collections, caller)
-          :error -> []
+          {:ok, collections} -> maybe_validate_collection_use_declarations!(collections, caller)
+          :error -> {:known, []}
         end
 
       signals =
         case Keyword.fetch(opts, :signals) do
-          {:ok, signals} -> validate_signal_use_declarations!(signals, caller)
-          :error -> []
+          {:ok, signals} -> maybe_validate_signal_use_declarations!(signals, caller)
+          :error -> {:known, []}
         end
 
       validate_projection_namespace_use_declarations!(collections, signals, caller)
 
       case Keyword.fetch(opts, :route_subscriptions) do
         {:ok, route_subscriptions} ->
-          validate_route_subscription_use_declarations!(
+          maybe_validate_route_subscription_use_declarations!(
             route_subscriptions,
             collections,
             signals,
@@ -1226,6 +1251,58 @@ defmodule Alva.LiveView do
       line: caller.line,
       description:
         "use Alva.LiveView expects keyword options. Use keyword-form declarative activation with :domains, :collections, :signals, and :route_subscriptions."
+  end
+
+  defp maybe_validate_collection_use_declarations!(collections, caller) do
+    case expand_use_opt_literal(collections, caller) do
+      {:ok, collections} -> {:known, validate_collection_use_declarations!(collections, caller)}
+      :dynamic -> :unknown
+    end
+  end
+
+  defp maybe_validate_signal_use_declarations!(signals, caller) do
+    case expand_use_opt_literal(signals, caller) do
+      {:ok, signals} -> {:known, validate_signal_use_declarations!(signals, caller)}
+      :dynamic -> :unknown
+    end
+  end
+
+  defp maybe_validate_route_subscription_use_declarations!(
+         route_subscriptions,
+         {:known, collections},
+         {:known, signals},
+         caller
+       ) do
+    case expand_use_opt_literal(route_subscriptions, caller) do
+      {:ok, route_subscriptions} ->
+        validate_route_subscription_use_declarations!(
+          route_subscriptions,
+          collections,
+          signals,
+          caller
+        )
+
+      :dynamic ->
+        :ok
+    end
+  end
+
+  defp maybe_validate_route_subscription_use_declarations!(
+         _route_subscriptions,
+         _collections,
+         _signals,
+         _caller
+       ),
+       do: :ok
+
+  defp expand_use_opt_literal(value, caller) do
+    expanded = Macro.expand(value, caller)
+
+    if Macro.quoted_literal?(expanded) do
+      {:ok, expanded}
+    else
+      :dynamic
+    end
   end
 
   defp validate_public_activation_key!(:streams, caller) do
@@ -1385,7 +1462,11 @@ defmodule Alva.LiveView do
     end)
   end
 
-  defp validate_projection_namespace_use_declarations!(collections, signals, caller) do
+  defp validate_projection_namespace_use_declarations!(
+         {:known, collections},
+         {:known, signals},
+         caller
+       ) do
     collections
     |> MapSet.new()
     |> MapSet.intersection(MapSet.new(signals))
@@ -1397,6 +1478,8 @@ defmodule Alva.LiveView do
           "Alva declarative page activation cannot activate the same projection key in both `collections:` and `signals:`: #{inspect(key)}"
     end)
   end
+
+  defp validate_projection_namespace_use_declarations!(_collections, _signals, _caller), do: :ok
 
   defp validate_route_subscription_use_declarations!(
          route_subscriptions,
@@ -1699,10 +1782,37 @@ defmodule Alva.LiveView do
     end
   end
 
+  defp route_subscription_topic_owned?(socket, topic) do
+    socket
+    |> route_subscriptions()
+    |> MapSet.new()
+    |> MapSet.member?(topic)
+  end
+
+  defp collection_subscription_topic_owned?(%{private: _} = socket, topic) do
+    socket
+    |> collection_subscription_topics()
+    |> collection_subscription_topic_owned?(topic)
+  end
+
+  defp collection_subscription_topic_owned?(collection_topics, topic)
+       when is_map(collection_topics) do
+    collection_topics
+    |> Map.values()
+    |> Enum.any?(&MapSet.member?(&1, topic))
+  end
+
+  defp collection_subscription_topics(socket) do
+    socket
+    |> alva_state()
+    |> Map.get(:collection_subscription_topics, %{})
+  end
+
   defp alva_state(socket) do
     Map.get(socket.private, @alva_private_key, %{
       domains: [],
       collection_specs: %{},
+      collection_subscription_topics: %{},
       route_subscriptions: MapSet.new(),
       route_params: %{},
       route_change_collections: %{},

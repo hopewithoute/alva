@@ -305,6 +305,84 @@ defmodule Alva.LiveViewTest do
     end
   end
 
+  defmodule SharedKeyPrimaryResource do
+    use Ash.Resource,
+      domain: Alva.LiveViewTest.SharedKeyPrimaryDomain,
+      validate_domain_inclusion?: false,
+      data_layer: Ash.DataLayer.Ets,
+      extensions: [Alva.Resource]
+
+    ets do
+      private?(true)
+    end
+
+    resource do
+      require_primary_key?(false)
+    end
+
+    attributes do
+      uuid_primary_key(:id)
+      attribute(:name, :string, public?: true)
+    end
+
+    actions do
+      read :read do
+        primary?(true)
+      end
+
+      create :create do
+        accept([:name])
+      end
+    end
+
+    live_vue do
+      event(:shared_list, name: "primary.shared.list", action: :read)
+
+      collection :primary_orders do
+        source(event: :shared_list, mode: :reset)
+      end
+    end
+  end
+
+  defmodule SharedKeySecondaryResource do
+    use Ash.Resource,
+      domain: Alva.LiveViewTest.SharedKeySecondaryDomain,
+      validate_domain_inclusion?: false,
+      data_layer: Ash.DataLayer.Ets,
+      extensions: [Alva.Resource]
+
+    ets do
+      private?(true)
+    end
+
+    resource do
+      require_primary_key?(false)
+    end
+
+    attributes do
+      uuid_primary_key(:id)
+      attribute(:name, :string, public?: true)
+    end
+
+    actions do
+      read :read do
+        primary?(true)
+      end
+
+      create :create do
+        accept([:name])
+      end
+    end
+
+    live_vue do
+      event(:shared_list, name: "secondary.shared.list", action: :read)
+
+      collection :secondary_orders do
+        source(event: :shared_list, mode: :reset)
+      end
+    end
+  end
+
   defmodule DummyLive do
     use Phoenix.LiveView
     use Alva.LiveView, domains: [Alva.LiveViewTest.TestDomain]
@@ -404,6 +482,22 @@ defmodule Alva.LiveViewTest do
     end
   end
 
+  defmodule SharedKeyPrimaryDomain do
+    use Ash.Domain, validate_config_inclusion?: false, extensions: [Alva.Domain]
+
+    resources do
+      resource(SharedKeyPrimaryResource)
+    end
+  end
+
+  defmodule SharedKeySecondaryDomain do
+    use Ash.Domain, validate_config_inclusion?: false, extensions: [Alva.Domain]
+
+    resources do
+      resource(SharedKeySecondaryResource)
+    end
+  end
+
   setup_all do
     Application.put_env(:alva, Alva.LiveViewTest.Endpoint,
       secret_key_base: String.duplicate("a", 64),
@@ -437,8 +531,10 @@ defmodule Alva.LiveViewTest do
       Alva.LiveView.on_mount(
         %{
           domains: [Alva.LiveViewTest.TestDomain],
+          collections: [:sales_orders],
           signals: [:students_created],
           route_subscriptions: [
+            {:sales_orders, []},
             {:students_created, :route_scoped_student_topics}
           ]
         },
@@ -488,6 +584,30 @@ defmodule Alva.LiveViewTest do
 
     assert [_one_record] = stream_items(socket, :sales_orders)
     assert active_collection_source_input(socket, :sales_orders) == %{"page" => %{"limit" => 1}}
+  end
+
+  test "collection source events resolve within the owning resource when mounted domains share an event key" do
+    create_shared_primary!("Primary Shared")
+    create_shared_secondary!("Secondary Shared")
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{
+          domains: [
+            Alva.LiveViewTest.SharedKeyPrimaryDomain,
+            Alva.LiveViewTest.SharedKeySecondaryDomain
+          ],
+          collections: [:secondary_orders]
+        },
+        %{},
+        %{},
+        base_socket()
+      )
+
+    names = Enum.map(stream_items(socket, :secondary_orders), & &1.name)
+
+    assert "Secondary Shared" in names
+    refute "Primary Shared" in names
   end
 
   test "manual collection activation still accepts params as a source input alias" do
@@ -890,6 +1010,50 @@ defmodule Alva.LiveViewTest do
     )
 
     refute_receive {:stale_route_subscription_seen, _}, 50
+
+    Phoenix.PubSub.broadcast(
+      Alva.PubSub,
+      "students:tenant:beta",
+      {:fresh_route_subscription_seen, self()}
+    )
+
+    assert_receive {:fresh_route_subscription_seen, _}
+  end
+
+  test "route topic diffs preserve imperative collection subscriptions on shared topics" do
+    create_student!("Imperative Shared Topic")
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{
+          domains: [Alva.LiveViewTest.TestDomain],
+          collections: [:sales_orders],
+          signals: [:students_created],
+          route_subscriptions: [
+            {:sales_orders, []},
+            {:students_created, :route_scoped_student_topics}
+          ]
+        },
+        %{"tenant" => "alpha"},
+        %{},
+        connected_socket(view: CollectionLive, router: Router)
+      )
+
+    socket =
+      Alva.LiveView.collection(socket, :sales_orders, subscriptions: ["students:tenant:alpha"])
+
+    [%{function: callback}] = socket.private.lifecycle.handle_params
+
+    assert {:cont, socket} = callback.(%{"tenant" => "beta"}, "/orders?tenant=beta", socket)
+    assert ["students:tenant:beta"] == Alva.LiveView.route_subscriptions(socket)
+
+    Phoenix.PubSub.broadcast(
+      Alva.PubSub,
+      "students:tenant:alpha",
+      {:imperative_collection_subscription_seen, self()}
+    )
+
+    assert_receive {:imperative_collection_subscription_seen, _}
 
     Phoenix.PubSub.broadcast(
       Alva.PubSub,
@@ -2037,6 +2201,14 @@ defmodule Alva.LiveViewTest do
 
   defp create_student!(name) do
     Ash.create!(Ash.Changeset.for_create(TestResource, :create, %{name: name}))
+  end
+
+  defp create_shared_primary!(name) do
+    Ash.create!(Ash.Changeset.for_create(SharedKeyPrimaryResource, :create, %{name: name}))
+  end
+
+  defp create_shared_secondary!(name) do
+    Ash.create!(Ash.Changeset.for_create(SharedKeySecondaryResource, :create, %{name: name}))
   end
 
   defp student_list_event do

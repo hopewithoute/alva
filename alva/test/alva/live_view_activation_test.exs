@@ -38,6 +38,33 @@ defmodule Alva.LiveViewActivationTest do
     """)
   end
 
+  test "compiles successfully when declarative activation uses module attributes" do
+    assert_compile("""
+    defmodule TestLiveViewActivation.AttributeBackedLive do
+      use Phoenix.LiveView
+
+      @collections [sales_orders: [source_input: :sales_order_source_input]]
+      @signals [:sales_orders_updated]
+      @route_subscriptions [
+        {:sales_orders, ["orders:all"]},
+        {:sales_orders_updated, "orders:updated"}
+      ]
+
+      use Alva.LiveView,
+        domains: [TestDomain.Valid],
+        collections: @collections,
+        signals: @signals,
+        route_subscriptions: @route_subscriptions
+
+      def sales_order_source_input, do: %{}
+
+      def render(assigns) do
+        ~H"<div />"
+      end
+    end
+    """)
+  end
+
   test "fails to compile when declarative streams are declared" do
     assert_raise CompileError,
                  ~r/no longer accepts top-level `streams:`/,
@@ -274,7 +301,8 @@ defmodule Alva.LiveViewActivationTest do
   after
     purge_modules([
       TestLiveViewActivation.ValidLive,
-      TestLiveViewActivation.ValidSignalRouteLive
+      TestLiveViewActivation.ValidSignalRouteLive,
+      TestLiveViewActivation.AttributeBackedLive
     ])
   end
 
