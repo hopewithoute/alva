@@ -1,3 +1,5 @@
+Status: completed
+
 ## What to build
 
 Build three isolated example routes within the `alva_demo` application to clearly demonstrate Alva's realtime primitives (Commands, Streams, Signals) in action. 
@@ -14,3 +16,7 @@ These should be separate pages (e.g. `/demo/chat`, `/demo/notifications`, `/demo
 ## Blocked by
 
 None - can start immediately
+
+## Comments
+
+- The load-more example uses the current route-owned collection refresh path (`source_input` + `reload_on: :route_change`) instead of reintroducing the removed `bind_stream_query` bridge. This matches the more recent repo guidance in `docs/alva-demo-api-surface.md` and ADR `0002-realtime-command-stream-signal-split`.

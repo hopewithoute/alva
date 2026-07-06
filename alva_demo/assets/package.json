@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 -l warn",
     "lint": "vue-tsc --noEmit",
+    "test:unit": "vitest run",
     "build": "vite build",
     "build-server": "vite build --ssr js/server.js --out-dir ../priv/vue --minify esbuild --ssrManifest && echo '{\"type\":\"module\"}' > ../priv/vue/package.json"
   },
@@ -22,12 +23,15 @@
   "devDependencies": {
     "@types/phoenix": "^1.6.7",
     "@types/phoenix_live_view": "^1.0.0",
+    "@vue/test-utils": "^2.4.11",
     "autoprefixer": "^10.4.19",
+    "jsdom": "^27.4.0",
     "postcss": "^8.4.38",
     "shadcn-vue": "^0.11.3",
     "tailwindcss": "^3.4.3",
     "typescript": "^5.4.5",
     "vite": "^5.2.9",
+    "vitest": "^4.1.9",
     "vue-tsc": "^2.0.13"
   }
 }

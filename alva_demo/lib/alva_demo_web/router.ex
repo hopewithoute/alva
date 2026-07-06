@@ -13,8 +13,13 @@ defmodule AlvaDemoWeb.Router do
   scope "/", AlvaDemoWeb do
     pipe_through :browser
 
-    live "/", HomeLive
-    live "/storefront", CustomerStorefrontLive
-    live "/console", MerchantConsoleLive
+    live_session :commerce_showcase do
+      live "/", HomeLive
+      live "/storefront", CustomerStorefrontLive
+      live "/console", MerchantConsoleLive
+      live "/demo/chat", DemoChatLive
+      live "/demo/notifications", DemoNotificationsLive
+      live "/demo/load-more", DemoLoadMoreLive
+    end
   end
 end

@@ -1,0 +1,63 @@
+defmodule AlvaDemo.Demos.ChatMessage do
+  use Ash.Resource,
+    domain: AlvaDemo.Demos,
+    data_layer: Ash.DataLayer.Ets,
+    notifiers: [Ash.Notifier.PubSub],
+    extensions: [Alva.Resource]
+
+  pub_sub do
+    module(AlvaDemoWeb.Endpoint)
+    prefix("demo_chat")
+    publish(:send, ["created"])
+  end
+
+  live_vue do
+    event("demo_chat.list_messages", action: :list)
+    event("demo_chat.send_message", action: :send)
+
+    stream :chat_messages do
+      insert(on: "send")
+    end
+  end
+
+  actions do
+    defaults([:destroy])
+
+    read :read do
+      primary?(true)
+      public?(true)
+    end
+
+    read :list do
+      public?(true)
+
+      prepare(fn query, _context ->
+        Ash.Query.sort(query, created_at: :asc)
+      end)
+    end
+
+    create :send do
+      public?(true)
+      primary?(true)
+      accept([:author, :text])
+    end
+  end
+
+  attributes do
+    uuid_primary_key(:id)
+
+    attribute :author, :string do
+      allow_nil?(false)
+      public?(true)
+    end
+
+    attribute :text, :string do
+      allow_nil?(false)
+      public?(true)
+    end
+
+    create_timestamp :created_at do
+      public?(true)
+    end
+  end
+end

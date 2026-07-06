@@ -15,6 +15,7 @@ defmodule AlvaDemo.Application do
     case Supervisor.start_link(children, strategy: :one_for_one, name: AlvaDemo.Supervisor) do
       {:ok, pid} ->
         AlvaDemo.Catalog.Seeder.seed()
+        AlvaDemo.Demos.Seeder.seed()
         {:ok, pid}
 
       error ->

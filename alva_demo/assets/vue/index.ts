@@ -26,7 +26,9 @@ export default createLiveVue({
   },
   // it's a default implementation of creating and mounting vue app, you can easily extend it to add your own plugins, directives etc.
   setup: ({ createApp, component, props, slots, plugin, el }) => {
-    const app = createApp({ render: () => h(component as Component, props, slots) })
+    const app = createApp({
+      render: () => h(component as Component, props, { ...slots }),
+    })
     app.use(plugin)
     // add your own plugins here
 
