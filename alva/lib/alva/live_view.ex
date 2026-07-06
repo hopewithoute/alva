@@ -10,7 +10,21 @@ defmodule Alva.LiveView do
       import Alva.LiveView
       @alva_domains Keyword.get(unquote(opts), :domains, [])
       @alva_collections Keyword.get(unquote(opts), :collections, [])
-      on_mount({Alva.LiveView, {@alva_domains, @alva_collections}})
+      @alva_streams Keyword.get(unquote(opts), :streams, [])
+      @alva_signals Keyword.get(unquote(opts), :signals, [])
+      @alva_subscriptions Keyword.get(unquote(opts), :subscriptions, [])
+      @alva_route_subscriptions Keyword.get(unquote(opts), :route_subscriptions, [])
+      on_mount(
+        {Alva.LiveView,
+         %{
+           domains: @alva_domains,
+           collections: @alva_collections,
+           streams: @alva_streams,
+           signals: @alva_signals,
+           subscriptions: @alva_subscriptions,
+           route_subscriptions: @alva_route_subscriptions
+         }}
+      )
     end
   end
 
@@ -27,7 +41,9 @@ defmodule Alva.LiveView do
   def activate_stream(socket, name) when is_atom(name) do
     ensure_projection!(socket, :stream, name)
 
-    update_alva(socket, fn state ->
+    socket
+    |> assign_stream_if_missing(name)
+    |> update_alva(fn state ->
       update_in(state.streams, &MapSet.put(&1, name))
     end)
   end
@@ -36,10 +52,10 @@ defmodule Alva.LiveView do
 
   def collection(socket, name, opts) when is_atom(name) and is_list(opts) do
     {_resource, collection} = find_projection!(socket, :collection, name)
-    params = collection_params!(socket, name, Keyword.get(opts, :params, %{}))
+    source_input = collection_source_input!(socket, name, collection_source_input_option(opts))
 
     result =
-      Alva.Dispatcher.dispatch(collection.source.event, params,
+      Alva.Dispatcher.dispatch(collection.source.event, source_input,
         domains: alva_state(socket).domains,
         socket: socket
       )
@@ -52,7 +68,9 @@ defmodule Alva.LiveView do
         )
         |> subscribe_collection_topics(name, Keyword.get(opts, :subscriptions, []))
         |> update_alva(fn state ->
-          update_in(state.collections, &MapSet.put(&1, name))
+          state
+          |> update_in([:collections], &MapSet.put(&1, name))
+          |> update_in([:collection_source_inputs], &Map.put(&1, name, source_input))
         end)
 
       %{ok: false, error: error} ->
@@ -69,24 +87,20 @@ defmodule Alva.LiveView do
     end)
   end
 
-  def bind_stream_query(socket, event_name, stream_name, opts \\ [])
-      when is_binary(event_name) and is_atom(stream_name) do
-    ensure_projection!(socket, :stream, stream_name)
+  def reload_collection(socket, name, opts \\ [])
 
-    binding = %{
-      stream: stream_name,
-      mode: Keyword.get(opts, :mode, :append),
-      limit: Keyword.get(opts, :limit)
-    }
+  def reload_collection(socket, name, opts) when is_atom(name) and is_list(opts) do
+    ensure_projection!(socket, :collection, name)
+    ensure_collection_active!(socket, name)
 
-    unless binding.mode in [:append, :prepend, :reset] do
-      raise ArgumentError,
-            "Unknown Alva stream query mode #{inspect(binding.mode)} for event #{inspect(event_name)}"
-    end
+    source_input =
+      if Keyword.has_key?(opts, :source_input) or Keyword.has_key?(opts, :params) do
+        collection_source_input!(socket, name, collection_source_input_option(opts))
+      else
+        active_collection_source_input!(socket, name)
+      end
 
-    update_alva(socket, fn state ->
-      update_in(state.stream_queries, &Map.put(&1, event_name, binding))
-    end)
+    collection(socket, name, source_input: source_input)
   end
 
   def route_subscriptions(socket) do
@@ -94,6 +108,12 @@ defmodule Alva.LiveView do
     |> alva_state()
     |> Map.fetch!(:route_subscriptions)
     |> MapSet.to_list()
+  end
+
+  def route_params(socket) do
+    socket
+    |> alva_state()
+    |> Map.get(:route_params, %{})
   end
 
   def projection_active?(socket, :stream, name) do
@@ -157,12 +177,27 @@ defmodule Alva.LiveView do
     }
   end
 
-  def on_mount(config, _params, _session, socket) do
-    {domains, collections} = normalize_mount_config(config)
+  def on_mount(config, params, _session, socket) do
+    %{
+      domains: domains,
+      collections: collections,
+      streams: streams,
+      signals: signals,
+      subscriptions: subscriptions,
+      route_subscriptions: route_subscriptions
+    } = normalize_mount_config(config)
+
+    route_params = normalize_route_params(params)
+    route_change_collections = route_change_collection_specs(collections)
 
     socket =
       update_alva(socket, fn state ->
-        %{state | domains: domains}
+        %{
+          state
+          | domains: domains,
+            route_params: route_params,
+            route_change_collections: route_change_collections
+        }
       end)
 
     # Configure file uploads
@@ -189,7 +224,6 @@ defmodule Alva.LiveView do
           _ ->
             sock =
               sock
-              |> apply_stream_query(event_name, res)
               |> apply_event_stream_operations(event_name, res)
 
             {:halt, res, sock}
@@ -212,10 +246,38 @@ defmodule Alva.LiveView do
       end)
 
     socket =
+      if map_size(route_change_collections) == 0 do
+        socket
+      else
+        Phoenix.LiveView.attach_hook(socket, :alva_handle_params, :handle_params, fn
+          params, _uri, sock ->
+            sock =
+              sock
+              |> put_route_params(params)
+              |> refresh_route_change_collections()
+
+            {:cont, sock}
+        end)
+      end
+
+    socket =
       Enum.reduce(collections, socket, fn collection_spec, acc_socket ->
         {collection_name, opts} = normalize_collection_spec!(collection_spec)
         collection(acc_socket, collection_name, opts)
       end)
+
+    socket =
+      Enum.reduce(streams, socket, fn stream_name, acc_socket ->
+        activate_stream(acc_socket, stream_name)
+      end)
+
+    socket =
+      Enum.reduce(signals, socket, fn signal_name, acc_socket ->
+        activate_signal(acc_socket, signal_name)
+      end)
+
+    socket = subscribe_route_topics(socket, subscriptions)
+    socket = subscribe_projection_route_topics(socket, route_subscriptions)
 
     {:cont, socket}
   end
@@ -265,6 +327,36 @@ defmodule Alva.LiveView do
     |> Enum.filter(fn {name, _projection} -> MapSet.member?(state.collections, name) end)
   end
 
+  defp active_route_projections(socket) do
+    collection_projections =
+      socket
+      |> active_collection_projections()
+      |> Enum.map(fn {name, _projection} -> name end)
+
+    signal_projections =
+      socket
+      |> active_signal_projections()
+      |> Enum.map(fn {name, _projection} -> name end)
+
+    collection_projections ++ signal_projections
+  end
+
+  defp refresh_route_change_collections(socket) do
+    socket
+    |> alva_state()
+    |> Map.fetch!(:route_change_collections)
+    |> Enum.reduce(socket, fn {name, opts}, acc_socket ->
+      next_source_input =
+        collection_source_input!(acc_socket, name, collection_source_input_option(opts))
+
+      if next_source_input == active_collection_source_input!(acc_socket, name) do
+        acc_socket
+      else
+        reload_collection(acc_socket, name, source_input: next_source_input)
+      end
+    end)
+  end
+
   defp active_signal_projections(socket) do
     state = alva_state(socket)
 
@@ -273,23 +365,24 @@ defmodule Alva.LiveView do
     |> Enum.filter(fn {name, _projection} -> MapSet.member?(state.signals, name) end)
   end
 
-  defp apply_stream_query(socket, event_name, %{ok: true, data: data}) do
-    state = alva_state(socket)
-
-    case Map.fetch(state.stream_queries, event_name) do
-      {:ok, %{stream: stream_name} = binding} ->
-        if MapSet.member?(state.streams, stream_name) do
-          apply_stream_query_binding(socket, binding, data)
-        else
-          socket
-        end
-
-      :error ->
-        socket
+  defp ensure_collection_active!(socket, name) do
+    if projection_active?(socket, :collection, name) do
+      :ok
+    else
+      raise ArgumentError,
+            "Alva collection #{inspect(name)} is not active on this LiveView and cannot be reloaded"
     end
   end
 
-  defp apply_stream_query(socket, _event_name, _result), do: socket
+  defp active_collection_source_input!(socket, name) do
+    socket
+    |> alva_state()
+    |> Map.fetch!(:collection_source_inputs)
+    |> case do
+      %{^name => source_input} -> source_input
+      _ -> raise ArgumentError, "Alva collection #{inspect(name)} has no stored source input"
+    end
+  end
 
   defp apply_event_stream_operations(socket, event_name, %{ok: true, data: data}) do
     state = alva_state(socket)
@@ -313,30 +406,6 @@ defmodule Alva.LiveView do
 
   defp apply_event_stream_operations(socket, _event_name, _result), do: socket
 
-  defp apply_stream_query_binding(socket, %{stream: stream_name, mode: :reset}, data) do
-    Phoenix.Component.assign(socket, stream_name, stream_query_items(data))
-  end
-
-  defp apply_stream_query_binding(socket, binding, data) do
-    data
-    |> stream_query_items()
-    |> Enum.reduce(socket, fn item, acc_socket ->
-      Phoenix.Component.update(acc_socket, binding.stream, fn current ->
-        current = current || []
-
-        if binding.mode == :prepend do
-          [item | current]
-        else
-          current ++ [item]
-        end
-      end)
-    end)
-  end
-
-  defp stream_query_items(nil), do: []
-  defp stream_query_items(items) when is_list(items), do: items
-  defp stream_query_items(item), do: [item]
-
   defp collection_source_items!(_name, _collection, nil), do: []
 
   defp collection_source_items!(_name, _collection, items) when is_list(items), do: items
@@ -359,25 +428,34 @@ defmodule Alva.LiveView do
           "Alva collection #{inspect(name)} source event #{inspect(collection.source.event)} must return a list of records or a supported Ash page result, got: #{inspect(result)}"
   end
 
-  defp collection_params!(_socket, _name, params) when is_map(params), do: params
-
-  defp collection_params!(socket, name, callback) when is_atom(callback) do
-    callback
-    |> resolve_live_view_callback!(socket, name, :params)
-    |> unwrap_callback_result!(name, :params, callback)
-    |> case do
-      params when is_map(params) ->
-        params
-
-      params ->
-        raise ArgumentError,
-              "Alva collection #{inspect(name)} params callback #{inspect(callback)} must return a map, got: #{inspect(params)}"
+  defp collection_source_input_option(opts) do
+    cond do
+      Keyword.has_key?(opts, :source_input) -> Keyword.get(opts, :source_input)
+      Keyword.has_key?(opts, :params) -> Keyword.get(opts, :params)
+      true -> %{}
     end
   end
 
-  defp collection_params!(_socket, name, params) do
+  defp collection_source_input!(_socket, _name, source_input) when is_map(source_input),
+    do: source_input
+
+  defp collection_source_input!(socket, name, callback) when is_atom(callback) do
+    callback
+    |> resolve_live_view_callback!(socket, name, "source input")
+    |> unwrap_callback_result!(name, "source input", callback)
+    |> case do
+      source_input when is_map(source_input) ->
+        source_input
+
+      source_input ->
+        raise ArgumentError,
+              "Alva collection #{inspect(name)} source input callback #{inspect(callback)} must return a map, got: #{inspect(source_input)}"
+    end
+  end
+
+  defp collection_source_input!(_socket, name, source_input) do
     raise ArgumentError,
-          "Alva collection #{inspect(name)} params must be a map or local callback name, got: #{inspect(params)}"
+          "Alva collection #{inspect(name)} source input must be a map or local callback name, got: #{inspect(source_input)}"
   end
 
   defp subscribe_collection_topics(socket, name, subscriptions) do
@@ -427,6 +505,300 @@ defmodule Alva.LiveView do
     raise ArgumentError,
           "Alva collection #{inspect(name)} subscription callback #{inspect(callback)} must return a binary topic or list of binary topics, got: #{inspect(topics)}"
   end
+
+  defp subscribe_route_topics(socket, subscriptions) do
+    topics =
+      subscriptions
+      |> List.wrap()
+      |> Enum.flat_map(&route_subscription_topics!(socket, &1))
+
+    if Phoenix.LiveView.connected?(socket) do
+      Enum.reduce(topics, socket, fn topic, acc_socket ->
+        subscribe(acc_socket, topic)
+      end)
+    else
+      socket
+    end
+  end
+
+  defp subscribe_projection_route_topics(socket, route_subscriptions) do
+    topics =
+      socket
+      |> projection_route_topics!(route_subscriptions)
+      |> Enum.uniq()
+
+    if Phoenix.LiveView.connected?(socket) do
+      Enum.reduce(topics, socket, fn topic, acc_socket ->
+        subscribe(acc_socket, topic)
+      end)
+    else
+      socket
+    end
+  end
+
+  defp projection_route_topics!(socket, route_subscriptions) do
+    overrides = normalize_projection_route_subscriptions!(route_subscriptions, socket)
+
+    socket
+    |> active_route_projections()
+    |> Enum.flat_map(fn projection ->
+      case Map.fetch(overrides, projection) do
+        {:ok, topics} ->
+          normalize_projection_route_subscription_topics!(socket, projection, topics)
+
+        :error ->
+          inferred_projection_route_topics!(socket, projection)
+      end
+    end)
+  end
+
+  defp normalize_projection_route_subscriptions!(route_subscriptions, socket) do
+    route_subscriptions
+    |> List.wrap()
+    |> Enum.reduce({MapSet.new(), %{}}, fn spec, {seen, acc} ->
+      {projection, topics} = normalize_projection_route_subscription!(socket, spec)
+
+      if MapSet.member?(seen, projection) do
+        raise ArgumentError,
+              "Alva route_subscriptions contains duplicate entries for #{inspect(projection)}"
+      end
+
+      {MapSet.put(seen, projection), Map.put(acc, projection, topics)}
+    end)
+    |> elem(1)
+  end
+
+  defp normalize_projection_route_subscription!(socket, {projection, topics}) do
+    ensure_projection_route_subscription_target!(socket, projection)
+    {projection, topics}
+  end
+
+  defp normalize_projection_route_subscription!(_socket, spec) do
+    raise ArgumentError,
+          "Alva route_subscriptions entries must be {projection, topics} tuples, got: #{inspect(spec)}"
+  end
+
+  defp ensure_projection_route_subscription_target!(socket, projection) when is_atom(projection) do
+    if projection_active?(socket, :collection, projection) do
+      :ok
+    else
+      raise ArgumentError,
+            "Alva route_subscriptions entry #{inspect(projection)} must reference an active Collection projection"
+    end
+  end
+
+  defp ensure_projection_route_subscription_target!(socket, projection)
+       when is_binary(projection) do
+    if projection_active?(socket, :signal, projection) do
+      :ok
+    else
+      raise ArgumentError,
+            "Alva route_subscriptions entry #{inspect(projection)} must reference an active Signal projection"
+    end
+  end
+
+  defp ensure_projection_route_subscription_target!(_socket, projection) do
+    raise ArgumentError,
+          "Alva route_subscriptions keys must be Collection atoms or Signal names, got: #{inspect(projection)}"
+  end
+
+  defp normalize_projection_route_subscription_topics!(_socket, _projection, topic)
+       when is_binary(topic),
+       do: [topic]
+
+  defp normalize_projection_route_subscription_topics!(socket, _projection, callback)
+       when is_atom(callback) do
+    route_subscription_topics!(socket, callback)
+    |> Enum.uniq()
+  end
+
+  defp normalize_projection_route_subscription_topics!(_socket, projection, topics)
+       when is_list(topics) do
+    if Enum.all?(topics, &is_binary/1) do
+      Enum.uniq(topics)
+    else
+      raise ArgumentError,
+            "Alva route_subscriptions entry #{inspect(projection)} must provide a binary topic or list of binary topics, got: #{inspect(topics)}"
+    end
+  end
+
+  defp normalize_projection_route_subscription_topics!(_socket, projection, topics) do
+    raise ArgumentError,
+          "Alva route_subscriptions entry #{inspect(projection)} must provide a binary topic or list of binary topics, got: #{inspect(topics)}"
+  end
+
+  defp inferred_projection_route_topics!(socket, projection) when is_atom(projection) do
+    {resource, collection} = find_projection!(socket, :collection, projection)
+
+    collection
+    |> Map.get(:operations, [])
+    |> Enum.map(& &1.on)
+    |> Enum.uniq()
+    |> Enum.flat_map(&publication_topics_for_trigger!(resource, &1, {:collection, projection}))
+    |> Enum.uniq()
+  end
+
+  defp inferred_projection_route_topics!(socket, projection) when is_binary(projection) do
+    {resource, signal} = find_projection!(socket, :signal, projection)
+
+    resource
+    |> publication_topics_for_trigger!(signal.on, {:signal, projection})
+    |> Enum.uniq()
+  end
+
+  defp publication_topics_for_trigger!(resource, trigger, projection_ref) do
+    publications =
+      resource
+      |> Ash.Notifier.PubSub.Info.publications()
+      |> Enum.filter(&(publication_identity(&1) == trigger))
+
+    case publications do
+      [] ->
+        raise ArgumentError,
+              "Alva could not infer route_subscriptions for #{route_projection_label(projection_ref)} because no Ash PubSub publication matches trigger #{inspect(trigger)}"
+
+      publications ->
+        publications
+        |> Enum.flat_map(fn publication ->
+          case deterministic_publication_topics(resource, publication) do
+            {:ok, topics} ->
+              topics
+
+            :dynamic ->
+              raise ArgumentError,
+                    "Alva could not infer deterministic route_subscriptions for #{route_projection_label(projection_ref)} from trigger #{inspect(trigger)}. Declare route_subscriptions explicitly for this projection."
+          end
+        end)
+        |> Enum.uniq()
+    end
+  end
+
+  defp deterministic_publication_topics(resource, publication) do
+    topic_template = publication.topic
+
+    if deterministic_topic_template?(topic_template) do
+      prefix = Ash.Notifier.PubSub.Info.prefix(resource) || ""
+      delimiter = Ash.Notifier.PubSub.Info.delimiter(resource)
+
+      topics =
+        topic_template
+        |> expand_static_topic_template(delimiter)
+        |> Enum.map(&finalize_publication_topic(prefix, &1, delimiter))
+        |> Enum.uniq()
+
+      {:ok, topics}
+    else
+      :dynamic
+    end
+  end
+
+  defp deterministic_topic_template?(topic) when is_binary(topic) or is_nil(topic), do: true
+  defp deterministic_topic_template?(topic) when is_atom(topic), do: false
+  defp deterministic_topic_template?(topic) when is_list(topic), do: Enum.all?(topic, &deterministic_topic_template?/1)
+  defp deterministic_topic_template?(_topic), do: false
+
+  defp expand_static_topic_template(nil, _delimiter), do: [""]
+  defp expand_static_topic_template(topic, _delimiter) when is_binary(topic), do: [topic]
+
+  defp expand_static_topic_template(topic, delimiter) when is_list(topic) do
+    topic
+    |> expand_static_topic_segments([])
+    |> Enum.map(&Enum.join(&1, delimiter))
+  end
+
+  defp expand_static_topic_segments([], trail), do: [Enum.reverse(trail)]
+  defp expand_static_topic_segments([nil | rest], trail), do: expand_static_topic_segments(rest, trail)
+
+  defp expand_static_topic_segments([item | rest], trail) when is_binary(item) do
+    expand_static_topic_segments(rest, [item | trail])
+  end
+
+  defp expand_static_topic_segments([item | rest], trail) when is_list(item) do
+    Enum.flat_map(item, fn possible_value ->
+      expand_static_topic_segments([possible_value | rest], trail)
+    end)
+  end
+
+  defp finalize_publication_topic("", "", _delimiter), do: ""
+  defp finalize_publication_topic(prefix, "", _delimiter), do: prefix
+  defp finalize_publication_topic("", topic, _delimiter), do: topic
+  defp finalize_publication_topic(prefix, topic, delimiter), do: "#{prefix}#{delimiter}#{topic}"
+
+  defp route_projection_label({:collection, projection}),
+    do: "Collection #{inspect(projection)}"
+
+  defp route_projection_label({:signal, projection}), do: "Signal #{inspect(projection)}"
+
+  defp route_subscription_topics!(_socket, topic) when is_binary(topic), do: [topic]
+
+  defp route_subscription_topics!(_socket, topics) when is_list(topics) do
+    if Enum.all?(topics, &is_binary/1) do
+      topics
+    else
+      raise ArgumentError,
+            "Alva route subscriptions must be binary topics, lists of binary topics, or local callback names, got: #{inspect(topics)}"
+    end
+  end
+
+  defp route_subscription_topics!(socket, callback) when is_atom(callback) do
+    callback
+    |> resolve_route_callback!(socket, :subscription)
+    |> unwrap_route_callback_result!(:subscription, callback)
+    |> normalize_route_subscription_topics!(callback)
+  end
+
+  defp route_subscription_topics!(_socket, topic) do
+    raise ArgumentError,
+          "Alva route subscriptions must be binary topics, lists of binary topics, or local callback names, got: #{inspect(topic)}"
+  end
+
+  defp normalize_route_subscription_topics!(topic, _callback) when is_binary(topic), do: [topic]
+
+  defp normalize_route_subscription_topics!(topics, callback) when is_list(topics) do
+    if Enum.all?(topics, &is_binary/1) do
+      topics
+    else
+      raise_invalid_route_subscription_callback!(callback, topics)
+    end
+  end
+
+  defp normalize_route_subscription_topics!(topics, callback) do
+    raise_invalid_route_subscription_callback!(callback, topics)
+  end
+
+  defp raise_invalid_route_subscription_callback!(callback, topics) do
+    raise ArgumentError,
+          "Alva route subscription callback #{inspect(callback)} must return a binary topic or list of binary topics, got: #{inspect(topics)}"
+  end
+
+  defp resolve_route_callback!(callback, %{view: view} = socket, kind)
+       when is_atom(view) and not is_nil(view) do
+    cond do
+      function_exported?(view, callback, 1) ->
+        apply(view, callback, [socket])
+
+      function_exported?(view, callback, 0) ->
+        apply(view, callback, [])
+
+      true ->
+        raise ArgumentError,
+              "Alva route #{kind} callback #{inspect(callback)} is not defined on #{inspect(view)}"
+    end
+  end
+
+  defp resolve_route_callback!(callback, _socket, kind) do
+    raise ArgumentError,
+          "Alva route #{kind} callback #{inspect(callback)} requires socket.view to be set"
+  end
+
+  defp unwrap_route_callback_result!({:ok, value}, _kind, _callback), do: value
+
+  defp unwrap_route_callback_result!({:error, reason}, kind, callback) do
+    raise ArgumentError,
+          "Alva route #{kind} callback #{inspect(callback)} failed: #{inspect(reason)}"
+  end
+
+  defp unwrap_route_callback_result!(value, _kind, _callback), do: value
 
   defp resolve_live_view_callback!(callback, %{view: view} = socket, name, kind)
        when is_atom(view) and not is_nil(view) do
@@ -653,13 +1025,81 @@ defmodule Alva.LiveView do
   defp projection_map(domain, :collection), do: Alva.Domain.Info.alva_collection_map(domain)
   defp projection_map(domain, :signal), do: Alva.Domain.Info.alva_signal_map(domain)
 
+  defp normalize_mount_config(%{domains: domains} = config) when is_list(domains) do
+    %{
+      domains: domains,
+      collections: Map.get(config, :collections, []),
+      streams: Map.get(config, :streams, []),
+      signals: Map.get(config, :signals, []),
+      subscriptions: Map.get(config, :subscriptions, []),
+      route_subscriptions: Map.get(config, :route_subscriptions, [])
+    }
+  end
+
   defp normalize_mount_config({domains, collections})
        when is_list(domains) and is_list(collections) do
-    {domains, collections}
+    %{
+      domains: domains,
+      collections: collections,
+      streams: [],
+      signals: [],
+      subscriptions: [],
+      route_subscriptions: []
+    }
+  end
+
+  defp normalize_mount_config({domains, collections, streams, subscriptions})
+       when is_list(domains) and is_list(collections) and is_list(streams) and
+              is_list(subscriptions) do
+    %{
+      domains: domains,
+      collections: collections,
+      streams: streams,
+      signals: [],
+      subscriptions: subscriptions,
+      route_subscriptions: []
+    }
+  end
+
+  defp normalize_mount_config({
+         domains,
+         collections,
+         streams,
+         signals,
+         subscriptions,
+         route_subscriptions
+       })
+       when is_list(domains) and is_list(collections) and is_list(streams) and
+              is_list(signals) and is_list(subscriptions) and is_list(route_subscriptions) do
+    %{
+      domains: domains,
+      collections: collections,
+      streams: streams,
+      signals: signals,
+      subscriptions: subscriptions,
+      route_subscriptions: route_subscriptions
+    }
   end
 
   defp normalize_mount_config(domains) when is_list(domains) do
-    {domains, []}
+    %{
+      domains: domains,
+      collections: [],
+      streams: [],
+      signals: [],
+      subscriptions: [],
+      route_subscriptions: []
+    }
+  end
+
+  defp normalize_route_params(params) when is_map(params), do: params
+  defp normalize_route_params(_params), do: %{}
+
+  defp route_change_collection_specs(collections) do
+    collections
+    |> Enum.map(&normalize_collection_spec!/1)
+    |> Enum.filter(fn {_name, opts} -> Keyword.get(opts, :reload_on) == :route_change end)
+    |> Map.new()
   end
 
   defp normalize_collection_spec!(name) when is_atom(name), do: {name, []}
@@ -732,14 +1172,32 @@ defmodule Alva.LiveView do
     put_in(socket.private[@alva_private_key], state)
   end
 
+  defp put_route_params(socket, params) do
+    route_params = normalize_route_params(params)
+
+    update_alva(socket, fn state ->
+      %{state | route_params: route_params}
+    end)
+  end
+
+  defp assign_stream_if_missing(socket, name) do
+    if Map.has_key?(socket.assigns, name) do
+      socket
+    else
+      Phoenix.Component.assign(socket, name, nil)
+    end
+  end
+
   defp alva_state(socket) do
     Map.get(socket.private, @alva_private_key, %{
       domains: [],
       route_subscriptions: MapSet.new(),
+      route_params: %{},
+      route_change_collections: %{},
       streams: MapSet.new(),
       collections: MapSet.new(),
-      signals: MapSet.new(),
-      stream_queries: %{}
+      collection_source_inputs: %{},
+      signals: MapSet.new()
     })
   end
 end
