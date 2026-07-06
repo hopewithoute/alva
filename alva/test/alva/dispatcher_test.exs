@@ -1,6 +1,13 @@
 defmodule Alva.DispatcherTest do
   use ExUnit.Case
 
+  defmodule Endpoint do
+    use Phoenix.Endpoint, otp_app: :alva
+    plug(Plug.Session, store: :cookie, key: "_alva_key", signing_salt: "dispatcher123")
+
+    def otp_app, do: :alva
+  end
+
   defmodule TestResource do
     use Ash.Resource,
       domain: Alva.DispatcherTest.TestDomain,
@@ -19,6 +26,7 @@ defmodule Alva.DispatcherTest do
     attributes do
       uuid_primary_key(:id)
       attribute(:name, :string, public?: true)
+      attribute(:upload_contents, :string, public?: true)
       attribute(:actor_name, :string, public?: true)
       attribute(:tenant_id, :string, public?: true)
       attribute(:status, :atom, public?: true, default: :open)
@@ -130,6 +138,26 @@ defmodule Alva.DispatcherTest do
           end
         end)
       end
+
+      create :upload_file_with_contents do
+        accept([])
+        argument(:file, Ash.Type.File, allow_nil?: false)
+
+        change(fn changeset, _context ->
+          case Ash.Changeset.get_argument(changeset, :file) do
+            %Ash.Type.File{} = file ->
+              {:ok, filename} = Ash.Type.File.filename(file)
+              {:ok, path} = Ash.Type.File.path(file)
+
+              changeset
+              |> Ash.Changeset.change_attribute(:name, filename)
+              |> Ash.Changeset.change_attribute(:upload_contents, File.read!(path))
+
+            _ ->
+              changeset
+          end
+        end)
+      end
     end
 
     live_vue do
@@ -140,12 +168,30 @@ defmodule Alva.DispatcherTest do
       event(:test_list, name: "test.list", action: :read)
       event(:test_search, name: "test.search", action: :search)
       event(:test_create, name: "test.create", action: :create)
-      event(:test_validate_create, name: "test.validate_create", action: :create, validate_only: true)
+
+      event(:test_validate_create,
+        name: "test.validate_create",
+        action: :create,
+        validate_only: true
+      )
+
       event(:test_update, name: "test.update", action: :update, lookup: :id)
-      event(:test_validate_update, name: "test.validate_update", action: :update, lookup: :id, validate_only: true)
+
+      event(:test_validate_update,
+        name: "test.validate_update",
+        action: :update,
+        lookup: :id,
+        validate_only: true
+      )
+
       event(:test_read_tenant, name: "test.read_tenant", action: :read_with_tenant)
       event(:test_get_tenant, name: "test.get_tenant", action: :read_with_tenant, lookup: :id)
       event(:test_upload, name: "test.upload", action: :upload_file)
+
+      event(:test_upload_with_contents,
+        name: "test.upload_with_contents",
+        action: :upload_file_with_contents
+      )
     end
   end
 
@@ -155,6 +201,19 @@ defmodule Alva.DispatcherTest do
     resources do
       resource(Alva.DispatcherTest.TestResource)
     end
+  end
+
+  setup_all do
+    Application.put_env(:alva, :ash_domains, [
+      Alva.DispatcherTest.TestDomain,
+      Alva.DispatcherTest.MetadataDomain
+    ])
+
+    on_exit(fn ->
+      Application.delete_env(:alva, :ash_domains)
+    end)
+
+    :ok
   end
 
   setup do
@@ -219,6 +278,22 @@ defmodule Alva.DispatcherTest do
   test "dispatch handles :action event" do
     result =
       Alva.Dispatcher.dispatch("test.say_hello", %{"name" => "World"}, domains: [TestDomain])
+
+    assert result.ok == true
+    assert result.data == "Hello World"
+  end
+
+  test "dispatch resolves application-wide commands from otp_app" do
+    result = Alva.Dispatcher.dispatch("test.say_hello", %{"name" => "World"}, otp_app: :alva)
+
+    assert result.ok == true
+    assert result.data == "Hello World"
+  end
+
+  test "dispatch resolves application-wide commands from socket endpoint" do
+    socket = %Phoenix.LiveView.Socket{endpoint: Endpoint, assigns: %{}}
+
+    result = Alva.Dispatcher.dispatch("test.say_hello", %{"name" => "World"}, socket: socket)
 
     assert result.ok == true
     assert result.data == "Hello World"
@@ -582,13 +657,26 @@ defmodule Alva.DispatcherTest do
       end
     end
 
-      live_vue do
-        event(:meta_get, name: "meta.get", action: :read, lookup: :id, expose_metadata: [:sync_token])
-        event(:meta_list, name: "meta.list", action: :read, expose_metadata: [:sync_token])
-        event(:meta_create, name: "meta.create", action: :create, expose_metadata: [:sync_token])
-        event(:meta_update, name: "meta.update", action: :update, lookup: :id, expose_metadata: [:sync_token])
-        event(:meta_none, name: "meta.none", action: :read, lookup: :id)
-      end
+    live_vue do
+      event(:meta_get,
+        name: "meta.get",
+        action: :read,
+        lookup: :id,
+        expose_metadata: [:sync_token]
+      )
+
+      event(:meta_list, name: "meta.list", action: :read, expose_metadata: [:sync_token])
+      event(:meta_create, name: "meta.create", action: :create, expose_metadata: [:sync_token])
+
+      event(:meta_update,
+        name: "meta.update",
+        action: :update,
+        lookup: :id,
+        expose_metadata: [:sync_token]
+      )
+
+      event(:meta_none, name: "meta.none", action: :read, lookup: :id)
+    end
   end
 
   defmodule MetadataDomain do
@@ -716,19 +804,49 @@ defmodule Alva.DispatcherTest do
         entries = get_in(socket.assigns.uploads, [name, :entries]) || []
 
         Enum.map(entries, fn entry ->
-          {:ok, result} = func.(%{path: "/tmp/#{entry.client_name}"}, entry)
+          {:ok, result} = func.(%{path: entry.path}, entry)
           result
         end)
       end
     end
 
+    defmodule CleanupMockUploadConsumer do
+      def consume_uploaded_entries(socket, name, func) do
+        entries = get_in(socket.assigns.uploads, [name, :entries]) || []
+
+        Enum.map(entries, fn entry ->
+          {:ok, result} = func.(%{path: entry.path}, entry)
+          File.rm(entry.path)
+          result
+        end)
+      end
+    end
+
+    defp alva_upload_temp_paths do
+      temp_dir = Path.join(System.tmp_dir!(), "alva_uploads")
+
+      case File.ls(temp_dir) do
+        {:ok, files} -> MapSet.new(Enum.map(files, &Path.join(temp_dir, &1)))
+        {:error, :enoent} -> MapSet.new()
+      end
+    end
+
     test "dispatch consumes uploads and merges them into params" do
+      original_path =
+        Path.join(
+          System.tmp_dir!(),
+          "dispatcher_upload_#{System.unique_integer([:positive])}.png"
+        )
+
+      File.write!(original_path, "dispatcher upload")
+      persisted_before = alva_upload_temp_paths()
+
       socket = %Phoenix.LiveView.Socket{
         assigns: %{
           uploads: %{
             file: %{
               entries: [
-                %{client_name: "test.png", client_type: "image/png"}
+                %{client_name: "test.png", client_type: "image/png", path: original_path}
               ]
             }
           }
@@ -744,8 +862,64 @@ defmodule Alva.DispatcherTest do
           upload_consumer: MockUploadConsumer
         )
 
+      persisted_after = alva_upload_temp_paths()
+
+      new_persisted_files =
+        MapSet.difference(persisted_after, persisted_before) |> MapSet.to_list()
+
+      on_exit(fn ->
+        File.rm(original_path)
+        Enum.each(new_persisted_files, &File.rm/1)
+      end)
+
       assert result.ok == true
       assert result.data.name == "test.png"
+    end
+
+    test "dispatch keeps uploads readable after LiveView cleans the original temp file" do
+      original_path =
+        Path.join(
+          System.tmp_dir!(),
+          "dispatcher_upload_#{System.unique_integer([:positive])}.png"
+        )
+
+      File.write!(original_path, "dispatcher upload contents")
+      persisted_before = alva_upload_temp_paths()
+
+      socket = %Phoenix.LiveView.Socket{
+        assigns: %{
+          uploads: %{
+            file: %{
+              entries: [
+                %{client_name: "test.png", client_type: "image/png", path: original_path}
+              ]
+            }
+          }
+        }
+      }
+
+      result =
+        Alva.Dispatcher.dispatch(
+          "test.upload_with_contents",
+          %{},
+          socket: socket,
+          domains: [TestDomain],
+          upload_consumer: CleanupMockUploadConsumer
+        )
+
+      persisted_after = alva_upload_temp_paths()
+
+      new_persisted_files =
+        MapSet.difference(persisted_after, persisted_before) |> MapSet.to_list()
+
+      on_exit(fn ->
+        Enum.each(new_persisted_files, &File.rm/1)
+      end)
+
+      refute File.exists?(original_path)
+      assert result.ok == true
+      assert result.data.name == "test.png"
+      assert result.data.upload_contents == "dispatcher upload contents"
     end
   end
 end

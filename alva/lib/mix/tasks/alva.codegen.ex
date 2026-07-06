@@ -3,7 +3,7 @@ defmodule Mix.Tasks.Alva.Codegen do
   @moduledoc """
   Generates TypeScript bindings for LiveVue events defined in Ash resources.
 
-  Reads domains configured in `:alva, :domains` or searches the application.
+  Reads the host application's configured `ash_domains`.
   Outputs generated files to `:alva, :output_dir` (defaults to `assets/js/alva`).
   """
 
@@ -14,22 +14,16 @@ defmodule Mix.Tasks.Alva.Codegen do
     Mix.Task.run("compile")
 
     app = Mix.Project.config()[:app]
-
-    domains =
-      (Application.get_env(:alva, :domains, []) ++
-         Application.get_env(app, :ash_domains, []))
-      |> Enum.uniq()
-
     output_dir = Application.get_env(:alva, :output_dir, "assets/js/alva")
 
-    if domains == [] do
+    if Ash.Info.domains(app) == [] do
       Mix.shell().info(
         "No Ash domains found. Please configure config :#{app}, ash_domains: [...]"
       )
     else
       File.mkdir_p!(output_dir)
 
-      events_map = gather_events(domains)
+      events_map = Alva.App.Info.event_map(app)
 
       resources =
         events_map
@@ -43,13 +37,6 @@ defmodule Mix.Tasks.Alva.Codegen do
 
       Mix.shell().info("Successfully generated TypeScript bindings in #{output_dir}")
     end
-  end
-
-  defp gather_events(domains) do
-    Enum.reduce(domains, %{}, fn domain, acc ->
-      domain_map = Alva.Domain.Info.alva_event_map(domain)
-      Map.merge(acc, domain_map)
-    end)
   end
 
   defp generate_types_ts(resources, events_map, output_dir) do

@@ -4,11 +4,17 @@ defmodule Alva.Dispatcher do
   """
   require Logger
 
+  @upload_temp_dir_name "alva_uploads"
+
   def dispatch(event_name, params, opts \\ []) do
     start_time = System.monotonic_time()
 
     socket = Keyword.get(opts, :socket)
-    opts = resolve_auth_opts(event_name, opts, socket)
+
+    opts =
+      opts
+      |> resolve_registry_opts(socket)
+      |> resolve_auth_opts(event_name, socket)
 
     result = do_dispatch(event_name, params, opts)
 
@@ -18,10 +24,9 @@ defmodule Alva.Dispatcher do
   end
 
   defp do_dispatch(event_name, params, opts) do
-    domains = Keyword.get(opts, :domains, [])
     ash_opts = Keyword.take(opts, [:actor, :tenant])
 
-    case find_event(domains, event_name) do
+    case find_event(opts, event_name) do
       {:ok, resource, event_def} ->
         action_name = event_def.action
         action = Ash.Resource.Info.action(resource, action_name)
@@ -29,156 +34,167 @@ defmodule Alva.Dispatcher do
 
         socket = Keyword.get(opts, :socket)
 
-        params =
-          if socket, do: consume_uploads_into_params(socket, action, params, opts), else: params
+        {params, persisted_upload_paths} =
+          if socket do
+            consume_uploads_into_params(socket, action, params, opts)
+          else
+            {params, []}
+          end
 
-        case action.type do
-          :read ->
-            if event_def.lookup do
-              lookup_field = event_def.lookup
-              lookup_key = to_string(lookup_field)
-              lookup_value = Map.get(params, lookup_key)
-              action_params = Map.delete(params, lookup_key)
+        try do
+          case action.type do
+            :read ->
+              if event_def.lookup do
+                lookup_field = event_def.lookup
+                lookup_key = to_string(lookup_field)
+                lookup_value = Map.get(params, lookup_key)
+                action_params = Map.delete(params, lookup_key)
 
-              if is_nil(lookup_value) do
-                handle_error(not_found_error(resource, lookup_field, lookup_value))
+                if is_nil(lookup_value) do
+                  handle_error(not_found_error(resource, lookup_field, lookup_value))
+                else
+                  require Ash.Query
+                  require Ash.Expr
+
+                  query =
+                    Ash.Query.for_read(resource, action_name, action_params, ash_opts)
+                    |> Ash.Query.filter(^Ash.Expr.ref(lookup_field) == ^lookup_value)
+
+                  case Ash.read_one(query, ash_opts) do
+                    {:ok, record} when not is_nil(record) ->
+                      dispatch_success(record, event_def)
+
+                    {:ok, nil} ->
+                      handle_error(not_found_error(resource, lookup_field, lookup_value))
+
+                    {:error, error} ->
+                      handle_error(error)
+                  end
+                end
               else
-                require Ash.Query
-                require Ash.Expr
+                page_opts = get_indifferent(params, "page", :page)
+                sort_opts = get_indifferent(params, "sort", :sort)
+                action_params = Map.drop(params, ["page", :page, "sort", :sort])
+
+                read_opts =
+                  if is_map(page_opts) do
+                    valid_keys = ~w(limit offset after before count filter)
+
+                    page_opts =
+                      page_opts
+                      |> Enum.filter(fn {k, _v} -> to_string(k) in valid_keys end)
+                      |> Enum.map(fn {k, v} -> {String.to_existing_atom(to_string(k)), v} end)
+                      |> Keyword.new()
+
+                    [page: page_opts]
+                  else
+                    []
+                  end
+
+                read_opts = Keyword.merge(read_opts, ash_opts)
+                query = Ash.Query.for_read(resource, action_name, action_params, ash_opts)
 
                 query =
-                  Ash.Query.for_read(resource, action_name, action_params, ash_opts)
-                  |> Ash.Query.filter(^Ash.Expr.ref(lookup_field) == ^lookup_value)
+                  if sort_opts do
+                    case Ash.Sort.parse_input(resource, sort_opts) do
+                      {:ok, valid_sort} -> Ash.Query.sort(query, valid_sort)
+                      _ -> query
+                    end
+                  else
+                    query
+                  end
 
-                case Ash.read_one(query, ash_opts) do
-                  {:ok, record} when not is_nil(record) ->
-                    dispatch_success(record, event_def)
+                case Ash.read(query, read_opts) do
+                  {:ok, %{results: records} = page}
+                  when is_struct(page, Ash.Page.Offset) or is_struct(page, Ash.Page.Keyset) ->
+                    dispatch_success(records, event_def, page)
 
-                  {:ok, nil} ->
-                    handle_error(not_found_error(resource, lookup_field, lookup_value))
+                  {:ok, records} ->
+                    dispatch_success(records, event_def)
 
                   {:error, error} ->
                     handle_error(error)
                 end
               end
-            else
-              page_opts = get_indifferent(params, "page", :page)
-              sort_opts = get_indifferent(params, "sort", :sort)
-              action_params = Map.drop(params, ["page", :page, "sort", :sort])
 
-              read_opts =
-                if is_map(page_opts) do
-                  valid_keys = ~w(limit offset after before count filter)
+            :create ->
+              changeset = Ash.Changeset.for_create(resource, action_name, params, ash_opts)
 
-                  page_opts =
-                    page_opts
-                    |> Enum.filter(fn {k, _v} -> to_string(k) in valid_keys end)
-                    |> Enum.map(fn {k, v} -> {String.to_existing_atom(to_string(k)), v} end)
-                    |> Keyword.new()
-
-                  [page: page_opts]
-                else
-                  []
-                end
-
-              read_opts = Keyword.merge(read_opts, ash_opts)
-              query = Ash.Query.for_read(resource, action_name, action_params, ash_opts)
-
-              query =
-                if sort_opts do
-                  case Ash.Sort.parse_input(resource, sort_opts) do
-                    {:ok, valid_sort} -> Ash.Query.sort(query, valid_sort)
-                    _ -> query
-                  end
-                else
-                  query
-                end
-
-              case Ash.read(query, read_opts) do
-                {:ok, %{results: records} = page}
-                when is_struct(page, Ash.Page.Offset) or is_struct(page, Ash.Page.Keyset) ->
-                  dispatch_success(records, event_def, page)
-
-                {:ok, records} ->
-                  dispatch_success(records, event_def)
-
-                {:error, error} ->
-                  handle_error(error)
-              end
-            end
-
-          :create ->
-            changeset = Ash.Changeset.for_create(resource, action_name, params, ash_opts)
-
-            if event_def.validate_only do
-              handle_dry_run(changeset, event_def)
-            else
-              case Ash.create(changeset, ash_opts) do
-                {:ok, record} ->
-                  dispatch_success(record, event_def)
-
-                {:error, error} ->
-                  handle_error(error)
-              end
-            end
-
-          :update ->
-            lookup_field = event_def.lookup || :id
-            lookup_key = to_string(lookup_field)
-            update_params = Map.delete(params, lookup_key)
-
-            with {:ok, record} <- fetch_record(resource, event_def, params, ash_opts),
-                 changeset <-
-                   Ash.Changeset.for_update(record, action_name, update_params, ash_opts) do
               if event_def.validate_only do
                 handle_dry_run(changeset, event_def)
               else
-                case Ash.update(changeset, ash_opts) do
-                  {:ok, updated_record} ->
-                    dispatch_success(updated_record, event_def)
+                case Ash.create(changeset, ash_opts) do
+                  {:ok, record} ->
+                    dispatch_success(record, event_def)
 
                   {:error, error} ->
                     handle_error(error)
                 end
               end
-            else
-              {:error, error} -> handle_error(error)
-            end
 
-          :destroy ->
-            with {:ok, record} <- fetch_record(resource, event_def, params, ash_opts),
-                 changeset <- Ash.Changeset.for_destroy(record, action_name, %{}, ash_opts) do
-              case Ash.destroy(changeset, Keyword.merge([return_destroyed?: true], ash_opts)) do
-                {:ok, destroyed_record} ->
-                  dispatch_success(destroyed_record, event_def)
+            :update ->
+              lookup_field = event_def.lookup || :id
+              lookup_key = to_string(lookup_field)
+              update_params = Map.delete(params, lookup_key)
 
-                :ok ->
-                  dispatch_success(record, event_def)
+              with {:ok, record} <- fetch_record(resource, event_def, params, ash_opts),
+                   changeset <-
+                     Ash.Changeset.for_update(record, action_name, update_params, ash_opts) do
+                if event_def.validate_only do
+                  handle_dry_run(changeset, event_def)
+                else
+                  case Ash.update(changeset, ash_opts) do
+                    {:ok, updated_record} ->
+                      dispatch_success(updated_record, event_def)
+
+                    {:error, error} ->
+                      handle_error(error)
+                  end
+                end
+              else
+                {:error, error} -> handle_error(error)
+              end
+
+            :destroy ->
+              with {:ok, record} <- fetch_record(resource, event_def, params, ash_opts),
+                   changeset <- Ash.Changeset.for_destroy(record, action_name, %{}, ash_opts) do
+                case Ash.destroy(changeset, Keyword.merge([return_destroyed?: true], ash_opts)) do
+                  {:ok, destroyed_record} ->
+                    dispatch_success(destroyed_record, event_def)
+
+                  :ok ->
+                    dispatch_success(record, event_def)
+
+                  {:error, error} ->
+                    handle_error(error)
+                end
+              else
+                {:error, error} -> handle_error(error)
+              end
+
+            :action ->
+              input = Ash.ActionInput.for_action(resource, action_name, params)
+
+              case Ash.run_action(input, ash_opts) do
+                {:ok, result} ->
+                  dispatch_success(result, event_def)
 
                 {:error, error} ->
                   handle_error(error)
               end
-            else
-              {:error, error} -> handle_error(error)
-            end
 
-          :action ->
-            input = Ash.ActionInput.for_action(resource, action_name, params)
+            _ ->
+              Logger.warning(
+                "Alva Dispatcher: Action type #{action.type} not supported yet for event #{event_name}"
+              )
 
-            case Ash.run_action(input, ash_opts) do
-              {:ok, result} ->
-                dispatch_success(result, event_def)
-
-              {:error, error} ->
-                handle_error(error)
-            end
-
-          _ ->
-            Logger.warning(
-              "Alva Dispatcher: Action type #{action.type} not supported yet for event #{event_name}"
-            )
-
-            %{ok: false, error: %{type: "unsupported", message: "Action type not supported yet"}}
+              %{
+                ok: false,
+                error: %{type: "unsupported", message: "Action type not supported yet"}
+              }
+          end
+        after
+          cleanup_persisted_uploads(persisted_upload_paths)
         end
 
       :error ->
@@ -199,7 +215,7 @@ defmodule Alva.Dispatcher do
         arg.type == Ash.Type.File or arg.type == {:array, Ash.Type.File}
       end)
 
-    Enum.reduce(file_args, params, fn arg, acc_params ->
+    Enum.reduce(file_args, {params, []}, fn arg, {acc_params, acc_cleanup_paths} ->
       upload_name = arg.name
 
       uploads = Map.get(socket.assigns || %{}, :uploads, %{})
@@ -207,16 +223,11 @@ defmodule Alva.Dispatcher do
       entries = if upload_config, do: Map.get(upload_config, :entries, []), else: []
 
       if upload_config && length(entries) > 0 do
-        consumed_files =
+        {consumed_files, cleanup_paths} =
           consumer.consume_uploaded_entries(socket, upload_name, fn %{path: path}, entry ->
-            # Generate a Plug.Upload representing the file
-            {:ok,
-             %Plug.Upload{
-               path: path,
-               filename: entry.client_name,
-               content_type: entry.client_type
-             }}
+            {:ok, persist_uploaded_entry(path, entry)}
           end)
+          |> Enum.unzip()
 
         value =
           if arg.type == {:array, Ash.Type.File} do
@@ -225,11 +236,40 @@ defmodule Alva.Dispatcher do
             List.first(consumed_files)
           end
 
-        Map.put(acc_params, to_string(upload_name), value)
+        {Map.put(acc_params, to_string(upload_name), value), acc_cleanup_paths ++ cleanup_paths}
       else
-        acc_params
+        {acc_params, acc_cleanup_paths}
       end
     end)
+  end
+
+  defp persist_uploaded_entry(path, entry) do
+    upload_dir = Path.join(System.tmp_dir!(), @upload_temp_dir_name)
+    File.mkdir_p!(upload_dir)
+
+    original_name = entry.client_name || Path.basename(path)
+    persisted_path = build_persisted_upload_path(upload_dir, original_name)
+    File.cp!(path, persisted_path)
+
+    {%Plug.Upload{path: persisted_path, filename: original_name, content_type: entry.client_type},
+     persisted_path}
+  end
+
+  defp build_persisted_upload_path(upload_dir, original_name) do
+    basename =
+      original_name
+      |> Path.basename()
+      |> Path.rootname()
+      |> String.replace(~r/[^A-Za-z0-9._-]+/, "_")
+      |> String.trim("_")
+      |> case do
+        "" -> "upload"
+        value -> value
+      end
+
+    ext = Path.extname(original_name)
+    filename = "#{basename}-#{System.unique_integer([:positive])}#{ext}"
+    Path.join(upload_dir, filename)
   end
 
   defp fetch_record(resource, event_def, params, ash_opts) do
@@ -237,6 +277,12 @@ defmodule Alva.Dispatcher do
     lookup_key = to_string(lookup_field)
     lookup_value = Map.get(params, lookup_key)
     Ash.get(resource, [{lookup_field, lookup_value}], ash_opts)
+  end
+
+  defp cleanup_persisted_uploads(paths) do
+    Enum.each(paths, fn path ->
+      File.rm(path)
+    end)
   end
 
   defp handle_dry_run(changeset, _event_def) do
@@ -257,7 +303,17 @@ defmodule Alva.Dispatcher do
     end
   end
 
-  defp find_event(domains, event_name) do
+  defp find_event(opts, event_name) do
+    case Keyword.get(opts, :otp_app) do
+      otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
+        Alva.App.Info.fetch_event(otp_app, event_name)
+
+      _ ->
+        find_event_in_domains(Keyword.get(opts, :domains, []), event_name)
+    end
+  end
+
+  defp find_event_in_domains(domains, event_name) do
     Enum.find_value(domains, :error, fn domain ->
       map = Alva.Domain.Info.alva_event_map(domain)
 
@@ -436,7 +492,23 @@ defmodule Alva.Dispatcher do
     %{ok: false, error: Alva.Error.format(error)}
   end
 
-  defp resolve_auth_opts(event_name, opts, socket) do
+  defp resolve_registry_opts(opts, socket) do
+    case Keyword.fetch(opts, :otp_app) do
+      {:ok, otp_app} when is_atom(otp_app) and not is_nil(otp_app) ->
+        opts
+
+      _ ->
+        case Alva.App.Info.otp_app(socket) do
+          otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
+            Keyword.put(opts, :otp_app, otp_app)
+
+          _ ->
+            opts
+        end
+    end
+  end
+
+  defp resolve_auth_opts(opts, event_name, socket) do
     if is_nil(socket) do
       opts
     else

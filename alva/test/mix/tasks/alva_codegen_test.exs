@@ -6,14 +6,11 @@ defmodule Mix.Tasks.Alva.CodegenTest do
     tmp_dir = "test/tmp/alva_codegen"
     File.mkdir_p!(tmp_dir)
 
-    # Configure dummy domains for the test
-    Application.put_env(:alva, :domains, [Mix.Tasks.Alva.CodegenTest.Domain])
     Application.put_env(:alva, :ash_domains, [Mix.Tasks.Alva.CodegenTest.Domain])
     Application.put_env(:alva, :output_dir, tmp_dir)
 
     on_exit(fn ->
       File.rm_rf!(tmp_dir)
-      Application.delete_env(:alva, :domains)
       Application.delete_env(:alva, :ash_domains)
       Application.delete_env(:alva, :output_dir)
     end)
