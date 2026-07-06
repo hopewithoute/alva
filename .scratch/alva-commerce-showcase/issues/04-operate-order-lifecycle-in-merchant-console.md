@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: completed
 
 # Operate Order Lifecycle In Merchant Console
 

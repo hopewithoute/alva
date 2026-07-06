@@ -1,7 +1,7 @@
 # Alva Demo API Surface
 
 The commerce showcase should model the current Alva route-state API, not the
-older route-owned assign plus stream-query workaround.
+older route-owned assign plus legacy read-result binding workaround.
 
 Route-owned lists are Alva Collections:
 
@@ -27,18 +27,23 @@ Plain assigns are still appropriate for non-Collection props, especially state
 that is not owned by the route as a full list. In this demo, support messages
 are intentionally not a Collection because their history source depends on the
 conversation selected in Vue. The chat surfaces fetch history with
-`support.list_messages` for the active `conversation_id`, receive live
-`support_messages` stream updates, and filter those live messages by the active
-conversation before rendering the transcript.
+`support.list_messages` for the active `conversation_id` and should use
+imperative `Alva.LiveView.subscribe/2` or raw Phoenix PubSub wiring for live
+`support_messages` pushes until that behavior is modeled as a proper
+Collection or Signal. Declarative `subscriptions:` and declarative `streams:`
+are not part of the recommended public activation surface. Filter those live
+messages by the active conversation before rendering the transcript.
 
 Do not reintroduce route-owned list setup like:
 
 - `assign(:products, load_collection(...))`
 - `assign(:conversations, load_collection(...))`
-- `bind_stream_query("catalog.list_products", :products, ...)`
-- `bind_stream_query("support.list_conversations", :conversations, ...)`
+- the removed `bind_stream_query("catalog.list_products", :products, ...)` bridge
+- the removed `bind_stream_query("support.list_conversations", :conversations, ...)` bridge
 
 If a route-owned list needs initial data plus realtime updates, make it a
-Collection. If a future route truly needs route-dependent Collection params,
-activate the Collection manually with explicit params instead of hiding another
-list loader in `DataSync`.
+Collection. If a future route truly needs route-dependent Collection input,
+activate the Collection manually with explicit `source_input:` derived from
+`Alva.LiveView.route_params(socket)` instead of hiding another route-owned list
+loader behind an `on_mount` hook. Declarative `params:` is not part of the
+supported activation surface.

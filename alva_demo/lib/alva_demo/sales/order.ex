@@ -1,4 +1,6 @@
 defmodule AlvaDemo.Sales.Order do
+  require Ash.Query
+
   use Ash.Resource,
     domain: AlvaDemo.Sales,
     data_layer: Ash.DataLayer.Ets,
@@ -15,13 +17,13 @@ defmodule AlvaDemo.Sales.Order do
 
   live_vue do
     event("sales.create_order", action: :create)
-    event("sales.list_orders", action: :read)
+    event("sales.list_orders", action: :list)
     event("sales.begin_processing", action: :begin_processing)
     event("sales.fulfill", action: :fulfill)
 
     collection :sales_orders do
       source(event: "sales.list_orders", mode: :reset)
-      insert(on: "create")
+      insert(on: "create", at: 0)
       update(on: "begin_processing")
       update(on: "fulfill")
     end
@@ -33,6 +35,27 @@ defmodule AlvaDemo.Sales.Order do
     read :read do
       primary?(true)
       public?(true)
+    end
+
+    read :list do
+      public?(true)
+
+      argument(:status, :atom,
+        allow_nil?: true,
+        constraints: [one_of: [:new, :processing, :fulfilled]]
+      )
+
+      argument(:customer_query, :string, allow_nil?: true)
+      argument(:product_query, :string, allow_nil?: true)
+
+      prepare(fn query, _context ->
+        query
+        |> Ash.Query.sort(created_at: :desc)
+        |> Ash.Query.load(:product)
+        |> filter_status(Ash.Query.get_argument(query, :status))
+        |> filter_customer_query(Ash.Query.get_argument(query, :customer_query))
+        |> filter_product_query(Ash.Query.get_argument(query, :product_query))
+      end)
     end
 
     create :create do
@@ -77,12 +100,57 @@ defmodule AlvaDemo.Sales.Order do
       allow_nil?(false)
       public?(true)
     end
+
+    create_timestamp :created_at do
+      public?(true)
+    end
   end
 
   relationships do
     belongs_to :product, AlvaDemo.Catalog.Product do
       allow_nil?(false)
       public?(true)
+    end
+  end
+
+  defp filter_status(query, nil), do: query
+
+  defp filter_status(query, status) do
+    require Ash.Expr
+
+    Ash.Query.filter(query, Ash.Expr.expr(lifecycle_status == ^status))
+  end
+
+  defp filter_customer_query(query, search_term) do
+    case search_pattern(search_term) do
+      nil ->
+        query
+
+      pattern ->
+        require Ash.Expr
+
+        Ash.Query.filter(query, Ash.Expr.expr(contains(customer_name, ^pattern)))
+    end
+  end
+
+  defp filter_product_query(query, search_term) do
+    case search_pattern(search_term) do
+      nil ->
+        query
+
+      pattern ->
+        require Ash.Expr
+
+        Ash.Query.filter(query, Ash.Expr.expr(contains(product.name, ^pattern)))
+    end
+  end
+
+  defp search_pattern(nil), do: nil
+
+  defp search_pattern(search_term) when is_binary(search_term) do
+    case String.trim(search_term) do
+      "" -> nil
+      trimmed -> trimmed
     end
   end
 end

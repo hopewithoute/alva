@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: completed
 
 # Upload Product Media End To End
 

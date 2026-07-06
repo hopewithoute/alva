@@ -1,6 +1,7 @@
 defmodule AlvaDemoWeb.SynchronizationTest do
   use AlvaDemoWeb.ConnCase
   import Alva.Test
+  import ExUnit.CaptureLog
   import Phoenix.LiveViewTest
   alias AlvaDemo.Catalog.Product
   alias AlvaDemo.Sales.Order
@@ -78,6 +79,32 @@ defmodule AlvaDemoWeb.SynchronizationTest do
       })
 
     assert html =~ "Hook Shopper"
+  end
+
+  test "merchant console lifecycle actions sync back to the storefront without a refresh", %{
+    conn: conn,
+    product: product
+  } do
+    order =
+      Order
+      |> Ash.Changeset.for_create(:create, %{
+        customer_name: "Console Sync Shopper",
+        product_id: product.id,
+        quantity: 1
+      })
+      |> Ash.create!()
+
+    {:ok, storefront_live, _html} = live(conn, "/storefront")
+    {:ok, console_live, _html} = live(conn, "/console")
+
+    render_hook(console_live, "sales.begin_processing", %{"id" => order.id})
+
+    assert render(storefront_live) =~ "Console Sync Shopper"
+    assert render(storefront_live) =~ "processing"
+
+    render_hook(console_live, "sales.fulfill", %{"id" => order.id})
+
+    assert render(storefront_live) =~ "fulfilled"
   end
 
   test "product inventory updates sync across storefront and merchant console", %{
@@ -160,6 +187,25 @@ defmodule AlvaDemoWeb.SynchronizationTest do
     :timer.sleep(50)
 
     assert render(console_live) =~ "Collection Support"
+  end
+
+  test "storefront does not subscribe to inactive conversation collection broadcasts", %{
+    conn: conn
+  } do
+    {:ok, _storefront_live, _html} = live(conn, "/storefront")
+
+    log =
+      capture_log(fn ->
+        _conversation =
+          Conversation
+          |> Ash.Changeset.for_create(:create, %{customer_name: "Storefront Listener"})
+          |> Ash.create!()
+
+        :timer.sleep(50)
+      end)
+
+    refute log =~ "undefined handle_info in AlvaDemoWeb.CustomerStorefrontLive"
+    refute log =~ "conversation:created"
   end
 
   test "support message history and live updates stay route-scoped for both chat surfaces", %{

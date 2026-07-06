@@ -1,4 +1,6 @@
 defmodule AlvaDemo.Catalog.Product do
+  require Ash.Query
+
   use Ash.Resource,
     domain: AlvaDemo.Catalog,
     data_layer: Ash.DataLayer.Ets,
@@ -13,7 +15,7 @@ defmodule AlvaDemo.Catalog.Product do
   end
 
   live_vue do
-    event("catalog.list_products", action: :read)
+    event("catalog.list_products", action: :list)
     event("catalog.adjust_stock", action: :adjust_stock)
     event("catalog.upload_media", action: :upload_media)
 
@@ -30,6 +32,19 @@ defmodule AlvaDemo.Catalog.Product do
     read :read do
       primary?(true)
       public?(true)
+    end
+
+    read :list do
+      public?(true)
+      argument(:query, :string, allow_nil?: true)
+      argument(:max_stock, :integer, allow_nil?: true)
+
+      prepare(fn query, _context ->
+        query
+        |> Ash.Query.sort(name: :asc)
+        |> filter_product_query(Ash.Query.get_argument(query, :query))
+        |> filter_max_stock(Ash.Query.get_argument(query, :max_stock))
+      end)
     end
 
     update :adjust_stock do
@@ -73,6 +88,38 @@ defmodule AlvaDemo.Catalog.Product do
     attribute :media_reference, :string do
       allow_nil?(false)
       public?(true)
+    end
+  end
+
+  defp filter_product_query(query, search_term) do
+    case search_pattern(search_term) do
+      nil ->
+        query
+
+      pattern ->
+        require Ash.Expr
+
+        Ash.Query.filter(
+          query,
+          Ash.Expr.expr(contains(name, ^pattern) or contains(description, ^pattern))
+        )
+    end
+  end
+
+  defp filter_max_stock(query, nil), do: query
+
+  defp filter_max_stock(query, max_stock) do
+    require Ash.Expr
+
+    Ash.Query.filter(query, Ash.Expr.expr(stock <= ^max_stock))
+  end
+
+  defp search_pattern(nil), do: nil
+
+  defp search_pattern(search_term) when is_binary(search_term) do
+    case String.trim(search_term) do
+      "" -> nil
+      trimmed -> trimmed
     end
   end
 end

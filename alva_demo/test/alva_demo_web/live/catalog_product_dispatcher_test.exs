@@ -3,6 +3,18 @@ defmodule AlvaDemoWeb.CatalogProductDispatcherTest do
   import Alva.Test
   alias Phoenix.LiveView.Socket
 
+  defmodule MockUploadConsumer do
+    def consume_uploaded_entries(socket, name, func) do
+      socket.assigns
+      |> get_in([:uploads, name, :entries])
+      |> Kernel.||([])
+      |> Enum.map(fn entry ->
+        {:ok, upload} = func.(%{path: entry.path}, entry)
+        upload
+      end)
+    end
+  end
+
   describe "catalog.list_products event" do
     test "successfully returns products" do
       socket = %Socket{
@@ -20,6 +32,45 @@ defmodule AlvaDemoWeb.CatalogProductDispatcherTest do
       assert Map.has_key?(product, :id)
       assert Map.has_key?(product, :name)
       assert Map.has_key?(product, :price)
+    end
+
+    test "supports product query and max stock filters" do
+      Ash.Seed.seed!(%AlvaDemo.Catalog.Product{
+        name: "Needle Finder",
+        description: "Search me",
+        price: 1900,
+        stock: 9,
+        media_reference: "needle.jpg"
+      })
+
+      Ash.Seed.seed!(%AlvaDemo.Catalog.Product{
+        name: "High Stock Product",
+        description: "Plenty available",
+        price: 2200,
+        stock: 77,
+        media_reference: "high-stock.jpg"
+      })
+
+      socket = %Socket{
+        private: %{alva: %{domains: [AlvaDemo.Catalog]}},
+        assigns: %{}
+      }
+
+      query_result =
+        assert_dispatch_ok(socket, "catalog.list_products", %{
+          "query" => "Needle"
+        })
+
+      assert Enum.any?(query_result.data, &(&1.name == "Needle Finder"))
+      refute Enum.any?(query_result.data, &(&1.name == "High Stock Product"))
+
+      stock_result =
+        assert_dispatch_ok(socket, "catalog.list_products", %{
+          "max_stock" => 10
+        })
+
+      assert Enum.any?(stock_result.data, &(&1.name == "Needle Finder"))
+      refute Enum.any?(stock_result.data, &(&1.name == "High Stock Product"))
     end
   end
 
@@ -54,36 +105,57 @@ defmodule AlvaDemoWeb.CatalogProductDispatcherTest do
   end
 
   describe "catalog.upload_media event" do
-    test "successfully processes uploaded media and updates reference" do
+    test "consumes the LiveView upload entry and updates the product media reference" do
       product =
         Ash.Seed.seed!(%AlvaDemo.Catalog.Product{
           name: "Upload Media Product",
           description: "Test upload",
           price: 1000,
           stock: 10,
-          media_reference: nil
+          media_reference: "before-upload.jpg"
         })
 
-      # Create a dummy file for the test
-      path = "test/support/fixtures/mock_upload_#{System.unique_integer([:positive])}.jpg"
-      File.mkdir_p!("test/support/fixtures")
+      path = Path.join(System.tmp_dir!(), "mock_upload_#{System.unique_integer([:positive])}.jpg")
       File.write!(path, "dummy image")
 
-      upload = %Plug.Upload{
-        path: path,
-        filename: "test_upload.jpg",
-        content_type: "image/jpeg"
+      socket = %Socket{
+        private: %{alva: %{domains: [AlvaDemo.Catalog]}},
+        assigns: %{
+          current_user: %{id: "merchant-1"},
+          current_tenant: "demo",
+          uploads: %{
+            media: %{
+              entries: [
+                %{
+                  client_name: "test_upload.jpg",
+                  client_type: "image/jpeg",
+                  path: path
+                }
+              ]
+            }
+          }
+        }
       }
 
       result =
-        product
-        |> Ash.Changeset.for_update(:upload_media, %{media: upload})
-        |> Ash.update!()
+        assert_dispatch_ok(socket, "catalog.upload_media", %{"id" => product.id},
+          upload_consumer: MockUploadConsumer
+        )
 
-      assert result.media_reference =~ "test_upload.jpg"
+      dest_path =
+        Path.join(:code.priv_dir(:alva_demo), "static/images/#{result.data.media_reference}")
+
+      on_exit(fn ->
+        File.rm(path)
+        File.rm(dest_path)
+      end)
+
+      assert result.data.media_reference =~ "test_upload.jpg"
+      assert result.data.media_reference != "before-upload.jpg"
+      assert File.exists?(dest_path)
 
       updated_product = Ash.get!(AlvaDemo.Catalog.Product, product.id)
-      assert updated_product.media_reference =~ "test_upload.jpg"
+      assert updated_product.media_reference == result.data.media_reference
     end
   end
 end

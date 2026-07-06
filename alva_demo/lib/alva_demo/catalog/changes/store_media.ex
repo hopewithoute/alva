@@ -19,12 +19,18 @@ defmodule AlvaDemo.Catalog.Changes.StoreMedia do
         new_filename = "#{uuid}-#{original_name}"
 
         dest_path = Path.join(target_dir, new_filename)
-        File.cp!(source.path, dest_path)
+        copy_upload!(source.path, dest_path)
 
         Ash.Changeset.force_change_attribute(changeset, attribute, new_filename)
       else
         changeset
       end
     end)
+  end
+
+  defp copy_upload!(source_path, dest_path) do
+    source_path
+    |> File.read!()
+    |> then(&File.write!(dest_path, &1))
   end
 end

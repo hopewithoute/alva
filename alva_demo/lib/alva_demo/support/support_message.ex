@@ -35,12 +35,17 @@ defmodule AlvaDemo.Support.SupportMessage do
       public?(true)
       argument(:conversation_id, :uuid, allow_nil?: false)
       filter(expr(conversation_id == ^arg(:conversation_id)))
+
+      prepare(fn query, _context ->
+        Ash.Query.sort(query, created_at: :asc)
+      end)
     end
 
     create :create do
       public?(true)
       primary?(true)
       accept([:text, :sender, :conversation_id])
+      change(AlvaDemo.Support.Changes.SyncConversationSummary)
     end
   end
 

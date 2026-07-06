@@ -3,34 +3,35 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
 
   use Alva.LiveView,
     domains: [AlvaDemo.Sales, AlvaDemo.Catalog, AlvaDemo.Support],
-    collections: [:sales_orders, :products, :conversations]
-
-  on_mount AlvaDemoWeb.DataSync
-
-  def mount(_params, _session, socket) do
-    {:ok, socket}
-  end
+    collections: [
+      {:sales_orders,
+       source_input: :sales_order_collection_source_input,
+       subscriptions: ["order:created", "order:updated"]},
+      {:products,
+       source_input: :product_collection_source_input, subscriptions: ["product:updated"]},
+      {:conversations,
+       source_input: :conversation_collection_source_input,
+       subscriptions: ["conversation:created", "conversation:updated"]}
+    ],
+    streams: [:support_messages],
+    subscriptions: ["support_message:created"]
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
-      <section id="merchant-console" class="space-y-6">
-        <div class="space-y-2">
-          <p class="text-sm font-medium uppercase text-zinc-500">Merchant Console</p>
-          <h1 class="text-3xl font-semibold tracking-tight">Monitor orders and operate the showcase.</h1>
-          <p class="max-w-2xl text-zinc-600">
-            Order Lifecycle, Inventory Snapshot, Product Media, and Support Chat controls arrive in follow-up slices.
-          </p>
-        </div>
-        <.vue
-          v-component="MerchantConsolePage"
-          sales_orders={@streams.sales_orders}
-          products={@streams.products}
-          conversations={@streams.conversations}
-          support_messages={@support_messages}
-        />
-      </section>
-    </Layouts.app>
+    <.vue
+      id="merchant-console-page"
+      v-component="MerchantConsolePage"
+      v-inject="layout"
+      v-socket={@socket}
+      sales_orders={@streams.sales_orders}
+      products={@streams.products}
+      conversations={@streams.conversations}
+      support_messages={@support_messages}
+    />
     """
   end
+
+  def sales_order_collection_source_input, do: %{"sort" => "-created_at"}
+  def product_collection_source_input, do: %{"sort" => "stock"}
+  def conversation_collection_source_input, do: %{"sort" => "-last_message_at"}
 end

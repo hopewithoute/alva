@@ -3,33 +3,30 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
 
   use Alva.LiveView,
     domains: [AlvaDemo.Sales, AlvaDemo.Catalog, AlvaDemo.Support],
-    collections: [:sales_orders, :products]
-
-  on_mount AlvaDemoWeb.DataSync
-
-  def mount(_params, _session, socket) do
-    {:ok, socket}
-  end
+    collections: [
+      {:sales_orders,
+       source_input: :sales_order_collection_source_input,
+       subscriptions: ["order:created", "order:updated"]},
+      {:products,
+       source_input: :product_collection_source_input, subscriptions: ["product:updated"]}
+    ],
+    streams: [:support_messages],
+    subscriptions: ["support_message:created"]
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
-      <section id="customer-storefront" class="space-y-6">
-        <div class="space-y-2">
-          <p class="text-sm font-medium uppercase text-zinc-500">Customer Storefront</p>
-          <h1 class="text-3xl font-semibold tracking-tight">Browse products and place simple orders.</h1>
-          <p class="max-w-2xl text-zinc-600">
-            Product catalog, Customer Name capture, ordering, and Support Chat arrive in the next slices.
-          </p>
-        </div>
-        <.vue
-          v-component="CustomerStorefrontPage"
-          sales_orders={@streams.sales_orders}
-          products={@streams.products}
-          support_messages={assigns[:support_messages]}
-        />
-      </section>
-    </Layouts.app>
+    <.vue
+      id="customer-storefront-page"
+      v-component="CustomerStorefrontPage"
+      v-inject="layout"
+      v-socket={@socket}
+      sales_orders={@streams.sales_orders}
+      products={@streams.products}
+      support_messages={@support_messages}
+    />
     """
   end
+
+  def sales_order_collection_source_input, do: %{"sort" => "-created_at"}
+  def product_collection_source_input, do: %{"sort" => "name"}
 end

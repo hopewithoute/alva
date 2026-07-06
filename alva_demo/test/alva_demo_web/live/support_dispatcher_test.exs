@@ -71,5 +71,64 @@ defmodule AlvaDemoWeb.SupportDispatcherTest do
       assert "Help me" in texts
       assert "How can I help?" in texts
     end
+
+    test "updates conversation summaries and waiting filters for the merchant queue" do
+      conversation =
+        Ash.Seed.seed!(%AlvaDemo.Support.Conversation{
+          customer_name: "Queue Bob"
+        })
+
+      socket = %Socket{
+        private: %{alva: %{domains: [AlvaDemo.Support]}},
+        assigns: %{}
+      }
+
+      assert_dispatch_ok(socket, "support.send_message", %{
+        "text" => "Need help with my order",
+        "sender" => "shopper",
+        "conversation_id" => conversation.id
+      })
+
+      waiting_result =
+        assert_dispatch_ok(socket, "support.list_conversations", %{
+          "needs_merchant_reply" => true
+        })
+
+      queued_conversation =
+        Enum.find(waiting_result.data, fn result -> result.id == conversation.id end)
+
+      assert queued_conversation
+      assert queued_conversation.needs_merchant_reply == true
+      assert queued_conversation.message_count == 1
+      assert queued_conversation.last_message_sender == "shopper"
+      assert queued_conversation.last_message_preview == "Need help with my order"
+
+      assert_dispatch_ok(socket, "support.send_message", %{
+        "text" => "We are on it",
+        "sender" => "merchant",
+        "conversation_id" => conversation.id
+      })
+
+      customer_result =
+        assert_dispatch_ok(socket, "support.list_conversations", %{
+          "customer_query" => "Queue"
+        })
+
+      updated_conversation =
+        Enum.find(customer_result.data, fn result -> result.id == conversation.id end)
+
+      assert updated_conversation
+      assert updated_conversation.needs_merchant_reply == false
+      assert updated_conversation.message_count == 2
+      assert updated_conversation.last_message_sender == "merchant"
+      assert updated_conversation.last_message_preview == "We are on it"
+
+      waiting_again =
+        assert_dispatch_ok(socket, "support.list_conversations", %{
+          "needs_merchant_reply" => true
+        })
+
+      refute Enum.any?(waiting_again.data, fn result -> result.id == conversation.id end)
+    end
   end
 end
