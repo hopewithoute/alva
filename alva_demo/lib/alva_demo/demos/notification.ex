@@ -12,10 +12,11 @@ defmodule AlvaDemo.Demos.Notification do
   end
 
   live_vue do
-    event("demo_notifications.send", action: :send)
+    event(:demo_notifications_send, name: "demo_notifications.send", action: :send)
 
-    signal("demo_notifications.sent",
-      on: "send"
+    signal(:demo_notifications_sent,
+      name: "demo_notifications.sent",
+      on: :send
     )
   end
 

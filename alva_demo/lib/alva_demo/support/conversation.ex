@@ -15,14 +15,14 @@ defmodule AlvaDemo.Support.Conversation do
   end
 
   live_vue do
-    event("support.create", action: :create)
-    event("support.list_conversations", action: :list)
-    event("support.get_conversation", action: :get_by_customer)
+    event(:support_create, name: "support.create", action: :create)
+    event(:support_list_conversations, name: "support.list_conversations", action: :list)
+    event(:support_get_conversation, name: "support.get_conversation", action: :get_by_customer)
 
     collection :conversations do
-      source(event: "support.list_conversations", mode: :reset)
-      insert(on: "create", at: 0)
-      update(on: "record_message", at: 0)
+      source(event: :support_list_conversations, mode: :reset)
+      insert(on: :create, at: 0)
+      update(on: :record_message, at: 0)
     end
   end
 

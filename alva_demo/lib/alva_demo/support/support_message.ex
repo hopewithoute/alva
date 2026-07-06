@@ -12,14 +12,14 @@ defmodule AlvaDemo.Support.SupportMessage do
   end
 
   live_vue do
-    event("support.list_messages", action: :read_for_conversation)
-    event("support.send_message", action: :create)
+    event(:support_list_messages, name: "support.list_messages", action: :read_for_conversation)
+    event(:support_send_message, name: "support.send_message", action: :create)
 
     # Message history is scoped by the conversation selected in Vue, so it stays
     # command-driven. Live messages stream through props and are filtered by the
     # active conversation on each chat surface.
     stream :support_messages do
-      insert(on: "create")
+      insert(on: :create)
     end
   end
 

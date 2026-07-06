@@ -12,11 +12,12 @@ defmodule AlvaDemo.Demos.ChatMessage do
   end
 
   live_vue do
-    event("demo_chat.list_messages", action: :list)
-    event("demo_chat.send_message", action: :send)
+    event(:demo_chat_list_messages, name: "demo_chat.list_messages", action: :list)
+    event(:demo_chat_send_message, name: "demo_chat.send_message", action: :send)
 
-    stream :chat_messages do
-      insert(on: "send")
+    collection :chat_messages do
+      source(event: :demo_chat_list_messages, mode: :reset)
+      insert(on: :send)
     end
   end
 

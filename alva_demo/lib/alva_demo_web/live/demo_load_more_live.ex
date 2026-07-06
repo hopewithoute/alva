@@ -5,7 +5,8 @@ defmodule AlvaDemoWeb.DemoLoadMoreLive do
     domains: [AlvaDemo.Demos],
     collections: [
       {:feed_entries, source_input: :feed_entry_collection_source_input, reload_on: :route_change}
-    ]
+    ],
+    route_subscriptions: [{:feed_entries, []}]
 
   def render(assigns) do
     ~H"""

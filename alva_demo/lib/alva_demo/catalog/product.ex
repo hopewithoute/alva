@@ -15,14 +15,14 @@ defmodule AlvaDemo.Catalog.Product do
   end
 
   live_vue do
-    event("catalog.list_products", action: :list)
-    event("catalog.adjust_stock", action: :adjust_stock)
-    event("catalog.upload_media", action: :upload_media)
+    event(:catalog_list_products, name: "catalog.list_products", action: :list)
+    event(:catalog_adjust_stock, name: "catalog.adjust_stock", action: :adjust_stock)
+    event(:catalog_upload_media, name: "catalog.upload_media", action: :upload_media)
 
     collection :products do
-      source(event: "catalog.list_products", mode: :reset)
-      update(on: "adjust_stock")
-      update(on: "upload_media")
+      source(event: :catalog_list_products, mode: :reset)
+      update(on: :adjust_stock)
+      update(on: :upload_media)
     end
   end
 

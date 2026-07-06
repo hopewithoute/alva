@@ -3,10 +3,7 @@ defmodule AlvaDemoWeb.DemoNotificationsLive do
 
   use Alva.LiveView,
     domains: [AlvaDemo.Demos],
-    signals: ["demo_notifications.sent"],
-    route_subscriptions: [
-      {"demo_notifications.sent", ["demo_notification:sent"]}
-    ]
+    signals: [:demo_notifications_sent]
 
   def render(assigns) do
     ~H"""

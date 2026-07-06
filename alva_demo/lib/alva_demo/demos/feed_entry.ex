@@ -5,10 +5,10 @@ defmodule AlvaDemo.Demos.FeedEntry do
     extensions: [Alva.Resource]
 
   live_vue do
-    event("demo_feed.list_entries", action: :list)
+    event(:demo_feed_list_entries, name: "demo_feed.list_entries", action: :list)
 
     collection :feed_entries do
-      source(event: "demo_feed.list_entries", mode: :reset)
+      source(event: :demo_feed_list_entries, mode: :reset)
     end
   end
 

@@ -1,6 +1,8 @@
 defmodule AlvaDemoWeb.ShowcaseShellTest do
   use AlvaDemoWeb.ConnCase, async: true
 
+  @showcase_live_files Path.wildcard(Path.expand("../../../lib/alva_demo_web/live/*.ex", __DIR__))
+
   test "root route injects the home page into the persistent LiveVue layout", %{conn: conn} do
     {:ok, _view, html} = live(conn, ~p"/")
 
@@ -67,5 +69,20 @@ defmodule AlvaDemoWeb.ShowcaseShellTest do
     assert html =~ ~s(id="demo-load-more-page")
     assert html =~ "DemoLoadMorePage"
     assert html =~ ~s(data-inject="layout")
+  end
+
+  test "showcase LiveViews do not reintroduce legacy declarative activation shapes" do
+    Enum.each(@showcase_live_files, fn path ->
+      content = File.read!(path)
+
+      refute Regex.match?(~r/(^|\s)streams:\s/m, content),
+             "#{Path.basename(path)} still uses legacy declarative streams:"
+
+      refute Regex.match?(~r/(^|\s)subscriptions:\s/m, content),
+             "#{Path.basename(path)} still uses legacy declarative subscriptions:"
+
+      refute Regex.match?(~r/(^|\s)params:\s/m, content),
+             "#{Path.basename(path)} still uses nested params: instead of source_input:"
+    end)
   end
 end

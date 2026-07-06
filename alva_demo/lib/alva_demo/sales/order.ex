@@ -16,16 +16,16 @@ defmodule AlvaDemo.Sales.Order do
   end
 
   live_vue do
-    event("sales.create_order", action: :create)
-    event("sales.list_orders", action: :list)
-    event("sales.begin_processing", action: :begin_processing)
-    event("sales.fulfill", action: :fulfill)
+    event(:sales_create_order, name: "sales.create_order", action: :create)
+    event(:sales_list_orders, name: "sales.list_orders", action: :list)
+    event(:sales_begin_processing, name: "sales.begin_processing", action: :begin_processing)
+    event(:sales_fulfill, name: "sales.fulfill", action: :fulfill)
 
     collection :sales_orders do
-      source(event: "sales.list_orders", mode: :reset)
-      insert(on: "create", at: 0)
-      update(on: "begin_processing")
-      update(on: "fulfill")
+      source(event: :sales_list_orders, mode: :reset)
+      insert(on: :create, at: 0)
+      update(on: :begin_processing)
+      update(on: :fulfill)
     end
   end
 
