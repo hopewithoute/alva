@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Implement Deterministic Route Subscription Inference
 
@@ -14,15 +14,15 @@ This slice should not broaden scope implicitly. If a projection trigger matches 
 
 ## Acceptance criteria
 
-- [ ] A simple active Collection with one static publication can infer its Topic wiring.
-- [ ] A simple active Signal with one static publication can infer its Topic wiring.
-- [ ] A single publication expanding to multiple static Topics remains inferable.
-- [ ] A projection trigger matching more than one publication fails inference as ambiguous.
-- [ ] Publication topic callbacks are not considered deterministic.
-- [ ] Page Scope-dependent Topic wiring is not inferred.
-- [ ] Inference failures are activation-time errors with messages that identify the affected projection and why inference failed.
-- [ ] Explicit `route_subscriptions:` overrides bypass inference for the listed projection.
-- [ ] Tests cover deterministic success, multi-topic static success, ambiguous publication failure, callback topic failure, Page Scope-dependent failure, and explicit override behavior.
+- [x] A simple active Collection with one static publication can infer its Topic wiring.
+- [x] A simple active Signal with one static publication can infer its Topic wiring.
+- [x] A single publication expanding to multiple static Topics remains inferable.
+- [x] A projection trigger matching more than one publication fails inference as ambiguous.
+- [x] Publication topic callbacks are not considered deterministic.
+- [x] Page Scope-dependent Topic wiring is not inferred.
+- [x] Inference failures are activation-time errors with messages that identify the affected projection and why inference failed.
+- [x] Explicit `route_subscriptions:` overrides bypass inference for the listed projection.
+- [x] Tests cover deterministic success, multi-topic static success, ambiguous publication failure, callback topic failure, Page Scope-dependent failure, and explicit override behavior.
 
 ## Blocked by
 

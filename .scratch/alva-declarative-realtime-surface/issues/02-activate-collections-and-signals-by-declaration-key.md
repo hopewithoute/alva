@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Activate Collections And Signals By Declaration Key
 
@@ -14,14 +14,14 @@ This slice should make projection activation identity consistent before Route Su
 
 ## Acceptance criteria
 
-- [ ] `collections:` activates Collections by atom Declaration Key.
-- [ ] `signals:` activates Signals by atom Declaration Key.
-- [ ] Signal activation rejects browser-facing string names.
-- [ ] Signal activation rejects tuple entries and non-empty opts until a concrete route-owned Signal option exists.
-- [ ] Duplicate Collection activations fail with an actionable compile-time error.
-- [ ] Duplicate Signal activations fail with an actionable compile-time error.
-- [ ] Generated or documented Vue-facing names still come from `name: "..."`, not from activation keys.
-- [ ] Tests cover both valid Collection/Signal activation and invalid mixed string/tuple Signal activation.
+- [x] `collections:` activates Collections by atom Declaration Key.
+- [x] `signals:` activates Signals by atom Declaration Key.
+- [x] Signal activation rejects browser-facing string names.
+- [x] Signal activation rejects tuple entries and non-empty opts until a concrete route-owned Signal option exists.
+- [x] Duplicate Collection activations fail with an actionable compile-time error.
+- [x] Duplicate Signal activations fail with an actionable compile-time error.
+- [x] Generated or documented Vue-facing names still come from `name: "..."`, not from activation keys.
+- [x] Tests cover both valid Collection/Signal activation and invalid mixed string/tuple Signal activation.
 
 ## Blocked by
 

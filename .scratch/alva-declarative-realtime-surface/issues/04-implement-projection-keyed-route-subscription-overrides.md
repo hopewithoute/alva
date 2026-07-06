@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Implement Projection-Keyed Route Subscription Overrides
 
@@ -12,15 +12,15 @@ Implement top-level `route_subscriptions:` as projection-keyed Topic wiring for 
 
 ## Acceptance criteria
 
-- [ ] `route_subscriptions:` entries are keyed by active projection Declaration Key for both Collections and Signals.
-- [ ] `route_subscriptions:` rejects targets that are not activated on the same page.
-- [ ] Duplicate `route_subscriptions:` entries for the same projection fail with an actionable compile-time error.
-- [ ] Explicit binary Topics are accepted.
-- [ ] Explicit Topic lists are accepted.
-- [ ] Explicit empty Topic lists are accepted as authoritative opt-outs.
-- [ ] Explicit Topic wiring does not attempt to re-derive or reject page-owned Topics solely because they differ from publication templates.
-- [ ] Omitted active projections remain eligible for deterministic inference.
-- [ ] Tests cover Collection targets, Signal targets, inactive targets, duplicates, explicit Topics, explicit lists, empty lists, and partial overrides.
+- [x] `route_subscriptions:` entries are keyed by active projection Declaration Key for both Collections and Signals.
+- [x] `route_subscriptions:` rejects targets that are not activated on the same page.
+- [x] Duplicate `route_subscriptions:` entries for the same projection fail with an actionable compile-time error.
+- [x] Explicit binary Topics are accepted.
+- [x] Explicit Topic lists are accepted.
+- [x] Explicit empty Topic lists are accepted as authoritative opt-outs.
+- [x] Explicit Topic wiring does not attempt to re-derive or reject page-owned Topics solely because they differ from publication templates.
+- [x] Omitted active projections remain eligible for deterministic inference.
+- [x] Tests cover Collection targets, Signal targets, inactive targets, duplicates, explicit Topics, explicit lists, empty lists, and partial overrides.
 
 ## Blocked by
 

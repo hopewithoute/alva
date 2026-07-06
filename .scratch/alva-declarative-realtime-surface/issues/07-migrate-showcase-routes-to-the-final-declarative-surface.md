@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Migrate Showcase Routes To The Final Declarative Surface
 
@@ -14,15 +14,15 @@ This slice proves the complete API surface end-to-end through the app that devel
 
 ## Acceptance criteria
 
-- [ ] Showcase LiveViews use `collections:`, `signals:`, and `route_subscriptions:` as the only declarative realtime activation keys.
-- [ ] Showcase routes do not use legacy declarative `subscriptions:` or declarative `streams:`.
-- [ ] Showcase Collection activation uses `source_input:` instead of nested `params:`.
-- [ ] Showcase Topic wiring uses top-level projection-keyed `route_subscriptions:` where explicit wiring is needed.
-- [ ] Showcase Signals activate by atom Declaration Key and expose browser names through resource `name: "..."`.
-- [ ] Route-owned orders, products, and conversations render from Collection props rather than client-owned query caches.
-- [ ] Vue code does not manually reconcile route-owned Collection state through shadow query arrays.
-- [ ] Existing showcase behaviors for ordering, fulfillment, product media, support conversations, and realtime notifications remain covered by tests.
-- [ ] Tests or grep-based assertions prevent reintroducing old declarative activation shapes in showcase routes.
+- [x] Showcase LiveViews use `collections:`, `signals:`, and `route_subscriptions:` as the only declarative realtime activation keys.
+- [x] Showcase routes do not use legacy declarative `subscriptions:` or declarative `streams:`.
+- [x] Showcase Collection activation uses `source_input:` instead of nested `params:`.
+- [x] Showcase Topic wiring uses top-level projection-keyed `route_subscriptions:` where explicit wiring is needed.
+- [x] Showcase Signals activate by atom Declaration Key and expose browser names through resource `name: "..."`.
+- [x] Route-owned orders, products, and conversations render from Collection props rather than client-owned query caches.
+- [x] Vue code does not manually reconcile route-owned Collection state through shadow query arrays.
+- [x] Existing showcase behaviors for ordering, fulfillment, product media, support conversations, and realtime notifications remain covered by tests.
+- [x] Tests or grep-based assertions prevent reintroducing old declarative activation shapes in showcase routes.
 
 ## Blocked by
 

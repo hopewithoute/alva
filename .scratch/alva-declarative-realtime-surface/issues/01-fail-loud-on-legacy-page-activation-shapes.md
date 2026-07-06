@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Fail Loud On Legacy Page Activation Shapes
 
@@ -14,14 +14,14 @@ This slice should keep imperative Alva helpers and raw Phoenix PubSub available 
 
 ## Acceptance criteria
 
-- [ ] Keyword-form `use Alva.LiveView` accepts only the public declarative keys `collections:`, `signals:`, and `route_subscriptions:` plus existing non-activation configuration such as domains.
-- [ ] Legacy tuple-form activation fails with an actionable compile-time error.
-- [ ] Top-level declarative `subscriptions:` fails with an actionable compile-time error.
-- [ ] Top-level declarative `streams:` fails with an actionable compile-time error.
-- [ ] Nested Collection `params:` fails and points developers to `source_input:`.
-- [ ] Nested Collection `subscriptions:` fails and points developers to top-level `route_subscriptions:`.
-- [ ] Imperative Alva subscription helpers and raw Phoenix PubSub remain usable outside the declarative activation allowlist.
-- [ ] Tests assert public error behavior rather than private helper names.
+- [x] Keyword-form `use Alva.LiveView` accepts only the public declarative keys `collections:`, `signals:`, and `route_subscriptions:` plus existing non-activation configuration such as domains.
+- [x] Legacy tuple-form activation fails with an actionable compile-time error.
+- [x] Top-level declarative `subscriptions:` fails with an actionable compile-time error.
+- [x] Top-level declarative `streams:` fails with an actionable compile-time error.
+- [x] Nested Collection `params:` fails and points developers to `source_input:`.
+- [x] Nested Collection `subscriptions:` fails and points developers to top-level `route_subscriptions:`.
+- [x] Imperative Alva subscription helpers and raw Phoenix PubSub remain usable outside the declarative activation allowlist.
+- [x] Tests assert public error behavior rather than private helper names.
 
 ## Blocked by
 
