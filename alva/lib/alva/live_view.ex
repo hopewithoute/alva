@@ -28,6 +28,7 @@ defmodule Alva.LiveView do
       @alva_route_subscriptions Keyword.get(unquote(opts), :route_subscriptions, [])
       @alva_page_events Keyword.get(unquote(opts), :page_events, [])
       @alva_page_state Keyword.get(unquote(opts), :page_state)
+      @alva_subscriptions Keyword.get(unquote(opts), :subscriptions, [])
 
       @doc false
       def __alva_page_events__, do: @alva_page_events
@@ -42,7 +43,8 @@ defmodule Alva.LiveView do
            signals: @alva_signals,
            route_subscriptions: @alva_route_subscriptions,
            page_events: @alva_page_events,
-           page_state: @alva_page_state
+           page_state: @alva_page_state,
+           subscriptions: @alva_subscriptions
          }}
       )
     end
@@ -174,8 +176,12 @@ defmodule Alva.LiveView do
       signals: signals,
       route_subscriptions: route_subscriptions,
       page_events: page_events,
-      page_state: page_state
+      page_state: page_state,
+      subscriptions: subscriptions
     } = normalize_mount_config(config)
+
+    # Make subscriptions available in socket.private for allowlist checking
+    socket = Phoenix.LiveView.put_private(socket, :alva_options, [subscriptions: subscriptions])
 
     otp_app = host_app_otp_app!(socket)
     registry = Alva.App.Info.registry(otp_app)
@@ -200,6 +206,45 @@ defmodule Alva.LiveView do
           route_change_collections: route_change_collections
         })
       end)
+
+    # Eagerly activate subscriptions with activate: :mount
+    socket =
+      if Phoenix.LiveView.connected?(socket) do
+        Enum.reduce(subscriptions, socket, fn
+          {key, opts}, acc_sock ->
+            if Keyword.get(opts, :activate) == :mount do
+              case Alva.App.Info.fetch_subscription_by_key(otp_app, key) do
+                {:ok, resource, subscription} ->
+                  if subscription.kind == :stream do
+                    case apply(resource, subscription.resolve, [%{}, acc_sock]) do
+                      {:ok, resolution} ->
+                        acc_sock =
+                          Enum.reduce(resolution.topics || [], acc_sock, fn topic, acc ->
+                            subscribe_dynamic_topic(acc, topic)
+                          end)
+
+                        Phoenix.LiveView.stream(acc_sock, subscription.name, resolution.items)
+
+                      _ ->
+                        acc_sock
+                    end
+                  else
+                    acc_sock
+                  end
+
+                _ ->
+                  acc_sock
+              end
+            else
+              acc_sock
+            end
+
+          _, acc_sock ->
+            acc_sock
+        end)
+      else
+        socket
+      end
 
     # Configure file uploads
     socket =
@@ -1341,7 +1386,13 @@ defmodule Alva.LiveView do
     alva_options = Map.get(sock.private, :alva_options, [])
     allowlist = Keyword.get(alva_options, :subscriptions, [])
 
-    if subscription_key in allowlist do
+    normalized_allowlist =
+      Enum.map(allowlist, fn
+        {key, _opts} -> key
+        key -> key
+      end)
+
+    if subscription_key in normalized_allowlist do
       :ok
     else
       {:error, :forbidden}
@@ -1407,7 +1458,8 @@ defmodule Alva.LiveView do
       signals: signals,
       route_subscriptions: Map.get(config, :route_subscriptions, []),
       page_events: Map.get(config, :page_events, []),
-      page_state: Map.get(config, :page_state)
+      page_state: Map.get(config, :page_state),
+      subscriptions: Map.get(config, :subscriptions, [])
     }
   end
 
