@@ -147,6 +147,17 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
     }
   end
 
+  def support_message_collection_source_input(socket) do
+    %{"conversation_id" => normalize_conversation_id(Alva.LiveView.route_params(socket))}
+  end
+
+  def support_message_route_topics(socket) do
+    case normalize_conversation_id(Alva.LiveView.route_params(socket)) do
+      nil -> {:ok, []}
+      conversation_id -> {:ok, ["support_message:conversation:#{conversation_id}"]}
+    end
+  end
+
   def conversation_collection_source_input(socket) do
     params = Alva.LiveView.route_params(socket)
     
