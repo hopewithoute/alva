@@ -5,6 +5,7 @@ import type { MerchantConsoleLiveEvents } from "../../../js/alva/MerchantConsole
 import type { Product } from "../../../js/alva/types";
 import MerchantInventoryItem from "./MerchantInventoryItem.vue";
 import Button from "../../shared/ui/button/Button.vue";
+import { useDebounce } from "../../utils/debounce";
 
 const props = defineProps<{
   products: Product[];
@@ -19,22 +20,14 @@ const inventory_filters = reactive({
 
 const filterInventoryEvent = usePageEvent<MerchantConsoleLiveEvents, "console.filter_inventory">("console.filter_inventory");
 
-let timeoutId: any = null;
-const debounce = (fn: Function, ms = 300) => {
-  return (...args: any[]) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), ms);
-  };
-};
-
 watch(
   inventory_filters,
-  debounce((filters: any) => {
+  useDebounce((filters: any) => {
     filterInventoryEvent.call({
       query: filters.query,
       low_stock_only: filters.low_stock_only,
     });
-  }),
+  }, 300),
   { deep: true },
 );
 

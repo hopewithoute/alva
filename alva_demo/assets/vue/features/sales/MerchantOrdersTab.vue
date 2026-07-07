@@ -3,6 +3,7 @@ import { reactive, watch, computed } from "vue";
 import { usePageEvent } from "alva";
 import type { MerchantConsoleLiveEvents } from "../../../js/alva/MerchantConsoleLive.events";
 import type { Order } from "../../../js/alva/types";
+import { useDebounce } from "../../utils/debounce";
 import MerchantOrderItem from "./MerchantOrderItem.vue";
 import Button from "../../shared/ui/button/Button.vue";
 
@@ -26,23 +27,15 @@ const order_filters = reactive<{
 
 const filterOrdersEvent = usePageEvent<MerchantConsoleLiveEvents, "console.filter_orders">("console.filter_orders");
 
-let timeoutId: any = null;
-const debounce = (fn: Function, ms = 300) => {
-  return (...args: any[]) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), ms);
-  };
-};
-
 watch(
   order_filters,
-  debounce((filters: any) => {
+  useDebounce((filters: any) => {
     filterOrdersEvent.call({
-      status: filters.status,
-      customer_query: filters.customer_query,
-      product_query: filters.product_query,
+      status: filters.status || undefined,
+      customer_query: filters.customer_query || undefined,
+      product_query: filters.product_query || undefined,
     });
-  }),
+  }, 300),
   { deep: true },
 );
 

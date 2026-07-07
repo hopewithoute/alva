@@ -16,14 +16,16 @@ const emit = defineEmits<{
 const customerName = ref("");
 const setIdentityEvent = usePageEvent<CustomerStorefrontLiveEvents, "storefront.set_identity">("storefront.set_identity");
 
-let timeoutId: any = null;
+import { useDebounce } from "../../../utils/debounce";
+
+const handleIdentityChange = useDebounce((newName: string) => {
+  const trimmed = newName.trim();
+  setIdentityEvent.call({ customer_name: trimmed });
+  emit("identity-changed", trimmed);
+}, 500);
+
 watch(customerName, (newName) => {
-  clearTimeout(timeoutId);
-  timeoutId = setTimeout(() => {
-    const trimmed = newName.trim();
-    setIdentityEvent.call({ customer_name: trimmed });
-    emit("identity-changed", trimmed);
-  }, 500);
+  handleIdentityChange(newName);
 });
 </script>
 

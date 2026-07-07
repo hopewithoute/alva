@@ -5,6 +5,7 @@ import type { MerchantConsoleLiveEvents } from "../../../js/alva/MerchantConsole
 import { createAlvaApi } from "../../../js/alva/client";
 import type { Conversation, SupportMessage } from "../../../js/alva/types";
 import Button from "../../shared/ui/button/Button.vue";
+import { useDebounce } from "../../utils/debounce";
 
 const props = defineProps<{
   conversations: Conversation[];
@@ -29,22 +30,14 @@ const chat_messages_el = ref<HTMLElement | null>(null);
 const filterConversationsEvent = usePageEvent<MerchantConsoleLiveEvents, "console.filter_conversations">("console.filter_conversations");
 const selectConversationEvent = usePageEvent<MerchantConsoleLiveEvents, "support.select_conversation">("support.select_conversation");
 
-let timeoutId: any = null;
-const debounce = (fn: Function, ms = 300) => {
-  return (...args: any[]) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), ms);
-  };
-};
-
 watch(
   conversation_filters,
-  debounce((filters: any) => {
+  useDebounce((filters: any) => {
     filterConversationsEvent.call({
       customer_query: filters.customer_query,
       waiting_on_merchant_only: filters.waiting_on_merchant_only,
     });
-  }),
+  }, 300),
   { deep: true },
 );
 
