@@ -9,6 +9,7 @@ defmodule Alva.App.Info do
     defstruct otp_app: nil,
               domains: [],
               event_map: %{},
+              subscription_map: %{},
               collection_map: %{},
               signal_map: %{},
               file_upload_arguments: []
@@ -75,6 +76,16 @@ defmodule Alva.App.Info do
     )
   end
 
+
+  def verify_host_app_subscription_uniqueness!(current_domain, current_subscription_map) do
+    verify_host_app_uniqueness!(
+      current_domain,
+      current_subscription_map,
+      &Alva.Domain.Info.alva_subscription_map/1,
+      "application subscription key"
+    )
+  end
+
   def verify_host_app_collection_uniqueness!(current_domain, current_collection_map) do
     verify_host_app_uniqueness!(
       current_domain,
@@ -128,6 +139,8 @@ defmodule Alva.App.Info do
       otp_app: otp_app,
       domains: domains,
       event_map: build_unique_map!(domains, &Alva.Domain.Info.alva_event_map/1, "event name"),
+      subscription_map:
+        build_unique_map!(domains, &Alva.Domain.Info.alva_subscription_map/1, "subscription key"),
       collection_map:
         build_unique_map!(domains, &Alva.Domain.Info.alva_collection_map/1, "collection name"),
       signal_map: build_unique_map!(domains, &Alva.Domain.Info.alva_signal_map/1, "signal key"),

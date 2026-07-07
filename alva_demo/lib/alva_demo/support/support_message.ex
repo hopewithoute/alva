@@ -21,6 +21,15 @@ defmodule AlvaDemo.Support.SupportMessage do
       source(event: :support_list_messages, mode: :reset)
       insert(on: :create)
     end
+
+    subscription :support_messages_stream do
+      name "support_messages"
+      kind :stream
+      source event: :support_list_messages
+      scope %{ conversation_id: :uuid }
+      insert on: :create
+      resolve :resolve_support_messages_scope
+    end
   end
 
   actions do

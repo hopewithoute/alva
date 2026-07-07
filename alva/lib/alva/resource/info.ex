@@ -22,6 +22,13 @@ defmodule Alva.Resource.Info do
     |> Enum.filter(&match?(%Alva.Resource.Signal{}, &1))
   end
 
+  def subscriptions(resource) do
+    resource
+    |> Spark.Dsl.Extension.get_entities([:live_vue])
+    |> Enum.filter(&match?(%Alva.Resource.Subscription{}, &1))
+    |> Enum.map(&normalize_subscription/1)
+  end
+
   @doc """
   Returns a list of all public field names (attributes, calculations, relationships, aggregates) for the resource.
   """
@@ -34,13 +41,15 @@ defmodule Alva.Resource.Info do
     attrs ++ calcs ++ rels ++ aggs
   end
 
-  defp normalize_collection(%Alva.Resource.Collection{source: [source]} = collection) do
-    %{collection | source: source}
+  defp normalize_collection(%Alva.Resource.Collection{source: source} = collection) do
+    %{collection | source: unwrap_source(source)}
   end
 
-  defp normalize_collection(%Alva.Resource.Collection{source: []} = collection) do
-    %{collection | source: nil}
+  defp normalize_subscription(%Alva.Resource.Subscription{source: source} = sub) do
+    %{sub | source: unwrap_source(source)}
   end
 
-  defp normalize_collection(collection), do: collection
+  defp unwrap_source([source]), do: source
+  defp unwrap_source([]), do: nil
+  defp unwrap_source(source), do: source
 end

@@ -19,6 +19,13 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEvents do
         identity_label: :key
       )
 
+
+    subscription_map =
+      persist_projection_map(resources, module, :subscription, &Alva.Resource.Info.subscriptions/1,
+        identity_fun: & &1.key,
+        identity_label: :key
+      )
+
     collection_map =
       persist_projection_map(resources, module, :collection, &Alva.Resource.Info.collections/1)
 
@@ -38,10 +45,12 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEvents do
       dsl_state
       |> Spark.Dsl.Transformer.persist(:alva_event_key_map, event_key_map)
       |> Spark.Dsl.Transformer.persist(:alva_event_map, event_map)
+      |> Spark.Dsl.Transformer.persist(:alva_subscription_map, subscription_map)
       |> Spark.Dsl.Transformer.persist(:alva_collection_map, collection_map)
       |> Spark.Dsl.Transformer.persist(:alva_signal_map, signal_map)
 
     Alva.App.Info.verify_host_app_command_uniqueness!(module, event_map)
+    Alva.App.Info.verify_host_app_subscription_uniqueness!(module, subscription_map)
     Alva.App.Info.verify_host_app_collection_uniqueness!(module, collection_map)
     Alva.App.Info.verify_host_app_signal_key_uniqueness!(module, signal_map)
     Alva.App.Info.verify_host_app_signal_name_uniqueness!(module, signal_name_map)
