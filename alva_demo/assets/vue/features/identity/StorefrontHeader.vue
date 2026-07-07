@@ -6,6 +6,7 @@ import type { CustomerStorefrontLiveEvents } from "../../../js/alva/CustomerStor
 const props = defineProps<{
   recentOrderCount: number;
   recentOrderItems: number;
+  customerName?: string;
 }>();
 
 const emit = defineEmits<{
@@ -13,10 +14,16 @@ const emit = defineEmits<{
   (e: "identity-changed", name: string): void;
 }>();
 
-const customerName = ref("");
+const customerName = ref(props.customerName || "");
 const setIdentityEvent = usePageEvent<CustomerStorefrontLiveEvents, "storefront.set_identity">("storefront.set_identity");
 
 import { useDebounce } from "../../utils/debounce";
+
+watch(() => props.customerName, (newName) => {
+  if (newName !== undefined && newName !== customerName.value) {
+    customerName.value = newName;
+  }
+});
 
 const handleIdentityChange = useDebounce((newName: string) => {
   const trimmed = newName.trim();

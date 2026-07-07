@@ -15,11 +15,17 @@ const props = defineProps<{
   support_messages?: SupportMessage[];
 }>();
 
-const customerName = ref("");
+const customerName = ref(props.connected_customer_name || "");
 const isOrdersOpen = ref(false);
 const orderError = ref<string | null>(null);
 const orderNotice = ref<string | null>(null);
 const orderDrawerRef = ref<any>(null);
+
+watch(() => props.connected_customer_name, (newName) => {
+  if (newName !== undefined && newName !== null && newName !== customerName.value) {
+    customerName.value = newName;
+  }
+});
 
 const recentOrderCount = computed(() => props.sales_orders?.length || 0);
 const recentOrderItems = computed(() => {
@@ -58,6 +64,7 @@ const handleOrderError = (error: string) => {
   <div class="grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px]" data-testid="customer-storefront-vue">
     <section class="min-w-0 space-y-6">
       <StorefrontHeader
+        :customerName="customerName"
         :recentOrderCount="recentOrderCount"
         :recentOrderItems="recentOrderItems"
         @open-orders="isOrdersOpen = true"
