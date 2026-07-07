@@ -4,8 +4,16 @@ defmodule Alva.LiveView do
   """
 
   @alva_private_key :alva
-  @public_activation_keys [:collections, :signals, :route_subscriptions]
+  @public_activation_keys [
+    :collections,
+    :signals,
+    :route_subscriptions,
+    :page_events,
+    :page_state
+  ]
   @public_collection_option_keys [:source_input, :reload_on]
+  @upload_change_event "alva.validate_upload"
+  @upload_submit_event "alva.save_upload"
 
   defmacro __using__(opts) do
     validate_use_opts!(opts, __CALLER__)
@@ -15,12 +23,25 @@ defmodule Alva.LiveView do
       @alva_collections Keyword.get(unquote(opts), :collections, [])
       @alva_signals Keyword.get(unquote(opts), :signals, [])
       @alva_route_subscriptions Keyword.get(unquote(opts), :route_subscriptions, [])
+      @alva_page_events Keyword.get(unquote(opts), :page_events, [])
+      @alva_page_state Keyword.get(unquote(opts), :page_state)
+
+      if length(@alva_page_events) > 0 do
+        Alva.Codegen.PageEventsGenerator.generate!(__MODULE__, @alva_page_events)
+      end
+
+      def handle_params(_params, _uri, socket), do: {:noreply, socket}
+      def handle_info(_message, socket), do: {:noreply, socket}
+      defoverridable handle_params: 3, handle_info: 2
+
       on_mount(
         {Alva.LiveView,
          %{
            collections: @alva_collections,
            signals: @alva_signals,
-           route_subscriptions: @alva_route_subscriptions
+           route_subscriptions: @alva_route_subscriptions,
+           page_events: @alva_page_events,
+           page_state: @alva_page_state
          }}
       )
     end
@@ -150,7 +171,9 @@ defmodule Alva.LiveView do
     %{
       collections: collections,
       signals: signals,
-      route_subscriptions: route_subscriptions
+      route_subscriptions: route_subscriptions,
+      page_events: page_events,
+      page_state: page_state
     } = normalize_mount_config(config)
 
     otp_app = host_app_otp_app!(socket)
@@ -159,6 +182,10 @@ defmodule Alva.LiveView do
     collection_specs = collection_activation_specs(collections)
     route_change_collections = route_change_collection_specs(collections)
     route_subscription_callbacks = callback_route_subscriptions?(route_subscriptions)
+    page_event_callbacks = page_event_callbacks!(page_events)
+    page_state_callback = normalize_page_state_callback!(page_state)
+
+    ensure_page_events_do_not_shadow_dispatcher_events!(page_event_callbacks, registry)
 
     socket =
       update_alva(socket, fn state ->
@@ -184,18 +211,27 @@ defmodule Alva.LiveView do
       Phoenix.LiveView.attach_hook(socket, :alva_handle_event, :handle_event, fn event_name,
                                                                                  params,
                                                                                  sock ->
-        res = Alva.Dispatcher.dispatch(event_name, params, otp_app: otp_app, socket: sock)
+        cond do
+          upload_lifecycle_event?(event_name) ->
+            {:halt, sock}
 
-        case res do
-          %{ok: false, error: %{type: "unknown"}} ->
-            {:cont, sock}
+          Map.has_key?(page_event_callbacks, event_name) ->
+            handle_page_event(page_event_callbacks, event_name, params, sock)
 
-          _ ->
-            sock =
-              sock
-              |> apply_event_projection_operations(event_name, res)
+          true ->
+            res = Alva.Dispatcher.dispatch(event_name, params, otp_app: otp_app, socket: sock)
 
-            {:halt, res, sock}
+            case res do
+              %{ok: false, error: %{type: "unknown"}} ->
+                {:cont, sock}
+
+              _ ->
+                sock =
+                  sock
+                  |> apply_event_projection_operations(event_name, res)
+
+                {:halt, res, sock}
+            end
         end
       end)
 
@@ -217,11 +253,17 @@ defmodule Alva.LiveView do
 
     socket =
       cond do
-        map_size(route_change_collections) == 0 and not route_subscription_callbacks ->
+        map_size(route_change_collections) == 0 and not route_subscription_callbacks and
+            is_nil(page_state_callback) ->
           socket
 
         map_size(route_change_collections) == 0 and route_subscription_callbacks and
+          is_nil(page_state_callback) and
             not route_lifecycle_available?(socket) ->
+          socket
+
+        map_size(route_change_collections) == 0 and not route_subscription_callbacks and
+          not is_nil(page_state_callback) and not route_lifecycle_available?(socket) ->
           socket
 
         true ->
@@ -232,6 +274,7 @@ defmodule Alva.LiveView do
                 |> put_route_params(params)
                 |> sync_projection_route_topics(route_subscriptions)
                 |> refresh_route_change_collections()
+                |> sync_page_state(page_state_callback)
 
               {:cont, sock}
           end)
@@ -249,6 +292,7 @@ defmodule Alva.LiveView do
       end)
 
     socket = sync_projection_route_topics(socket, route_subscriptions)
+    socket = sync_page_state(socket, page_state_callback)
 
     {:cont, socket}
   end
@@ -270,6 +314,61 @@ defmodule Alva.LiveView do
           {:halt, push_signals(sock, notification.data, signals)}
         end
     end
+  end
+
+  defp upload_lifecycle_event?(event_name)
+       when event_name in [@upload_change_event, @upload_submit_event],
+       do: true
+
+  defp upload_lifecycle_event?(_event_name), do: false
+
+  defp handle_page_event(page_event_callbacks, event_name, params, socket) do
+    %{callback: callback} = Map.fetch!(page_event_callbacks, event_name)
+
+    callback
+    |> resolve_page_event_callback!(socket, event_name, params)
+    |> normalize_page_event_result!(event_name, callback)
+  end
+
+  defp resolve_page_event_callback!(callback, %{view: view} = socket, event_name, params)
+       when is_atom(view) and not is_nil(view) do
+    if function_exported?(view, callback, 2) do
+      apply(view, callback, [params, socket])
+    else
+      raise ArgumentError,
+            "Alva page event #{inspect(event_name)} callback #{inspect(callback)} must be defined on #{inspect(view)} with arity 2"
+    end
+  end
+
+  defp resolve_page_event_callback!(callback, _socket, event_name, _params) do
+    raise ArgumentError,
+          "Alva page event #{inspect(event_name)} callback #{inspect(callback)} requires socket.view to be set"
+  end
+
+  defp normalize_page_event_result!(
+         {:reply, reply, %Phoenix.LiveView.Socket{} = socket},
+         _event_name,
+         _callback
+       )
+       when is_map(reply) do
+    {:halt, reply, socket}
+  end
+
+  defp normalize_page_event_result!(result, event_name, callback) do
+    raise ArgumentError,
+          "Alva page event #{inspect(event_name)} callback #{inspect(callback)} must return {:reply, map, socket}, got: #{inspect(result)}"
+  end
+
+  defp ensure_page_events_do_not_shadow_dispatcher_events!(
+         page_event_callbacks,
+         %Alva.App.Info.Registry{} = registry
+       ) do
+    Enum.each(Map.keys(page_event_callbacks), fn event_name ->
+      if Map.has_key?(registry.event_map, event_name) do
+        raise ArgumentError,
+              "Alva page_events entry #{inspect(event_name)} collides with a host app dispatcher event. Page-owned events must use distinct browser event names and may dispatch Alva events from the callback."
+      end
+    end)
   end
 
   defp endpoint_pubsub!(%{endpoint: endpoint}) when is_atom(endpoint) and not is_nil(endpoint) do
@@ -830,6 +929,79 @@ defmodule Alva.LiveView do
 
   defp unwrap_route_callback_result!(value, _kind, _callback), do: value
 
+  defp page_event_callbacks!(page_events) do
+    page_events
+    |> Enum.map(&normalize_page_event_spec!/1)
+    |> Map.new()
+  end
+
+  defp normalize_page_state_callback!(nil), do: nil
+  defp normalize_page_state_callback!(callback) when is_atom(callback), do: callback
+
+  defp normalize_page_state_callback!(callback) do
+    raise ArgumentError,
+          "Alva declarative `page_state:` must be a local callback atom, got: #{inspect(callback)}"
+  end
+
+  defp sync_page_state(socket, nil), do: socket
+
+  defp sync_page_state(socket, callback) when is_atom(callback) do
+    page_state =
+      callback
+      |> resolve_page_state_callback!(socket)
+      |> unwrap_page_state_callback_result!(callback)
+      |> normalize_page_state!(callback)
+
+    Phoenix.Component.assign(socket, page_state)
+  end
+
+  defp resolve_page_state_callback!(callback, %{view: view} = socket)
+       when is_atom(view) and not is_nil(view) do
+    cond do
+      function_exported?(view, callback, 1) ->
+        apply(view, callback, [socket])
+
+      function_exported?(view, callback, 0) ->
+        apply(view, callback, [])
+
+      true ->
+        raise ArgumentError,
+              "Alva page_state callback #{inspect(callback)} is not defined on #{inspect(view)}"
+    end
+  end
+
+  defp resolve_page_state_callback!(callback, _socket) do
+    raise ArgumentError,
+          "Alva page_state callback #{inspect(callback)} requires socket.view to be set"
+  end
+
+  defp unwrap_page_state_callback_result!({:ok, value}, _callback), do: value
+
+  defp unwrap_page_state_callback_result!({:error, reason}, callback) do
+    raise ArgumentError,
+          "Alva page_state callback #{inspect(callback)} failed: #{inspect(reason)}"
+  end
+
+  defp unwrap_page_state_callback_result!(value, _callback), do: value
+
+  defp normalize_page_state!(page_state, _callback) when is_map(page_state) do
+    if Enum.all?(Map.keys(page_state), &is_atom/1) do
+      page_state
+    else
+      raise_invalid_page_state!(:keys, page_state)
+    end
+  end
+
+  defp normalize_page_state!(page_state, callback) do
+    raise ArgumentError,
+          "Alva page_state callback #{inspect(callback)} must return a map with atom keys, got: #{inspect(page_state)}"
+  end
+
+  defp raise_invalid_page_state!(:keys, page_state) do
+    raise ArgumentError,
+          "Alva page_state callbacks must return a map with atom keys, got: #{inspect(page_state)}"
+  end
+
   defp resolve_live_view_callback!(callback, %{view: view} = socket, name, kind)
        when is_atom(view) and not is_nil(view) do
     cond do
@@ -1048,33 +1220,37 @@ defmodule Alva.LiveView do
 
     validate_collection_activation_specs!(collections)
     validate_signal_activation_specs!(signals)
+    validate_page_event_activation_specs!(Map.get(config, :page_events, []))
+    validate_page_state_activation_spec!(Map.get(config, :page_state))
     validate_projection_namespace_activation_specs!(collections, signals)
 
     %{
       collections: collections,
       signals: signals,
-      route_subscriptions: Map.get(config, :route_subscriptions, [])
+      route_subscriptions: Map.get(config, :route_subscriptions, []),
+      page_events: Map.get(config, :page_events, []),
+      page_state: Map.get(config, :page_state)
     }
   end
 
   defp normalize_mount_config(config) when is_tuple(config) do
     raise ArgumentError,
-          "Alva declarative page activation no longer supports legacy tuple mount config. Use keyword-form `use Alva.LiveView` or pass a map with :collections, :signals, and :route_subscriptions."
+          "Alva declarative page activation no longer supports legacy tuple mount config. Use keyword-form `use Alva.LiveView` or pass a map with :collections, :signals, :route_subscriptions, :page_events, and :page_state."
   end
 
   defp normalize_mount_config(config) when is_list(config) do
     if Keyword.keyword?(config) do
       raise ArgumentError,
-            "Alva declarative page activation maps must be passed as a map, not a keyword list. Use keyword-form `use Alva.LiveView` or pass %{collections: ..., signals: ..., route_subscriptions: ...}."
+            "Alva declarative page activation maps must be passed as a map, not a keyword list. Use keyword-form `use Alva.LiveView` or pass %{collections: ..., signals: ..., route_subscriptions: ..., page_events: ..., page_state: ...}."
     else
       raise ArgumentError,
-            "Alva declarative page activation no longer accepts bare domain lists. Use keyword-form `use Alva.LiveView` or pass a map with :collections, :signals, and :route_subscriptions."
+            "Alva declarative page activation no longer accepts bare domain lists. Use keyword-form `use Alva.LiveView` or pass a map with :collections, :signals, :route_subscriptions, :page_events, and :page_state."
     end
   end
 
   defp normalize_mount_config(config) do
     raise ArgumentError,
-          "Alva declarative page activation must be configured with keyword-form `use Alva.LiveView` or a map containing :collections, :signals, and :route_subscriptions. Got: #{inspect(config)}"
+          "Alva declarative page activation must be configured with keyword-form `use Alva.LiveView` or a map containing :collections, :signals, :route_subscriptions, :page_events, and :page_state. Got: #{inspect(config)}"
   end
 
   defp normalize_route_params(params) when is_map(params), do: params
@@ -1149,12 +1325,28 @@ defmodule Alva.LiveView do
         :error ->
           :ok
       end
+
+      case Keyword.fetch(opts, :page_events) do
+        {:ok, page_events} ->
+          maybe_validate_page_event_use_declarations!(page_events, caller)
+
+        :error ->
+          :ok
+      end
+
+      case Keyword.fetch(opts, :page_state) do
+        {:ok, page_state} ->
+          maybe_validate_page_state_use_declaration!(page_state, caller)
+
+        :error ->
+          :ok
+      end
     else
       raise CompileError,
         file: caller.file,
         line: caller.line,
         description:
-          "use Alva.LiveView expects keyword options. Use keyword-form declarative activation with :collections, :signals, and :route_subscriptions."
+          "use Alva.LiveView expects keyword options. Use keyword-form declarative activation with :collections, :signals, :route_subscriptions, :page_events, and :page_state."
     end
   end
 
@@ -1163,7 +1355,7 @@ defmodule Alva.LiveView do
       file: caller.file,
       line: caller.line,
       description:
-        "use Alva.LiveView expects keyword options. Use keyword-form declarative activation with :collections, :signals, and :route_subscriptions."
+        "use Alva.LiveView expects keyword options. Use keyword-form declarative activation with :collections, :signals, :route_subscriptions, :page_events, and :page_state."
   end
 
   defp maybe_validate_collection_use_declarations!(collections, caller) do
@@ -1208,6 +1400,20 @@ defmodule Alva.LiveView do
        ),
        do: :ok
 
+  defp maybe_validate_page_event_use_declarations!(page_events, caller) do
+    case expand_use_opt_literal(page_events, caller) do
+      {:ok, page_events} -> validate_page_event_use_declarations!(page_events, caller)
+      :dynamic -> :ok
+    end
+  end
+
+  defp maybe_validate_page_state_use_declaration!(page_state, caller) do
+    case expand_use_opt_literal(page_state, caller) do
+      {:ok, page_state} -> validate_page_state_use_declaration!(page_state, caller)
+      :dynamic -> :ok
+    end
+  end
+
   defp expand_use_opt_literal(value, caller) do
     expanded = Macro.expand(value, caller)
 
@@ -1248,7 +1454,7 @@ defmodule Alva.LiveView do
         file: caller.file,
         line: caller.line,
         description:
-          "Alva declarative page activation only accepts :collections, :signals, and :route_subscriptions. Unsupported key: #{inspect(key)}"
+          "Alva declarative page activation only accepts :collections, :signals, :route_subscriptions, :page_events, and :page_state. Unsupported key: #{inspect(key)}"
     end
   end
 
@@ -1496,6 +1702,96 @@ defmodule Alva.LiveView do
     end)
   end
 
+  defp validate_page_event_use_declarations!(page_events, caller) when is_list(page_events) do
+    event_names =
+      Enum.map(page_events, fn
+        {event_name, callback} when is_binary(event_name) and is_atom(callback) ->
+          event_name
+
+        {:{}, _, [event_name, callback, _types]} when is_binary(event_name) and is_atom(callback) ->
+          event_name
+
+        {event_name, callback, types} when is_binary(event_name) and is_atom(callback) and is_map(types) ->
+          event_name
+
+        shape when (is_tuple(shape) and tuple_size(shape) == 2 and is_binary(elem(shape, 0))) or
+                     (is_tuple(shape) and tuple_size(shape) == 3 and is_binary(elem(shape, 0))) or
+                     (is_tuple(shape) and tuple_size(shape) == 3 and elem(shape, 0) == :{} and is_list(elem(shape, 2)) and is_binary(hd(elem(shape, 2)))) ->
+          # Extract event_name and callback for the error message
+          {event_name, callback} =
+            case shape do
+              {e, c} -> {e, c}
+              {e, c, _} -> {e, c}
+              {:{}, _, [e, c, _]} -> {e, c}
+            end
+
+          raise CompileError,
+            file: caller.file,
+            line: caller.line,
+            description: "Alva declarative page_events callback for #{inspect(event_name)} must be a local callback atom, got: #{inspect(callback)}"
+
+        {event_name, _callback} ->
+          raise CompileError,
+            file: caller.file,
+            line: caller.line,
+            description: "Alva declarative page_events event names must be binaries, got: #{inspect(event_name)}"
+
+        {:{}, _, [event_name, _callback, _types]} ->
+          raise CompileError,
+            file: caller.file,
+            line: caller.line,
+            description: "Alva declarative page_events event names must be binaries, got: #{inspect(event_name)}"
+
+        {event_name, _callback, _types} ->
+          raise CompileError,
+            file: caller.file,
+            line: caller.line,
+            description: "Alva declarative page_events event names must be binaries, got: #{inspect(event_name)}"
+
+        other ->
+          raise CompileError,
+            file: caller.file,
+            line: caller.line,
+            description: "Alva declarative page_events entries must be {event_name, callback} or {event_name, callback, types} tuples. Got: #{inspect(other)}"
+      end)
+
+    validate_unique_page_event_use_names!(event_names, caller)
+  end
+
+  defp validate_page_event_use_declarations!(_page_events, caller) do
+    raise CompileError,
+      file: caller.file,
+      line: caller.line,
+      description:
+        "Alva declarative `page_events:` must be a list of {event_name, callback} tuples."
+  end
+
+  defp validate_unique_page_event_use_names!(event_names, caller) do
+    event_names
+    |> Enum.frequencies()
+    |> Enum.each(fn
+      {_event_name, 1} ->
+        :ok
+
+      {event_name, _count} ->
+        raise CompileError,
+          file: caller.file,
+          line: caller.line,
+          description:
+            "Alva declarative page_events contains duplicate entries for #{inspect(event_name)}"
+    end)
+  end
+
+  defp validate_page_state_use_declaration!(callback, _caller) when is_atom(callback), do: :ok
+
+  defp validate_page_state_use_declaration!(callback, caller) do
+    raise CompileError,
+      file: caller.file,
+      line: caller.line,
+      description:
+        "Alva declarative `page_state:` must be a local callback atom, got: #{inspect(callback)}"
+  end
+
   defp validate_mount_config_keys!(config) do
     config
     |> Map.keys()
@@ -1513,6 +1809,12 @@ defmodule Alva.LiveView do
       :route_subscriptions ->
         :ok
 
+      :page_events ->
+        :ok
+
+      :page_state ->
+        :ok
+
       :streams ->
         raise ArgumentError,
               "Alva declarative page activation no longer accepts top-level `streams:`. Replace route-owned lists with `collections:` or use raw Phoenix PubSub outside Alva."
@@ -1523,7 +1825,7 @@ defmodule Alva.LiveView do
 
       key ->
         raise ArgumentError,
-              "Alva declarative page activation only accepts :collections, :signals, and :route_subscriptions. Unsupported key: #{inspect(key)}"
+              "Alva declarative page activation only accepts :collections, :signals, :route_subscriptions, :page_events, and :page_state. Unsupported key: #{inspect(key)}"
     end)
   end
 
@@ -1590,6 +1892,65 @@ defmodule Alva.LiveView do
   defp validate_signal_activation_specs!(signals) do
     raise ArgumentError,
           "Alva declarative `signals:` must be a list of atom declaration keys, got: #{inspect(signals)}"
+  end
+
+  defp validate_page_event_activation_specs!(page_events) when is_list(page_events) do
+    event_names =
+      page_events
+      |> Enum.map(&normalize_page_event_spec!/1)
+      |> Enum.map(&elem(&1, 0))
+
+    validate_unique_page_event_activation_specs!(event_names)
+  end
+
+  defp validate_page_event_activation_specs!(page_events) do
+    raise ArgumentError,
+          "Alva declarative `page_events:` must be a list of {event_name, callback} tuples, got: #{inspect(page_events)}"
+  end
+
+  defp validate_page_state_activation_spec!(nil), do: :ok
+  defp validate_page_state_activation_spec!(callback) when is_atom(callback), do: :ok
+
+  defp validate_page_state_activation_spec!(callback) do
+    raise ArgumentError,
+          "Alva declarative `page_state:` must be a local callback atom, got: #{inspect(callback)}"
+  end
+
+  defp normalize_page_event_spec!({event_name, callback}) when is_binary(event_name) do
+    normalize_page_event_spec!({event_name, callback, %{input: "Record<string, unknown>", output: "void"}})
+  end
+
+  defp normalize_page_event_spec!({event_name, callback, types}) when is_binary(event_name) and is_atom(callback) do
+    types = Map.merge(%{input: "Record<string, unknown>", output: "void"}, types)
+    {event_name, %{callback: callback, types: types}}
+  end
+
+  defp normalize_page_event_spec!({event_name, callback, _types}) when is_binary(event_name) do
+    raise ArgumentError,
+          "Alva page_events callback for #{inspect(event_name)} must be a local callback atom, got: #{inspect(callback)}"
+  end
+
+  defp normalize_page_event_spec!({event_name, _callback}) do
+    raise ArgumentError,
+          "Alva page_events event names must be binaries, got: #{inspect(event_name)}"
+  end
+
+  defp normalize_page_event_spec!(page_event) do
+    raise ArgumentError,
+          "Alva page_events entries must be {event_name, callback} tuples like {\"support.join_chat\", :join_chat_page_event}, got: #{inspect(page_event)}"
+  end
+
+  defp validate_unique_page_event_activation_specs!(event_names) do
+    event_names
+    |> Enum.frequencies()
+    |> Enum.each(fn
+      {_event_name, 1} ->
+        :ok
+
+      {event_name, _count} ->
+        raise ArgumentError,
+              "Alva declarative page_events contains duplicate entries for #{inspect(event_name)}"
+    end)
   end
 
   defp validate_unique_activation_specs!(names, kind) do

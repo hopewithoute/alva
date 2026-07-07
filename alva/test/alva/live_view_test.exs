@@ -475,6 +475,76 @@ defmodule Alva.LiveViewTest do
     end
   end
 
+  defmodule PageEventLive do
+    use Phoenix.LiveView
+
+    use Alva.LiveView,
+      page_events: [
+        {"page.echo", :echo_page_event},
+        {"page.invalid", :invalid_page_event}
+      ]
+
+    def echo_page_event(%{"name" => name}, socket) do
+      socket = Phoenix.Component.assign(socket, :echoed_name, name)
+      {:reply, %{ok: true, data: %{name: name}}, socket}
+    end
+
+    def invalid_page_event(_params, socket) do
+      {:noreply, socket}
+    end
+
+    def render(assigns) do
+      assigns = Phoenix.Component.assign(assigns, :echoed_name, Map.get(assigns, :echoed_name))
+
+      ~H"""
+      <div id="page-event-echo"><%= @echoed_name %></div>
+      """
+    end
+  end
+
+  defmodule PageStateLive do
+    use Phoenix.LiveView
+
+    use Alva.LiveView,
+      page_state: :support_page_state
+
+    def support_page_state(socket) do
+      params = Alva.LiveView.route_params(socket)
+
+      %{
+        active_conversation_id: normalize_optional_string(Map.get(params, "conversation_id")),
+        connected_customer_name: normalize_optional_string(Map.get(params, "customer_name"))
+      }
+    end
+
+    def invalid_page_state(_socket), do: :invalid
+
+    def render(assigns) do
+      assigns =
+        Phoenix.Component.assign(assigns, %{
+          active_conversation_id: Map.get(assigns, :active_conversation_id),
+          connected_customer_name: Map.get(assigns, :connected_customer_name)
+        })
+
+      ~H"""
+      <div id="page-state-conversation"><%= @active_conversation_id %></div>
+      <div id="page-state-customer"><%= @connected_customer_name %></div>
+      """
+    end
+
+    defp normalize_optional_string(value) do
+      value
+      |> to_string()
+      |> String.trim()
+      |> case do
+        "" -> nil
+        trimmed -> trimmed
+      end
+    rescue
+      Protocol.UndefinedError -> nil
+    end
+  end
+
   defmodule TestDomain do
     use Ash.Domain, validate_config_inclusion?: false, extensions: [Alva.Domain]
 
@@ -760,6 +830,18 @@ defmodule Alva.LiveViewTest do
 
   test "route_params/1 defaults to an empty map before route params are observed" do
     assert Alva.LiveView.route_params(base_socket()) == %{}
+  end
+
+  test "use Alva.LiveView injects a default no-op handle_params/3" do
+    socket = base_socket()
+
+    assert {:noreply, ^socket} = DummyLive.handle_params(%{}, "/", socket)
+  end
+
+  test "use Alva.LiveView injects a default no-op handle_info/2" do
+    socket = base_socket()
+
+    assert {:noreply, ^socket} = DummyLive.handle_info(:unhandled_message, socket)
   end
 
   test "route_params/1 returns the latest route params known to Alva" do
@@ -1913,6 +1995,87 @@ defmodule Alva.LiveViewTest do
     assert reply.ok == false
     assert stream_inserts(final_socket, :sales_orders) == []
     assert stream_deletes(final_socket, :sales_orders) == []
+  end
+
+  test "declared page_events halt with callback replies and socket updates" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{page_events: [{"page.echo", :echo_page_event}]},
+        %{},
+        %{},
+        base_socket(view: PageEventLive)
+      )
+
+    [%{function: callback}] = socket.private.lifecycle.handle_event
+
+    assert {:halt, %{ok: true, data: %{name: "Ada"}}, final_socket} =
+             callback.("page.echo", %{"name" => "Ada"}, socket)
+
+    assert final_socket.assigns.echoed_name == "Ada"
+  end
+
+  test "page_events fail loudly when callbacks do not return reply tuples" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{page_events: [{"page.invalid", :invalid_page_event}]},
+        %{},
+        %{},
+        base_socket(view: PageEventLive)
+      )
+
+    [%{function: callback}] = socket.private.lifecycle.handle_event
+
+    assert_raise ArgumentError,
+                 ~r/page event "page.invalid" callback :invalid_page_event must return \{:reply, map, socket\}/,
+                 fn ->
+                   callback.("page.invalid", %{}, socket)
+                 end
+  end
+
+  test "page_state derives assigns during mount and route lifecycle changes" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{page_state: :support_page_state},
+        %{"conversation_id" => "conv-1", "customer_name" => "Ada"},
+        %{},
+        base_socket(view: PageStateLive, router: Router)
+      )
+
+    assert socket.assigns.active_conversation_id == "conv-1"
+    assert socket.assigns.connected_customer_name == "Ada"
+
+    [%{function: callback}] = socket.private.lifecycle.handle_params
+
+    assert {:cont, socket} =
+             callback.(
+               %{"conversation_id" => "conv-2", "customer_name" => "Grace"},
+               "/support?conversation_id=conv-2&customer_name=Grace",
+               socket
+             )
+
+    assert socket.assigns.active_conversation_id == "conv-2"
+    assert socket.assigns.connected_customer_name == "Grace"
+  end
+
+  test "page_state fails loudly when callbacks do not return maps" do
+    assert_raise ArgumentError,
+                 ~r/page_state callback :invalid_page_state must return a map/,
+                 fn ->
+                   Alva.LiveView.on_mount(
+                     %{page_state: :invalid_page_state},
+                     %{},
+                     %{},
+                     base_socket(view: PageStateLive)
+                   )
+                 end
+  end
+
+  test "internal upload lifecycle events halt in Alva without page handlers" do
+    {:cont, socket} = Alva.LiveView.on_mount(%{}, %{}, %{}, base_socket())
+    [%{function: callback}] = socket.private.lifecycle.handle_event
+
+    assert {:halt, ^socket} = callback.("alva.validate_upload", %{}, socket)
+    assert {:halt, ^socket} = callback.("alva.save_upload", %{}, socket)
   end
 
   test "signal-only delivery does not mutate a route collection" do

@@ -1,4 +1,5 @@
 import { ref, reactive, watch, onScopeDispose, getCurrentScope } from "vue";
+import type { LiveResult } from "./useAlvaApi";
 
 export interface AshFormOptions<FormValues, EventKeys> {
     initialValues: FormValues;
@@ -7,10 +8,6 @@ export interface AshFormOptions<FormValues, EventKeys> {
     uploads?: Record<string, { getFileReferences: () => string[] }>;
     onOptimisticSubmit?: (formData: FormValues) => (() => void) | void;
 }
-
-export type LiveResult<T = any> =
-    | { ok: true; data: T; meta?: Record<string, any> }
-    | { ok: false; error: any; meta?: Record<string, any> };
 
 export function ashForm<
     Events extends Record<string, { input: any; output: any }>,
@@ -144,21 +141,21 @@ export function ashForm<
                             values as any,
                         );
                         validationCache.set(cacheKey, result);
-                    } catch (e) {
-                        result = { ok: false, error: e };
+                    } catch (error: any) {
+                        result = { ok: false, error: { type: "unknown", message: error.message || String(error) } };
                     }
                 }
 
                 // Only apply if this is still the most recent validation and no submit has occurred
                 if (currentValidation === validateCounter && !loading.value) {
-                    applyErrors(result);
+                    applyErrors(result!);
                     isValidating.value = false;
                 }
 
                 if (pendingResolve === resolve) {
                     pendingResolve = null;
                 }
-                resolve(result);
+                resolve(result!);
             }, options.debounceMs || 300);
         });
     };

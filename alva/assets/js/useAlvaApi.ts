@@ -6,6 +6,7 @@ export type LiveErrorType =
     | "not_found"
     | "conflict"
     | "stale"
+    | "cancelled"
     | "unknown";
 
 export type LiveError = {

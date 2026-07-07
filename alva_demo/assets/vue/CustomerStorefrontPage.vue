@@ -1,20 +1,22 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from "vue";
 import { createAlvaApi } from "../js/alva/client";
-import { useChatMessages } from "./composables/useChatMessages";
+import { usePageEvent } from "alva";
+import type { CustomerStorefrontLiveEvents } from "../js/alva/CustomerStorefrontLive.events";
 import { getStatusColor } from "./utils/ui";
 import Button from "./components/ui/button/Button.vue";
 
 import type {
   Order,
   Product,
-  Conversation,
   SupportMessage,
 } from "../js/alva/types";
 
 const props = defineProps<{
   sales_orders?: Order[];
   products?: Product[];
+  active_conversation_id?: string | null;
+  connected_customer_name?: string | null;
   support_messages?: SupportMessage[];
 }>();
 
@@ -25,23 +27,25 @@ const ordering_product_id = ref<string | null>(null);
 const is_orders_open = ref(false);
 const selected_order_id = ref<string | null>(null);
 
-const active_conversation = ref<Conversation | null>(null);
-const connected_customer_name = ref<string | null>(null);
-const historical_messages = ref<SupportMessage[]>([]);
 const new_message_text = ref("");
-const is_joining_chat = ref(false);
 const is_sending_message = ref(false);
-const chat_error = ref<string | null>(null);
+const send_message_error = ref<string | null>(null);
 const chat_messages_el = ref<HTMLElement | null>(null);
-let chat_request_id = 0;
 
 const api = createAlvaApi();
+const joinChatEvent = usePageEvent<CustomerStorefrontLiveEvents, "support.join_chat">("support.join_chat");
+const resetChatEvent = usePageEvent<CustomerStorefrontLiveEvents, "support.reset_chat">("support.reset_chat");
+const active_conversation_id = computed(() => props.active_conversation_id ?? null);
+const connected_customer_name = computed(
+  () => props.connected_customer_name ?? null,
+);
 
 const formatPrice = (cents: number) => {
   return `$${(cents / 100).toFixed(2)}`;
 };
 
 const current_customer_name = computed(() => customer_name.value.trim());
+const chat_messages = computed(() => props.support_messages ?? []);
 
 const getProductName = (product_id: string) => {
   const product = props.products?.find(
@@ -83,7 +87,7 @@ const selected_order = computed(() => {
 
 const is_chat_connected = computed(() => {
   return Boolean(
-    active_conversation.value &&
+    active_conversation_id.value &&
     connected_customer_name.value === current_customer_name.value,
   );
 });
@@ -93,7 +97,7 @@ const chat_status = computed(() => {
     return "Enter your customer name to unlock orders and support chat.";
   }
 
-  if (is_joining_chat.value) {
+  if (joinChatEvent.isLoading.value) {
     return "Connecting your support conversation...";
   }
 
@@ -104,13 +108,6 @@ const chat_status = computed(() => {
   return "Connect once, then keep chatting with merchant support here.";
 });
 
-const active_conversation_id = computed(() => active_conversation.value?.id);
-const chat_messages = useChatMessages(
-  active_conversation_id,
-  historical_messages,
-  computed(() => props.support_messages),
-);
-
 const scrollChatToBottom = async () => {
   await nextTick();
 
@@ -119,15 +116,14 @@ const scrollChatToBottom = async () => {
   }
 };
 
-const resetChatState = () => {
-  chat_request_id += 1;
-  active_conversation.value = null;
-  connected_customer_name.value = null;
-  historical_messages.value = [];
+const resetChatState = async () => {
+  if (resetChatEvent.isLoading.value) return;
+
   new_message_text.value = "";
-  is_joining_chat.value = false;
   is_sending_message.value = false;
-  chat_error.value = null;
+  send_message_error.value = null;
+
+  await resetChatEvent.call({});
 };
 
 const openRecentOrders = () => {
@@ -182,50 +178,19 @@ const buyProduct = async (product_id: string) => {
 
 const joinChat = async () => {
   const customerName = current_customer_name.value;
-  if (!customerName || is_joining_chat.value) return;
+  if (!customerName || joinChatEvent.isLoading.value) return;
 
   if (is_chat_connected.value) {
-    chat_error.value = null;
     await scrollChatToBottom();
     return;
   }
 
-  const requestId = ++chat_request_id;
-  is_joining_chat.value = true;
-  chat_error.value = null;
+  const result = await joinChatEvent.call({
+    customer_name: customerName,
+  });
 
-  try {
-    const result = await api.call("support.create", {
-      customer_name: customerName,
-    });
-
-    if (requestId !== chat_request_id) return;
-
-    if (result.ok) {
-      active_conversation.value = result.data as Conversation;
-      connected_customer_name.value = customerName;
-      historical_messages.value = [];
-
-      const messagesRes = await api.call("support.list_messages", {
-        conversation_id: active_conversation.value.id,
-      });
-
-      if (requestId !== chat_request_id) return;
-
-      if (messagesRes.ok) {
-        historical_messages.value = messagesRes.data as SupportMessage[];
-        await scrollChatToBottom();
-      } else {
-        chat_error.value =
-          messagesRes.error?.message || "Failed to load messages.";
-      }
-    } else {
-      chat_error.value = result.error?.message || "Failed to join chat.";
-    }
-  } finally {
-    if (requestId === chat_request_id) {
-      is_joining_chat.value = false;
-    }
+  if (result && result.ok) {
+    await scrollChatToBottom();
   }
 };
 
@@ -237,21 +202,21 @@ const sendMessage = async () => {
     await joinChat();
   }
 
-  if (!active_conversation.value) return;
+  if (!active_conversation_id.value) return;
 
   new_message_text.value = "";
   is_sending_message.value = true;
-  chat_error.value = null;
+  send_message_error.value = null;
 
   try {
     const result = await api.call("support.send_message", {
       text: text,
       sender: "shopper",
-      conversation_id: active_conversation.value.id,
+      conversation_id: active_conversation_id.value,
     });
 
     if (!result.ok) {
-      chat_error.value = result.error?.message || "Failed to send message.";
+      send_message_error.value = result.error?.message || "Failed to send message.";
       new_message_text.value = text;
     } else {
       await scrollChatToBottom();
@@ -291,7 +256,7 @@ watch(current_customer_name, (next, prev) => {
   }
 
   if (connected_customer_name.value && next !== connected_customer_name.value) {
-    resetChatState();
+    void resetChatState();
   }
 
   if (prev && next !== prev) {
@@ -466,10 +431,10 @@ watch(current_customer_name, (next, prev) => {
           class="flex-1 overflow-y-auto bg-zinc-50/40 px-5 py-4"
         >
           <div
-            v-if="chat_error"
+            v-if="joinChatEvent.error.value || send_message_error"
             class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
           >
-            {{ chat_error }}
+            {{ (joinChatEvent.error.value?.message) || send_message_error }}
           </div>
           <div
             v-else-if="!current_customer_name"
@@ -518,10 +483,10 @@ watch(current_customer_name, (next, prev) => {
           <div v-if="!is_chat_connected" class="space-y-3">
             <Button
               class="w-full"
+              :disabled="!current_customer_name || joinChatEvent.isLoading.value"
               @click="joinChat"
-              :disabled="!current_customer_name || is_joining_chat"
             >
-              {{ is_joining_chat ? "Connecting..." : "Connect Support Chat" }}
+              {{ joinChatEvent.isLoading.value ? "Connecting..." : "Connect Support Chat" }}
             </Button>
             <p class="text-xs text-zinc-500">
               We reuse one lightweight conversation per customer name for this
