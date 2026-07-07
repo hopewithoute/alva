@@ -9,7 +9,8 @@ vi.mock('vue', () => ({
     onUnmounted: vi.fn((fn) => {
         // Expose for testing
         (globalThis as any)._unmountCallback = fn;
-    })
+    }),
+    getCurrentInstance: vi.fn(() => (globalThis as any)._currentInstance)
 }));
 
 vi.mock('./useAlvaSubscriptions', () => ({
@@ -23,6 +24,7 @@ describe('useAlvaStream', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         delete (globalThis as any)._unmountCallback;
+        delete (globalThis as any)._currentInstance;
 
         mockActivate = vi.fn().mockResolvedValue({ ok: true });
         mockDeactivate = vi.fn().mockResolvedValue({ ok: true });
@@ -35,7 +37,9 @@ describe('useAlvaStream', () => {
 
     it('suppresses isLoading and skips activate when eager data is present', () => {
         const streamData = { fake: "data" };
-        const { isLoading, error } = useAlvaStream('students', {}, streamData);
+        (globalThis as any)._currentInstance = { props: { students: streamData } };
+        
+        const { isLoading, error } = useAlvaStream('students', {});
 
         expect(isLoading.value).toBe(false);
         expect(error.value).toBeNull();
@@ -43,6 +47,7 @@ describe('useAlvaStream', () => {
     });
 
     it('sets isLoading and calls activate when eager data is absent', () => {
+        (globalThis as any)._currentInstance = { props: {} };
         const { isLoading, error } = useAlvaStream('students', {});
 
         // Since it's synchronous in the test setup, it immediately calls activate

@@ -1,4 +1,4 @@
-import { ref, onUnmounted, computed } from "vue";
+import { ref, onUnmounted, computed, getCurrentInstance } from "vue";
 import { useAlvaSubscriptions } from "./useAlvaSubscriptions";
 import type { AlvaSubscriptionDef } from "./useAlvaSubscriptions";
 
@@ -7,12 +7,14 @@ export function useAlvaStream<
     S extends keyof Subs = keyof Subs
 >(
     name: S,
-    input: Subs[S]["input"],
-    streamPropData?: any // The data passed from LiveVue props for this stream
+    input: Subs[S]["input"]
 ) {
     const subs = useAlvaSubscriptions<Subs>();
     const isLoading = ref(false);
     const error = ref<any>(null);
+
+    const instance = getCurrentInstance();
+    const streamPropData = instance?.props[name as string];
 
     // If streamPropData has any keys, it means it's been populated by LiveView eager streams.
     // An uninitialized LiveView stream might be undefined.

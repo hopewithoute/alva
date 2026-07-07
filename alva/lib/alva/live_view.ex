@@ -215,21 +215,12 @@ defmodule Alva.LiveView do
             if Keyword.get(opts, :activate) == :mount do
               case Alva.App.Info.fetch_subscription_by_key(otp_app, key) do
                 {:ok, resource, subscription} ->
-                  if subscription.kind == :stream do
-                    case apply(resource, subscription.resolve, [%{}, acc_sock]) do
-                      {:ok, resolution} ->
-                        acc_sock =
-                          Enum.reduce(resolution.topics || [], acc_sock, fn topic, acc ->
-                            subscribe_dynamic_topic(acc, topic)
-                          end)
+                  case apply(resource, subscription.resolve, [%{}, acc_sock]) do
+                    {:ok, resolution} ->
+                      apply_subscription_resolution(acc_sock, subscription, resolution)
 
-                        Phoenix.LiveView.stream(acc_sock, subscription.name, resolution.items)
-
-                      _ ->
-                        acc_sock
-                    end
-                  else
-                    acc_sock
+                    _ ->
+                      acc_sock
                   end
 
                 _ ->
@@ -1334,18 +1325,13 @@ defmodule Alva.LiveView do
          :ok <- check_subscription_authorization(sock, resource, subscription),
          {:ok, resolution} <- apply(resource, subscription.resolve, [input, sock]) do
       
-      # Subscribe to topics
-      sock =
-        if Phoenix.LiveView.connected?(sock) do
-          Enum.reduce(resolution.topics || [], sock, fn topic, acc_sock ->
-            subscribe_dynamic_topic(acc_sock, topic)
-          end)
-        else
-          sock
-        end
+      sock = apply_subscription_resolution(sock, subscription, resolution)
       
-      # Return success and metadata
-      {:halt, %{ok: true, data: resolution}, sock}
+      # Strip raw data from client reply to prevent leaking it; streams use props, signals use ash.on
+      client_resolution = Map.drop(resolution, [:items])
+      
+      # Return success
+      {:halt, %{ok: true, data: client_resolution}, sock}
     else
       :error ->
         {:halt, %{ok: false, error: :not_found}, sock}
@@ -1353,8 +1339,27 @@ defmodule Alva.LiveView do
       {:error, :forbidden} ->
         {:halt, %{ok: false, error: :forbidden}, sock}
 
-      {:error, error} ->
-        {:halt, %{ok: false, error: error}, sock}
+      {:error, reason} ->
+        {:halt, %{ok: false, error: reason}, sock}
+    end
+  end
+
+  defp apply_subscription_resolution(sock, subscription, resolution) do
+    # Subscribe to topics
+    sock =
+      if Phoenix.LiveView.connected?(sock) do
+        Enum.reduce(resolution.topics || [], sock, fn topic, acc_sock ->
+          subscribe_dynamic_topic(acc_sock, topic)
+        end)
+      else
+        sock
+      end
+
+    # Stream items if it's a stream
+    if subscription.kind == :stream do
+      Phoenix.LiveView.stream(sock, subscription.name, resolution.items)
+    else
+      sock
     end
   end
 
