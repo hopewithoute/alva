@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { computed } from "vue";
+import { providePageState } from "../../../js/alva/usePageState";
 import StorefrontHeader from "../identity/StorefrontHeader.vue";
 import StorefrontProductCard from "../catalog/StorefrontProductCard.vue";
 import CustomerOrderDrawer from "../sales/CustomerOrderDrawer.vue";
 import SupportChatWidget from "../support/SupportChatWidget.vue";
-
+import { ref } from "vue";
 import type { Order, Product, SupportMessage } from "../../../js/alva/types";
 
 const props = defineProps<{
@@ -15,32 +16,18 @@ const props = defineProps<{
   support_messages?: SupportMessage[];
 }>();
 
-const customerName = ref(props.connected_customer_name || "");
+providePageState(props);
+
 const isOrdersOpen = ref(false);
 const orderError = ref<string | null>(null);
 const orderNotice = ref<string | null>(null);
 const orderDrawerRef = ref<any>(null);
-
-watch(() => props.connected_customer_name, (newName) => {
-  if (newName !== undefined && newName !== null && newName !== customerName.value) {
-    customerName.value = newName;
-  }
-});
 
 const recentOrderCount = computed(() => props.sales_orders?.length || 0);
 const recentOrderItems = computed(() => {
   if (!props.sales_orders) return 0;
   return props.sales_orders.reduce((sum, order) => sum + order.quantity, 0);
 });
-
-const onIdentityChanged = (name: string) => {
-  customerName.value = name;
-  if (!name) {
-    isOrdersOpen.value = false;
-    orderNotice.value = null;
-    orderError.value = null;
-  }
-};
 
 const handleOrderPlaced = (order: Order) => {
   orderNotice.value = `Order placed for this product. Open Recent Orders to track the status.`;
@@ -64,11 +51,9 @@ const handleOrderError = (error: string) => {
   <div class="grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px]" data-testid="customer-storefront-vue">
     <section class="min-w-0 space-y-6">
       <StorefrontHeader
-        :customerName="customerName"
         :recentOrderCount="recentOrderCount"
         :recentOrderItems="recentOrderItems"
         @open-orders="isOrdersOpen = true"
-        @identity-changed="onIdentityChanged"
       />
 
       <div class="space-y-4">
@@ -88,7 +73,6 @@ const handleOrderError = (error: string) => {
           v-for="product in props.products"
           :key="product.id"
           :product="product"
-          :customerName="customerName"
           @order-placed="handleOrderPlaced"
           @order-error="handleOrderError"
         />
@@ -96,19 +80,13 @@ const handleOrderError = (error: string) => {
     </section>
 
     <aside class="min-w-0">
-      <SupportChatWidget
-        :customerName="customerName"
-        :activeConversationId="props.active_conversation_id"
-        :connectedCustomerName="props.connected_customer_name"
-        :supportMessages="props.support_messages"
-      />
+      <SupportChatWidget />
     </aside>
 
     <CustomerOrderDrawer
       v-if="isOrdersOpen"
       ref="orderDrawerRef"
       :customerOrders="props.sales_orders || []"
-      :customerName="customerName"
       @close="isOrdersOpen = false"
     />
   </div>

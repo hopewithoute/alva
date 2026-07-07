@@ -1,19 +1,20 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { usePageEvent } from "alva";
+import { usePageEvent, usePageState } from "alva";
 import type { AlvaEvents } from "../../../js/alva/events";
 import type { Product, Order } from "../../../js/alva/types";
 import Button from "../../shared/ui/button/Button.vue";
 
 const props = defineProps<{
   product: Product;
-  customerName: string;
 }>();
 
 const emit = defineEmits<{
   (e: "order-placed", order: Order): void;
   (e: "order-error", error: string): void;
 }>();
+
+const { connected_customer_name } = usePageState<{ connected_customer_name: string | null }>();
 
 const createOrderEvent = usePageEvent<AlvaEvents, "sales.create_order">("sales.create_order");
 
@@ -22,13 +23,13 @@ const isOrdering = computed(() => createOrderEvent.isLoading.value);
 const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
 const buyProduct = async () => {
-  if (!props.customerName) {
+  if (!connected_customer_name.value) {
     emit("order-error", "Enter your name before placing an order.");
     return;
   }
 
   const result = await createOrderEvent.call({
-    customer_name: props.customerName,
+    customer_name: connected_customer_name.value,
     product_id: props.product.id,
     quantity: 1,
   });
@@ -67,7 +68,7 @@ const buyProduct = async () => {
           size="sm"
           class="w-full min-w-[112px]"
           @click="buyProduct"
-          :disabled="isOrdering || product.stock <= 0 || !customerName"
+          :disabled="isOrdering || product.stock <= 0 || !connected_customer_name"
         >
           <span v-if="product.stock <= 0">Out of Stock</span>
           <span v-else-if="isOrdering">Ordering...</span>

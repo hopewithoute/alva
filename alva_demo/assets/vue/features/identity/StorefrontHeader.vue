@@ -1,26 +1,25 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { usePageEvent } from "alva";
+import { usePageEvent, usePageState } from "alva";
 import type { CustomerStorefrontLiveEvents } from "../../../js/alva/CustomerStorefrontLive.events";
+import { useDebounce } from "../../utils/debounce";
 
 const props = defineProps<{
   recentOrderCount: number;
   recentOrderItems: number;
-  customerName?: string;
 }>();
 
 const emit = defineEmits<{
   (e: "open-orders"): void;
-  (e: "identity-changed", name: string): void;
 }>();
 
-const customerName = ref(props.customerName || "");
+const { connected_customer_name } = usePageState<{ connected_customer_name: string | null }>();
+
+const customerName = ref(connected_customer_name.value || "");
 const setIdentityEvent = usePageEvent<CustomerStorefrontLiveEvents, "storefront.set_identity">("storefront.set_identity");
 
-import { useDebounce } from "../../utils/debounce";
-
-watch(() => props.customerName, (newName) => {
-  if (newName !== undefined && newName !== customerName.value) {
+watch(connected_customer_name, (newName) => {
+  if (newName !== undefined && newName !== null && newName !== customerName.value) {
     customerName.value = newName;
   }
 });
@@ -28,7 +27,6 @@ watch(() => props.customerName, (newName) => {
 const handleIdentityChange = useDebounce((newName: string) => {
   const trimmed = newName.trim();
   setIdentityEvent.call({ customer_name: trimmed });
-  emit("identity-changed", trimmed);
 }, 500);
 
 watch(customerName, (newName) => {
