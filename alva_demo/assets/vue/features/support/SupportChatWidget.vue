@@ -3,7 +3,7 @@ import { ref, nextTick, computed } from "vue";
 import { usePageEvent, usePageState } from "alva";
 import type { CustomerStorefrontLiveEvents } from "../../../js/alva/CustomerStorefrontLive.events";
 import type { SupportMessage } from "../../../js/alva/types";
-import { createAlvaApi } from "../../../js/alva/client";
+import { ashCall } from "../../../js/alva/client";
 import Button from "../../shared/ui/button/Button.vue";
 
 const emit = defineEmits<{
@@ -16,7 +16,6 @@ const { connected_customer_name, active_conversation_id, support_messages } = us
   support_messages: SupportMessage[];
 }>();
 
-const api = createAlvaApi();
 const joinChatEvent = usePageEvent<CustomerStorefrontLiveEvents, "support.join_chat">("support.join_chat");
 const resetChatEvent = usePageEvent<CustomerStorefrontLiveEvents, "support.reset_chat">("support.reset_chat");
 
@@ -81,7 +80,7 @@ const sendMessage = async () => {
   sendMessageError.value = null;
 
   try {
-    const result = await api.call("support.send_message", {
+    const result = await ashCall("support.send_message", {
       text: text,
       sender: "shopper",
       conversation_id: active_conversation_id.value,

@@ -21,10 +21,9 @@ export function useAlvaSignal<
 
     // Register the LiveView event listener for the pushed notifications
     // Assuming backend pushes event with the same name as the signal
-    const unregister = useLiveEvent(name as string, callback);
+    useLiveEvent(name as string, callback);
 
     onUnmounted(() => {
-        unregister();
         subs.deactivate(name, input);
     });
 }

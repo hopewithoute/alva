@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { createAlvaApi } from "../../../js/alva/client";
+import { ashCall } from "../../../js/alva/client";
 import { useAlvaSignal } from "../../../js/alva/useAlvaSignal";
 
 type NotificationSignal = {
@@ -10,7 +10,7 @@ type NotificationSignal = {
   created_at?: string;
 };
 
-const api = createAlvaApi();
+
 const title = ref("Build finished cleanly.");
 const severity = ref<NotificationSignal["severity"]>("success");
 const notices = ref<NotificationSignal[]>([]);
@@ -29,7 +29,7 @@ const sendNotification = async () => {
   sending.value = true;
   error.value = null;
 
-  const result = await api.call("demo_notifications.send", {
+  const result = await ashCall("demo_notifications.send", {
     title: trimmedTitle,
     severity: severity.value,
   });

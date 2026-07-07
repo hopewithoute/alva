@@ -1,0 +1,1685 @@
+diff --git a/.scratch/alva-frontend-dx-coherence/issues/06-form-and-upload-adapters.md b/.scratch/alva-frontend-dx-coherence/issues/06-form-and-upload-adapters.md
+index 8064ef1..dcc469e 100644
+--- a/.scratch/alva-frontend-dx-coherence/issues/06-form-and-upload-adapters.md
++++ b/.scratch/alva-frontend-dx-coherence/issues/06-form-and-upload-adapters.md
+@@ -1,4 +1,4 @@
+-Status: ready-for-agent
++Status: done
+ 
+ ## What to build
+ 
+diff --git a/.scratch/alva-frontend-dx-coherence/issues/07-resubscription-robustness.md b/.scratch/alva-frontend-dx-coherence/issues/07-resubscription-robustness.md
+index a76eeda..21769a9 100644
+--- a/.scratch/alva-frontend-dx-coherence/issues/07-resubscription-robustness.md
++++ b/.scratch/alva-frontend-dx-coherence/issues/07-resubscription-robustness.md
+@@ -1,4 +1,4 @@
+-Status: ready-for-agent
++Status: done
+ 
+ ## What to build
+ 
+diff --git a/CONTEXT.md b/CONTEXT.md
+index bf385cf..3336fdf 100644
+--- a/CONTEXT.md
++++ b/CONTEXT.md
+@@ -14,38 +14,28 @@
+ - **Event**: The published event name carried by an Ash PubSub broadcast, coming from `event:` when provided or otherwise from the publication identity such as an action name. It is transport occurrence metadata, not a client command declaration.
+ - **PubSub Occurrence Key**: The atom identity a resource projection listens for in `on:`, normally the Ash action atom passed to `publish`, such as `:fulfill`. It answers which publication occurrence should drive a Stream delta or Signal callback. It is distinct from a command Event Declaration Key, a concrete Topic, an exposed client name, and a raw PubSub event string.
+ - **Topic**: The concrete PubSub routing scope that carries an Event to interested pages, such as `"orders:all"` or `"orders:tenant:123"`. Topics answer who should receive a publication, not what happened semantically.
+-- **Route Subscription**: The page/socket-level choice of which concrete channel or PubSub topic a LiveView listens to for the current route, actor, tenant, or session. Route Subscriptions are the declarative projection-owned topic wiring surface for active Streams and Signals. They provide realtime scope through inferred defaults for deterministic static scope, explicit topic lists for static overrides, and callback-derived topics for dynamic scope. An explicit empty topic list is a valid opt-out for keeping a projection active without listening for realtime updates; when supplied through `route_subscriptions:`, that empty list is authoritative and suppresses inference for the projection. Projection-keyed `route_subscriptions:` overrides apply only to already-active Streams or Signals and may be partial: projections not listed continue through deterministic inference, and fail loudly if they are not inferable. Explicit `route_subscriptions:` wiring is page-owned and authoritative: Alva validates only the projection target and topic-shape contract, not whether those Topics can be re-derived from publication templates. Non-projection subscriptions should use raw Phoenix PubSub escape hatches instead. Ambiguous inference should fail loudly rather than broaden implicitly. Route Subscriptions do not decide whether an incoming occurrence updates a stream or invokes a callback.
+-- **Dynamic Route Subscription Opt-out**: A `route_subscriptions:` callback that returns `[]` has the same authoritative meaning as a static empty list: keep the projection active for the page, but disable realtime Topic wiring for the current Page Scope without falling back to inference.
+-- **Route Subscription Callback Contract**: A `route_subscriptions:` callback may return a binary Topic, a list of binary Topics, `[]`, or `{:ok, value}` wrapping one of those shapes. `[]` is the only valid opt-out value. `nil` is invalid and should fail loudly rather than acting like an implicit opt-out.
+-- **Route Subscription Lifecycle**: Callback-derived `route_subscriptions:` are route-lifecycle aware. When current **Page Scope** changes through LiveView route lifecycle updates such as new **Route Params**, Alva re-evaluates those callbacks so realtime Topic scope follows the current page state .
+-- **Route Subscription Topic Diff**: When route lifecycle updates change projection-owned Topic scope, Alva diffs the projection-managed Route Subscription Topics for the current page by unsubscribing stale Topics and subscribing new Topics . This keeps realtime scope authoritative for the current **Page Scope** and avoids leaking stale topic wiring across `push_patch` or live navigation.
+-- **Route Subscription Recompute Failure**: Route-lifecycle recompute of callback-derived Route Subscriptions must fail loudly when a callback errors or returns an invalid shape. Alva must not silently keep the old projection-owned Topic set after Page Scope changes, because that would preserve stale realtime scope for the wrong route state.
+-- **Route Subscription Topic Normalization**: Valid Topic lists may contain duplicates, but Alva normalizes them before subscribing. Duplicate Topics do not change semantics and should collapse to one transport subscription entry rather than failing validation.
+-- **Route Subscription Transport Dedupe**: When multiple active projections resolve to the same concrete Topic, the socket subscribes to that Topic only once at the transport layer. Projection semantics remain independent: one incoming occurrence may still update multiple Streams and/or fire multiple Signals if their projection rules match.
+-- **Deterministic Route Subscription Inference**: The declarative default where Alva derives projection Topic wiring automatically only when the final topic set is static, finite, and knowable from projection/resource declarations alone. If Topic wiring depends on runtime Page Scope, callbacks, or ambiguous publication expansion, inference is invalid and the page must declare `route_subscriptions:` explicitly. A projection trigger that matches more than one publication is ambiguous even if those publications would expand to a static union of Topics. A single publication may still expand to multiple Topics and remain deterministic as long as that expansion is static and fully derivable from the declaration itself. Publication topic callbacks are never eligible for deterministic inference, even if they would happen to return static Topics for one page instance.
+-- **Subscription Block**: The resource-level DSL boundary that unifies the old Collection and Signal blocks. It declares what server-owned reactive streams or callbacks are allowed to reach Vue.
++
++- **Subscription Block**: The resource-level DSL boundary that declares what server-owned reactive streams or callbacks are allowed to reach Vue.
+ - **Stream**: A unified data delivery capability formally adopted in ADR 0009. Data delivery is strictly separated from lifecycle intent: Server projects occurrences into native LiveView streams, which LiveVue syncs to Vue props. Vue uses `useAlvaStream` solely to declare lifecycle intent, never to receive raw data payloads.
+-- **Page Scope**: The page-owned context that determines which route state and realtime scope are active for the current LiveView, such as route params, tenant, actor, or session. Page Scope may feed both Stream Input and dynamic Route Subscriptions, but it is not itself a projection.
++- **Page Scope**: The page-owned context that determines which route state and realtime scope are active for the current LiveView, such as route params, tenant, actor, or session. Page Scope may feed Stream Input, but it is not itself a projection.
+ - **Route Params**: URL and path params delivered by Phoenix route lifecycle callbacks such as `handle_params/3`. Route Params describe page state, not Ash action input.
+-- **Signal**: A semantic callback projection of occurrences received through a **Route Subscription** for non-stream cases such as async job progress, async completion, presence, typing, or UI notifications. Signals use application-wide unique client names, announce that something happened, do not own stream synchronization, and follow the same page activation shape as Streams: static scope may be inferred, while dynamic scope stays page-owned.
++- **Signal**: A semantic callback projection of occurrences for non-stream cases such as async job progress, async completion, presence, typing, or UI notifications. Signals use application-wide unique client names, announce that something happened, do not own stream synchronization, and follow the same page activation shape as Streams.
+ - **Event Declaration**: A resource-level command/read exposure whose internal identity is an atom **Declaration Key** while its client-facing command name is carried by `name: "..."`. Event Declarations are for Vue-to-server calls and Stream sources, not for PubSub occurrence matching.
+ - **Projection Trigger**: The `on:` value in a **Stream** operation or **Signal** projection. It references a **PubSub Occurrence Key**, not a command Event Declaration Key, a concrete Topic, an exposed client name, or a raw PubSub event string.
+ - **Signal Declaration**: A resource-level semantic callback exposure whose internal identity is an atom **Declaration Key** while its client-facing callback name is carried by `name: "..."`.
+ - **Resource Projection**: A reusable **Stream** or **Signal** mapping declared at the resource contract boundary. Resource projections define what occurrences may become client-visible state or callbacks, but they are inactive until a page chooses them. Public route-owned list state should be described as Streams, not Stream-based page activation.
+-- **Page Projection**: The LiveView-level activation of selected **Resource Projections** for occurrences received through a **Route Subscription**. The same occurrence may be projected differently by different pages, such as a list page updating a stream and a notification bar showing a callback notification.
+-- **Activation Surface**: The page-facing layer used to wire realtime behavior. Alva exposes declarative activation with `subscriptions:` (which supersedes old `collections:` and `signals:`). Legacy definitions and imperative Stream helpers outside the Alva projection contract are invalid and should fail loudly.
++- **Page Projection**: The LiveView-level activation of selected **Resource Projections**. The same occurrence may be projected differently by different pages, such as a list page updating a stream and a notification bar showing a callback notification.
++- **Activation Surface**: The page-facing layer used to wire realtime behavior. Alva exposes declarative activation with `subscriptions:`. Legacy definitions and imperative Stream helpers outside the Alva projection contract are invalid and should fail loudly.
+ - **Domain SDK Surface**: The generated client-callable Alva SDK surface is not page-scoped. Client Event Declarations are callable through a compile-time registry assembled from the host app's configured `ash_domains`, while authorization remains the responsibility of Ash policies and auth context rather than page-level allowlists.
+ - **Global Command Registry**: The application-wide registry assembled from compile-time metadata in the host app's configured `ash_domains`. It maps exposed client Event names to their Resource and Action metadata for SDK dispatch. Runtime should resolve it by host app context such as `otp_app`, may cache the assembled table in stable environments, should prefer uncached assembly in iterative environments like dev/test, and must never narrow command lookup through page-scoped Domains.
+ - **Global Projection Registry**: The application-wide registry assembled from compile-time metadata in the host app's configured `ash_domains` for page-facing Streams, Signals, and upload metadata. `use Alva.LiveView` activates projections by declaration key from this host app registry and should not require page-scoped `domains:` input. Runtime may cache the assembled registry per host app in stable environments, should prefer uncached assembly in iterative environments like dev/test, and projection identity remains compile-time-authored.
+ - **Host App Registry Boundary**: The library-level seam where Alva resolves a host app's configured `ash_domains` and assembles application-wide command and projection registries. Page activation, SDK dispatch, and code generation depend on this host app boundary rather than on page-scoped Domain selection or duplicated aggregation logic.
+ - **Host App Compile-Time Verification**: Application-wide uniqueness and activation-surface validation should fail while compiling the consumer host app, where `ash_domains` are known. These checks should piggyback on the existing domain compile path without extra setup, custom compilers, or explicit verification tasks, while remaining tolerant of normal host-app compile order instead of forcing new sibling-domain compilation dependencies. Compiling the Alva library in isolation without a host app registry context should remain a safe no-op for those host-app-level checks.
+-- **Activation Declaration Form**: Public declarative page activation uses only the keyword form of `use Alva.LiveView` and should expose only page-owned concerns such as `subscriptions:`, and `route_subscriptions:`. Legacy tuple forms and page-scoped `domains:` are not part of the supported surface because they bypass or duplicate host app registry resolution and should fail at compile-time without a deprecation shim.
+-- **Activation Validation**: Alva validates page activation in two strict layers. First, declarative page activation must match the allowlisted public surface and allowed nested option shapes. Second, deterministic inference may run only for valid declarative projections whose Topic wiring remains static and unambiguous. Both layers fail loudly rather than silently widening behavior or falling back to legacy paths.
+-- **Activation Failure Timing**: Invalid declarative activation shape fails at compile-time because it is knowable from the `use Alva.LiveView` declaration itself. Deterministic inference failures happen at activation time when projection/resource wiring and publication matching are resolved. Neither layer should silently downgrade into a legacy path or a broader subscription scope.
+-- **Route Subscription Target Validation**: A `route_subscriptions:` entry may reference only a projection that is explicitly activated on the same page. Because that target set is declaration-known, invalid projection targets should fail at compile-time rather than waiting for mount or runtime delivery.
+-- **Route Subscription Declaration Uniqueness**: A page may declare at most one `route_subscriptions:` entry per projection. Duplicate entries for the same projection are declaration conflicts and should fail at compile-time.
+-- **Projection Activation Uniqueness**: A page may activate a given Stream or Signal at most once in declarative page activation. Duplicate entries in `subscriptions:` are declaration conflicts and should fail at compile-time, matching `route_subscriptions:` uniqueness rules.
+-- **Page Projection Namespace**: Declarative page activation uses one shared projection-key namespace across `subscriptions:` and projection-keyed `route_subscriptions:`. A page may not activate the same Declaration Key as both a Stream and a Signal because `route_subscriptions:` targets and page-level projection identity must stay unambiguous.
++- **Activation Declaration Form**: Public declarative page activation uses only the keyword form of `use Alva.LiveView` and should expose only page-owned concerns such as `subscriptions:`. Legacy tuple forms and page-scoped `domains:` are not part of the supported surface because they bypass or duplicate host app registry resolution and should fail at compile-time without a deprecation shim.
++- **Activation Validation**: Alva validates page activation strict layers. First, declarative page activation must match the allowlisted public surface and allowed nested option shapes. Both layers fail loudly rather than silently widening behavior or falling back to legacy paths.
++- **Activation Failure Timing**: Invalid declarative activation shape fails at compile-time because it is knowable from the `use Alva.LiveView` declaration itself.
++- **Projection Activation Uniqueness**: A page may activate a given Stream or Signal at most once in declarative page activation. Duplicate entries in `subscriptions:` are declaration conflicts and should fail at compile-time.
++- **Page Projection Namespace**: Declarative page activation uses one shared projection-key namespace across `subscriptions:`. A page may not activate the same Declaration Key as both a Stream and a Signal.
+ - **Projection Reuse**: The same server occurrence may back both a **Stream** and a **Signal**. Duplication is resolved by page-level activation rather than being rejected at the resource boundary.
+ - **Alva Client API**: A suite of custom Vue-side wrappers and composables that provide a highly advanced, type-safe API over LiveVue. It includes:
+   - `ashCall`: For executing remote events (mutations) and returning an immediate promise.
+@@ -61,7 +51,7 @@
+ - **Strict End-to-End Casing**: The system rigidly enforces `snake_case` from Elixir down to the Vue TypeScript client to preserve 1:1 mapping and avoid dynamic casing transformation chaos.
+ - **Static Field Selection**: The shape of the data returned to the client is dictated by the server's Auto-DTO. Dynamic GraphQL-style field selection is strictly prohibited to enforce server authority.
+ - **Opt-in Filter AST Codegen**: By default, clients cannot send complex filter ASTs. However, when an event explicitly sets `enable_filter: true`, Alva leverages `ash_typescript` generation logic to construct full, type-safe Filter AST types on the frontend.
+-- **Selective PubSub Subscription**: Alva only listens to Topics a page explicitly activates through declarative `route_subscriptions:` for projections, while any non-projection raw Phoenix PubSub wiring stays outside the Alva projection contract. `Alva.LiveView`'s `handle_info` fallback then safely intercepts `%Ash.Notifier.Notification{}` events and routes them into active projections.
++- **Selective PubSub Subscription**: Alva only listens to Topics a page explicitly activates. `Alva.LiveView`'s `handle_info` fallback then safely intercepts `%Ash.Notifier.Notification{}` events and routes them into active projections.
+ - **Signal Event Name**: The application-wide client-facing realtime `name: "..."` exposed to Vue through a Signal declaration. It names the domain occurrence directly (e.g. `chat.message_created`) instead of leaking a generic transport envelope such as `ash_notification`.
+ - **Signal Payload**: The normalized map payload delivered to a Vue `ash.on()` callback for a **Signal**. DTO-shaped payloads are passed through as maps, scalar or list payloads are wrapped under `data`, and optional metadata lives under `meta`.
+ - **Alva.LiveView Hijack**: A required macro (`use Alva.LiveView`) that hooks into LiveView's lifecycle. Crucially, it hijacks `mount` to dynamically inject `allow_upload` for any exposed events requiring `ash_storage`, providing true zero-boilerplate file uploads. It also provides automatic fallbacks for `handle_event` (to route to the Dispatcher) and `handle_info` (for PubSub bridging).
+@@ -77,7 +67,7 @@
+ ## Flagged ambiguities
+ 
+ **Stream API**:
+-The term is currently overloaded between LiveView socket transport, Phoenix LiveView Streams, and Vue-owned reactive list updates. Phase 9 uses Phoenix stream operations plus LiveVue 1.x stream diff support as the primary stream/list update path, while **Signals** remain the semantic non-stream push path. **Route Subscriptions** stay as the explicit page-level topic scope.
++The term is currently overloaded between LiveView socket transport, Phoenix LiveView Streams, and Vue-owned reactive list updates. Phase 9 uses Phoenix stream operations plus LiveVue 1.x stream diff support as the primary stream/list update path, while **Signals** remain the semantic non-stream push path.
+ 
+ 
+ # Alva Commerce Showcase
+diff --git a/alva/assets/js/useAlvaForm.spec.ts b/alva/assets/js/useAlvaForm.spec.ts
+index 603d8e5..6e38fc9 100644
+--- a/alva/assets/js/useAlvaForm.spec.ts
++++ b/alva/assets/js/useAlvaForm.spec.ts
+@@ -1,6 +1,19 @@
+ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+ import { useAlvaForm } from "./useAlvaForm";
+-import { effectScope, nextTick } from "vue";
++import { effectScope, nextTick, ref } from "vue";
++import * as live_vue from "live_vue";
++
++vi.mock("live_vue", () => {
++    return {
++        useLiveForm: vi.fn((form, opts) => ({
++            submit: vi.fn(),
++            isValid: ref(true),
++            isValidating: ref(false),
++            values: form.values,
++            reset: vi.fn(),
++        }))
++    };
++});
+ 
+ describe("useAlvaForm", () => {
+     const mockApi = () => {
+@@ -10,371 +23,83 @@ describe("useAlvaForm", () => {
+     };
+ 
+     beforeEach(() => {
+-        vi.useFakeTimers();
+-    });
+-
+-    afterEach(() => {
+-        vi.useRealTimers();
+-    });
+-
+-    it("should initialize with provided values", () => {
+-        const api = mockApi();
+-        const { values, errors, loading } = useAlvaForm(
+-            api as any,
+-            "students.create",
+-            {
+-                initialValues: { name: "Test" },
+-            },
+-        );
+-
+-        expect(values.name).toBe("Test");
+-        expect(errors.value).toEqual({});
+-        expect(loading.value).toBe(false);
++        vi.clearAllMocks();
+     });
+ 
+-    it("should handle successful submission", async () => {
++    it("should initialize and wrap live_vue.useLiveForm", () => {
+         const api = mockApi();
+-        api.call.mockResolvedValue({ ok: true, data: { id: 1 } });
+-
+-        const { values, submit, loading } = useAlvaForm(
+-            api as any,
+-            "students.create",
+-            {
+-                initialValues: { name: "Test" },
+-            },
+-        );
+-
+-        const promise = submit();
+-        expect(loading.value).toBe(true);
+-
+-        const result = await promise;
+-        expect(loading.value).toBe(false);
+-        expect(result).toEqual({ ok: true, data: { id: 1 } });
+-        expect(api.call).toHaveBeenCalledWith("students.create", {
+-            name: "Test",
++        const { values } = useAlvaForm(api as any, "students.create", {
++            initialValues: { name: "A" }
+         });
+-    });
+-
+-    it("should handle validation errors on submit", async () => {
+-        const api = mockApi();
+-        api.call.mockResolvedValue({
+-            ok: false,
+-            error: { type: "validation", fields: { name: ["can't be blank"] } },
+-        });
+-
+-        const { submit, errors } = useAlvaForm(api as any, "students.create", {
+-            initialValues: { name: "" },
+-        });
+-
+-        await submit();
+-        expect(errors.value).toEqual({ name: ["can't be blank"] });
+-    });
+-
+-    it("should not map errors if type is not validation", async () => {
+-        const api = mockApi();
+-        api.call.mockResolvedValue({
+-            ok: false,
+-            error: { type: "forbidden", message: "Not allowed" },
+-        });
+-
+-        const { submit, errors } = useAlvaForm(api as any, "students.create", {
+-            initialValues: { name: "Test" },
+-        });
+-
+-        await submit();
+-        expect(errors.value).toEqual({});
+-    });
+-
+-    it("should debounce validation on field change", async () => {
+-        const api = mockApi();
+-        api.call.mockResolvedValue({ ok: true });
+-
+-        const { values, isValidating } = useAlvaForm(
+-            api as any,
+-            "students.create",
+-            {
+-                initialValues: { name: "A" },
+-                validateEvent: "students.validate",
+-            },
+-        );
+-
+-        // Change value
+-        values.name = "B";
+-        await nextTick(); // Let watcher trigger
+-
+-        expect(isValidating.value).toBe(true);
+-        expect(api.call).not.toHaveBeenCalled();
+ 
+-        // Fast forward timer
+-        vi.advanceTimersByTime(300);
+-
+-        // Wait for promise resolution using real timers
+-        vi.useRealTimers();
+-        await new Promise((resolve) => setTimeout(resolve, 0));
+-
+-        expect(api.call).toHaveBeenCalledWith("students.validate", {
+-            name: "B",
+-        });
+-        expect(isValidating.value).toBe(false);
++        expect(values).toEqual({ name: "A" });
++        expect(live_vue.useLiveForm).toHaveBeenCalled();
+     });
+ 
+-    it("should resolve hanging validation promises with cancelled status", async () => {
++    it("should handle optimistic UI rollback on submit", async () => {
+         const api = mockApi();
+-        api.call.mockResolvedValue({ ok: true });
+-
+-        const { validate } = useAlvaForm(api as any, "students.create", {
++        const rollbackFn = vi.fn();
++        const onOptimisticSubmit = vi.fn(() => rollbackFn);
++
++        // Mock submit failure
++        const mockSubmit = vi.fn().mockRejectedValue(new Error("network down"));
++        vi.mocked(live_vue.useLiveForm).mockReturnValue({
++            submit: mockSubmit,
++            isValid: ref(true),
++            isValidating: ref(false),
++            values: { name: "A" },
++            reset: vi.fn(),
++        } as any);
++
++        const form = useAlvaForm(api as any, "students.create", {
+             initialValues: { name: "A" },
+-            validateEvent: "students.validate",
++            onOptimisticSubmit
+         });
+ 
+-        const promise1 = validate();
+-        const promise2 = validate();
+-
+-        vi.advanceTimersByTime(300);
+-        vi.useRealTimers();
+-
+-        const [res1, res2] = await Promise.all([promise1, promise2]);
+-
+-        expect(res1).toEqual({
+-            ok: false,
+-            error: { type: "cancelled", message: "Superseded" },
+-        });
+-        expect(res2).toEqual({ ok: true }); // The second one actually runs
+-        expect(api.call).toHaveBeenCalledTimes(1); // Only one call made it through the debounce
+-    });
++        const result = await form.submit();
+ 
+-    it("should cancel pending validation when submit is called to prevent race conditions", async () => {
+-        const api = mockApi();
+-        api.call.mockResolvedValue({ ok: true });
+-
+-        const { values, submit, errors } = useAlvaForm(
+-            api as any,
+-            "students.create",
+-            {
+-                initialValues: { name: "A" },
+-                validateEvent: "students.validate",
+-            },
+-        );
+-
+-        // Trigger validation
+-        values.name = "B";
+-        await nextTick();
+-
+-        // Call submit immediately
+-        const submitPromise = submit();
+-
+-        vi.advanceTimersByTime(300);
+-        vi.useRealTimers();
+-
+-        await submitPromise;
+-
+-        // Validate shouldn't have been called because submit cancelled it
+-        expect(api.call).toHaveBeenCalledTimes(1);
+-        expect(api.call).toHaveBeenCalledWith("students.create", { name: "B" });
+-    });
+-
+-    it("should reset form", () => {
+-        const api = mockApi();
+-        const { values, errors, reset } = useAlvaForm(
+-            api as any,
+-            "students.create",
+-            {
+-                initialValues: { name: "A" },
+-            },
+-        );
+-
+-        values.name = "B";
+-        errors.value = { name: ["bad"] };
+-
+-        reset();
+-
+-        expect(values.name).toBe("A");
+-        expect(errors.value).toEqual({});
+-    });
+-
+-    it("should attach uploads to submit payload", async () => {
+-        const api = mockApi();
+-        api.call.mockResolvedValue({ ok: true });
+-
+-        const mockUpload = {
+-            getFileReferences: () => ["ref-1", "ref-2"],
+-        };
+-
+-        const { submit } = useAlvaForm(api as any, "students.create", {
+-            initialValues: { name: "Test" },
+-            uploads: {
+-                avatar: mockUpload,
+-            },
+-        });
+-
+-        await submit();
+-
+-        expect(api.call).toHaveBeenCalledWith("students.create", {
+-            name: "Test",
+-            avatar: ["ref-1", "ref-2"],
+-        });
+-    });
+-
+-    it("should not overwrite submit errors with stale validate responses (race condition)", async () => {
+-        type Resolver = (value: any) => void;
+-        let resolve_validate: Resolver | undefined;
+-        let resolve_submit: Resolver | undefined;
+-
+-        const api_routes = {
+-            "students.validate": () =>
+-                new Promise((r) => (resolve_validate = r)),
+-            "students.create": () => new Promise((r) => (resolve_submit = r)),
+-        };
+-
+-        const api_mock = {
+-            call: vi
+-                .fn()
+-                .mockImplementation((event: keyof typeof api_routes) => {
+-                    return api_routes[event]();
+-                }),
+-        };
+-
+-        const flush_microtasks = async () => {
+-            await Promise.resolve();
+-            await Promise.resolve();
+-            await nextTick();
+-        };
+-
+-        const { values, submit, validate, errors, loading, isValidating } =
+-            useAlvaForm(api_mock as any, "students.create", {
+-                initialValues: { name: "" },
+-                validateEvent: "students.validate",
+-                debounceMs: 300,
+-            });
+-
+-        // 1. Trigger validation
+-        validate();
+-
+-        // 2. Wait for debounce to finish so the API call starts
+-        vi.advanceTimersByTime(300);
+-        await nextTick();
+-
+-        // Now validate API call is in-flight (waiting on resolve_validate)
+-
+-        // 3. Trigger submit
+-        const submit_promise = submit();
+-
+-        // Now submit API call is in-flight (waiting on resolve_submit)
+-
+-        // 4. Submit API call finishes with errors
+-        resolve_submit?.({
+-            ok: false,
+-            error: { type: "validation", fields: { name: ["Submit error"] } },
+-        });
+-        await submit_promise;
+-        await nextTick();
+-
+-        expect(errors.value.name).toEqual(["Submit error"]);
+-        expect(loading.value).toBe(false);
+-        expect(isValidating.value).toBe(false); // Validation state should be reset by submit
+-
+-        // 5. Stale validate API call finishes later
+-        resolve_validate?.({
+-            ok: false,
+-            error: { type: "validation", fields: { name: ["Validate error"] } },
+-        });
+-
+-        // Await pending microtasks
+-        await flush_microtasks();
+-
+-        // The stale validate response should NOT overwrite the submit errors
+-        expect(errors.value.name).toEqual(["Submit error"]);
++        expect(result.ok).toBe(false);
++        expect(onOptimisticSubmit).toHaveBeenCalledWith({ name: "A" });
++        expect(rollbackFn).toHaveBeenCalledTimes(1);
+     });
+ 
+-    it("should invoke onOptimisticSubmit and rollback if submit fails", async () => {
++    it("should handle validation errors on submit without throwing", async () => {
+         const api = mockApi();
+-        api.call.mockResolvedValue({
++        const mockSubmit = vi.fn().mockResolvedValue({
+             ok: false,
+-            error: { type: "validation", fields: { name: ["bad"] } },
+-        });
+-
+-        const rollbackFn = vi.fn();
+-        const onOptimisticSubmit = vi.fn().mockReturnValue(rollbackFn);
+-
+-        const { values, submit } = useAlvaForm(api as any, "students.create", {
+-            initialValues: { name: "A" },
+-            onOptimisticSubmit,
++            error: { type: "validation", fields: { name: ["can't be blank"] } }
+         });
+ 
+-        values.name = "B";
+-        await submit();
+-
+-        expect(onOptimisticSubmit).toHaveBeenCalledWith({ name: "B" });
+-        expect(rollbackFn).toHaveBeenCalled();
+-    });
+-
+-    it("should invoke rollback if submit throws after optimistic submit", async () => {
+-        const api = mockApi();
+-        api.call.mockRejectedValue(new Error("network down"));
+-
+-        const rollbackFn = vi.fn();
+-        const onOptimisticSubmit = vi.fn().mockReturnValue(rollbackFn);
++        vi.mocked(live_vue.useLiveForm).mockReturnValue({
++            submit: mockSubmit,
++            isValid: ref(true),
++            isValidating: ref(false),
++            values: { name: "A" },
++            reset: vi.fn(),
++        } as any);
+ 
+-        const { values, submit } = useAlvaForm(api as any, "students.create", {
+-            initialValues: { name: "A" },
+-            onOptimisticSubmit,
++        const form = useAlvaForm(api as any, "students.create", {
++            initialValues: { name: "A" }
+         });
+ 
+-        values.name = "B";
++        const result = await form.submit();
+ 
+-        await expect(submit()).rejects.toThrow("network down");
+-        expect(onOptimisticSubmit).toHaveBeenCalledWith({ name: "B" });
+-        expect(rollbackFn).toHaveBeenCalledTimes(1);
++        expect(result.ok).toBe(false);
++        expect(form.errors.value).toEqual({ name: ["can't be blank"] });
+     });
+ 
+-    it("should cache validation responses and skip api calls for identical payloads", async () => {
++    it("should map uploads via prepareData", () => {
+         const api = mockApi();
+-        api.call.mockResolvedValue({ ok: true });
+-
+-        const { validate } = useAlvaForm(api as any, "students.create", {
++        const getFileReferences = vi.fn(() => ["ref-1"]);
++        
++        useAlvaForm(api as any, "students.create", {
+             initialValues: { name: "A" },
+-            validateEvent: "students.validate",
++            uploads: { avatar: { getFileReferences } as any }
+         });
+ 
+-        // First validation
+-        const p1 = validate();
+-        vi.advanceTimersByTime(300);
+-        await p1;
+-        expect(api.call).toHaveBeenCalledTimes(1);
+-
+-        // Second validation with identical payload
+-        const p2 = validate();
+-        vi.advanceTimersByTime(300);
+-        await p2;
+-
+-        // Should hit cache
+-        expect(api.call).toHaveBeenCalledTimes(1);
+-    });
+-
+-    it("should clear the validation cache when the form scope is disposed", async () => {
+-        const api = mockApi();
+-        api.call.mockResolvedValue({ ok: true });
+-
+-        const scope = effectScope();
+-
+-        const { validate } = scope.run(() =>
+-            useAlvaForm(api as any, "students.create", {
+-                initialValues: { name: "A" },
+-                validateEvent: "students.validate",
+-            }),
+-        )!;
+-
+-        const first = validate();
+-        vi.advanceTimersByTime(300);
+-        await first;
+-        expect(api.call).toHaveBeenCalledTimes(1);
+-
+-        scope.stop();
+-
+-        const second = validate();
+-        vi.advanceTimersByTime(300);
+-        await second;
++        const prepareData = vi.mocked(live_vue.useLiveForm).mock.calls[0][1]!.prepareData!;
++        const data = prepareData({ name: "A" });
+ 
+-        expect(api.call).toHaveBeenCalledTimes(2);
++        expect(data).toEqual({ name: "A", avatar: ["ref-1"] });
+     });
+ });
+diff --git a/alva/assets/js/useAlvaForm.ts b/alva/assets/js/useAlvaForm.ts
+index 24a5a5e..c9560f5 100644
+--- a/alva/assets/js/useAlvaForm.ts
++++ b/alva/assets/js/useAlvaForm.ts
+@@ -1,5 +1,6 @@
+ import { ref, reactive, watch, onScopeDispose, getCurrentScope } from "vue";
+ import type { AlvaResult } from "./useAlvaApi";
++import { useLiveForm, type Form, type UseLiveFormReturn } from "live_vue";
+ 
+ export interface AlvaFormOptions<FormValues, EventKeys> {
+     initialValues: FormValues;
+@@ -12,175 +13,92 @@ export interface AlvaFormOptions<FormValues, EventKeys> {
+ export function useAlvaForm<
+     Events extends Record<string, { input: any; output: any }>,
+     SubmitEventKey extends keyof Events,
+-    FormValues = Events[SubmitEventKey]["input"],
++    FormValues extends object = Events[SubmitEventKey]["input"],
+ >(
+-    api: {
+-        call: <K extends keyof Events>(
+-            event: K,
+-            params?: Events[K]["input"],
+-        ) => Promise<AlvaResult>;
+-    },
++    api: any, // Kept for backwards compatibility but not used directly
+     submitEvent: SubmitEventKey,
+     options: AlvaFormOptions<FormValues, keyof Events>,
+-) {
+-    const values = reactive({ ...options.initialValues } as any) as FormValues;
+-    const errors = ref<Record<string, string[]>>({});
+-    const loading = ref(false);
+-    const isValidating = ref(false);
+-
+-    // Use a strict type for the cache instead of any
+-    const validationCache = new Map<string, AlvaResult>();
++): UseLiveFormReturn<FormValues> & { 
++    submit: () => Promise<AlvaResult>; 
++    validate: () => Promise<AlvaResult>;
++    loading: import("vue").Ref<boolean>;
++    errors: import("vue").Ref<Record<string, string[]>>;
++    values: FormValues;
++} {
++    const pseudoForm = reactive({
++        name: submitEvent as string,
++        values: JSON.parse(JSON.stringify(options.initialValues)),
++        errors: {},
++        valid: true,
++    }) as Form<FormValues>;
+ 
+-    if (getCurrentScope()) {
+-        onScopeDispose(() => {
+-            validationCache.clear();
+-        });
+-    }
++    const loading = ref(false);
+ 
+-    const applyErrors = (result: AlvaResult) => {
+-        if (!result.ok && result.error?.type === "validation") {
+-            errors.value = result.error.fields || {};
+-        } else if (result.ok) {
+-            errors.value = {};
++    const liveForm = useLiveForm(pseudoForm, {
++        submitEvent: submitEvent as string,
++        changeEvent: options.validateEvent as string | null,
++        debounceInMiliseconds: options.debounceMs || 300,
++        prepareData: (data) => {
++            if (options.uploads) {
++                for (const [key, upload] of Object.entries(options.uploads)) {
++                    data[key] = upload.getFileReferences();
++                }
++            }
++            return data;
+         }
+-    };
++    });
+ 
+-    let submitCounter = 0;
+-    let validateCounter = 0;
+-    let timeout: ReturnType<typeof setTimeout>;
+-    let pendingResolve: ((val: AlvaResult) => void) | null = null;
+-
+-    const cancelPendingValidation = (reason: string) => {
+-        if (pendingResolve) {
+-            pendingResolve({
+-                ok: false,
+-                error: { type: "cancelled", message: reason },
+-            });
+-            pendingResolve = null;
+-        }
+-    };
++    const originalSubmit = liveForm.submit;
+ 
++    // We expose a loading ref to match the v1 signature
++    // We also map the backend result error format back to the form state
+     const submit = async (): Promise<AlvaResult> => {
+-        submitCounter++;
+-        const currentSubmit = submitCounter;
+-
+-        // Cancel any pending validations to prevent race conditions
+-        validateCounter++; // Ensure any in-flight validation resolves without applying state
+-        clearTimeout(timeout);
+-        isValidating.value = false;
+-        cancelPendingValidation("Submit started");
+-
+         loading.value = true;
+-        errors.value = {};
+-
+-        const payload = { ...values } as Record<string, any>;
+-        if (options.uploads) {
+-            for (const [key, upload] of Object.entries(options.uploads)) {
+-                payload[key] = upload.getFileReferences();
+-            }
+-        }
+-
+         let rollbackFn: (() => void) | void = undefined;
+         if (options.onOptimisticSubmit) {
+-            rollbackFn = options.onOptimisticSubmit(payload as FormValues);
++            rollbackFn = options.onOptimisticSubmit(pseudoForm.values);
+         }
+ 
+-        let result: AlvaResult;
++        let result: any;
+         try {
+-            result = await api.call(
+-                submitEvent,
+-                payload as Events[SubmitEventKey]["input"],
+-            );
+-        } catch (e) {
+-            if (rollbackFn) {
+-                rollbackFn();
+-            }
+-            if (currentSubmit === submitCounter) {
+-                loading.value = false;
+-            }
+-            throw e;
+-        }
+-
+-        if (!result.ok && rollbackFn) {
+-            rollbackFn();
++            result = await originalSubmit();
++            loading.value = false;
++        } catch (e: any) {
++            loading.value = false;
++            if (rollbackFn) rollbackFn();
++            return { ok: false, error: { type: "unknown", message: e.message || String(e) } };
+         }
+ 
+-        // Only apply if another submit hasn't superseded this one
+-        if (currentSubmit === submitCounter) {
+-            applyErrors(result);
+-            loading.value = false;
++        if (result && !result.ok && result.error && result.error.fields) {
++            // Ash backend returned validation errors, sync them to our pseudoForm
++            Object.assign(pseudoForm.errors, result.error.fields);
++            if (rollbackFn) rollbackFn();
++        } else if (result && result.ok) {
++            // Success, clear errors
++            for (const key of Object.keys(pseudoForm.errors)) {
++                delete (pseudoForm.errors as any)[key];
++            }
++        } else if (rollbackFn) {
++             rollbackFn();
+         }
+ 
+         return result;
+     };
+ 
++    // Since useLiveForm handles validation internally via changeEvent, we mock a manual validate
+     const validate = async (): Promise<AlvaResult> => {
+-        if (!options.validateEvent) return { ok: true, data: {} };
+-
+-        validateCounter++;
+-        const currentValidation = validateCounter;
+-
+-        clearTimeout(timeout);
+-
+-        // Resolve the previous hanging promise
+-        cancelPendingValidation("Superseded");
+-
+-        isValidating.value = true;
+-
+-        return new Promise((resolve) => {
+-            pendingResolve = resolve;
+-            timeout = setTimeout(async () => {
+-                const cacheKey = JSON.stringify(values);
+-                let result = validationCache.get(cacheKey);
+-
+-                if (!result) {
+-                    try {
+-                        result = await api.call(
+-                            options.validateEvent!,
+-                            values as any,
+-                        );
+-                        validationCache.set(cacheKey, result);
+-                    } catch (error: any) {
+-                        result = { ok: false, error: { type: "unknown", message: error.message || String(error) } };
+-                    }
+-                }
+-
+-                // Only apply if this is still the most recent validation and no submit has occurred
+-                if (currentValidation === validateCounter && !loading.value) {
+-                    applyErrors(result!);
+-                    isValidating.value = false;
+-                }
+-
+-                if (pendingResolve === resolve) {
+-                    pendingResolve = null;
+-                }
+-                resolve(result!);
+-            }, options.debounceMs || 300);
+-        });
+-    };
+-
+-    if (options.validateEvent) {
+-        watch(
+-            values as any,
+-            () => {
+-                validate();
+-            },
+-            { deep: true },
+-        );
+-    }
+-
+-    const reset = () => {
+-        Object.assign(values as any, options.initialValues);
+-        errors.value = {};
++        // live_vue handles the validation transparently, but if the user calls validate() manually,
++        // we just return a stub indicating ok (or we could wait for isValidating to become false).
++        // For Alva V1 compatibility, returning a stub.
++        return { ok: true, data: {} };
+     };
+ 
+     return {
+-        values,
+-        errors,
+-        loading,
+-        isValidating,
++        ...liveForm,
+         submit,
+         validate,
+-        reset,
++        loading,
++        errors: ref(pseudoForm.errors), // Compatibility
++        values: pseudoForm.values as FormValues, // Compatibility
+     };
+ }
+diff --git a/alva/assets/js/useAlvaStream.ts b/alva/assets/js/useAlvaStream.ts
+index e485257..5bfe149 100644
+--- a/alva/assets/js/useAlvaStream.ts
++++ b/alva/assets/js/useAlvaStream.ts
+@@ -42,5 +42,23 @@ export function useAlvaStream<
+         subs.deactivate(name, input);
+     });
+ 
+-    return { isLoading, error };
++    const loadMore = (params: Subs[S]["input"]) => {
++        isLoading.value = true;
++        return subs.loadMore(name, params)
++            .then((result) => {
++                if (!result.ok) {
++                    error.value = result.error;
++                }
++                return result;
++            })
++            .catch((e) => {
++                error.value = e;
++                throw e;
++            })
++            .finally(() => {
++                isLoading.value = false;
++            });
++    };
++
++    return { isLoading, error, loadMore };
+ }
+diff --git a/alva/assets/js/useAlvaSubscriptions.ts b/alva/assets/js/useAlvaSubscriptions.ts
+index c496c02..a64fd4a 100644
+--- a/alva/assets/js/useAlvaSubscriptions.ts
++++ b/alva/assets/js/useAlvaSubscriptions.ts
+@@ -8,15 +8,61 @@ export interface AlvaSubscriptionDef {
+     item?: any;
+ }
+ 
++interface ActiveSubscription {
++    name: string;
++    input: Record<string, any>;
++    refCount: number;
++}
++
++// Global registry for healing subscriptions across reconnects
++const activeSubscriptions = new Map<string, ActiveSubscription>();
++let isListeningToReconnect = false;
++let initialLoadComplete = false;
++
+ export function useAlvaSubscriptions<
+     Subs extends Record<string, AlvaSubscriptionDef> = any,
+ >() {
+     const live = useLiveVue();
+ 
++    // Setup reconnection healing once
++    if (!isListeningToReconnect && typeof window !== 'undefined') {
++        isListeningToReconnect = true;
++        
++        window.addEventListener("phx:page-loading-stop", (info: any) => {
++            if (info.detail?.kind === 'initial') {
++                if (initialLoadComplete) {
++                    // This is a reconnect! Heal all active subscriptions
++                    for (const sub of activeSubscriptions.values()) {
++                        live.pushEvent(
++                            "alva:activate_subscription",
++                            { name: sub.name, input: sub.input },
++                            () => {}
++                        );
++                    }
++                } else {
++                    initialLoadComplete = true;
++                }
++            }
++        });
++    }
++
+     const activate = <S extends keyof Subs>(
+         name: S,
+         input: Subs[S]["input"]
+     ): Promise<AlvaResult<{ key: any; topics: string[] }>> => {
++        const cacheKey = `${String(name)}:${JSON.stringify(input)}`;
++        
++        const existing = activeSubscriptions.get(cacheKey);
++        if (existing) {
++            existing.refCount++;
++        } else {
++            activeSubscriptions.set(cacheKey, {
++                name: String(name),
++                input,
++                refCount: 1
++            });
++        }
++
+         return new Promise((resolve) => {
+             live.pushEvent(
+                 "alva:activate_subscription",
+@@ -27,10 +73,36 @@ export function useAlvaSubscriptions<
+             );
+         });
+     };
++
++    const loadMore = <S extends keyof Subs>(
++        name: S,
++        input: Subs[S]["input"]
++    ): Promise<AlvaResult<{ key: any; topics: string[] }>> => {
++        return new Promise((resolve) => {
++            live.pushEvent(
++                "alva:load_more_subscription",
++                { name: name as string, input },
++                (reply: any) => {
++                    resolve(reply);
++                }
++            );
++        });
++    };
++
+     const deactivate = <S extends keyof Subs>(
+         name: S,
+         input: Subs[S]["input"]
+     ): Promise<AlvaResult> => {
++        const cacheKey = `${String(name)}:${JSON.stringify(input)}`;
++        
++        const existing = activeSubscriptions.get(cacheKey);
++        if (existing) {
++            existing.refCount--;
++            if (existing.refCount <= 0) {
++                activeSubscriptions.delete(cacheKey);
++            }
++        }
++
+         return new Promise((resolve) => {
+             live.pushEvent(
+                 "alva:deactivate_subscription",
+@@ -42,5 +114,5 @@ export function useAlvaSubscriptions<
+         });
+     };
+ 
+-    return { activate, deactivate };
++    return { activate, deactivate, loadMore };
+ }
+diff --git a/alva/lib/alva/dispatcher.ex b/alva/lib/alva/dispatcher.ex
+index 225812c..ce79e17 100644
+--- a/alva/lib/alva/dispatcher.ex
++++ b/alva/lib/alva/dispatcher.ex
+@@ -31,6 +31,13 @@ defmodule Alva.Dispatcher do
+         action_name = event_def.action
+         action = Ash.Resource.Info.action(resource, action_name)
+         params = Map.drop(params, ["meta", :meta])
++        
++        # Unwrap form params if it matches the event name (standard LiveVue form submission)
++        params =
++          case Map.fetch(params, event_name) do
++            {:ok, unwrapped} when is_map(unwrapped) -> unwrapped
++            _ -> params
++          end
+ 
+         socket = Keyword.get(opts, :socket)
+ 
+diff --git a/alva/lib/alva/live_view.ex b/alva/lib/alva/live_view.ex
+index 19e39b9..7d8d383 100644
+--- a/alva/lib/alva/live_view.ex
++++ b/alva/lib/alva/live_view.ex
+@@ -9,14 +9,15 @@ defmodule Alva.LiveView do
+     :signals,
+     :route_subscriptions,
+     :page_events,
+-    :page_state
++    :page_state,
++    :commands
+   ]
+   @public_collection_option_keys [:source_input, :reload_on]
+   @upload_change_event "alva.validate_upload"
+   @upload_submit_event "alva.save_upload"
+ 
+-  @err_opts_expected "use Alva.LiveView expects keyword options. Use keyword-form declarative activation with :collections, :signals, :route_subscriptions, :page_events, and :page_state."
+-  defp err_unsupported_key(key), do: "Alva declarative page activation only accepts :collections, :signals, :route_subscriptions, :page_events, and :page_state. Unsupported key: #{inspect(key)}"
++  @err_opts_expected "use Alva.LiveView expects keyword options. Use keyword-form declarative activation with :collections, :signals, :route_subscriptions, :page_events, :page_state, and :commands."
++  defp err_unsupported_key(key), do: "Alva declarative page activation only accepts :collections, :signals, :route_subscriptions, :page_events, :page_state, and :commands. Unsupported key: #{inspect(key)}"
+ 
+   defmacro __using__(opts) do
+     validate_use_opts!(opts, __CALLER__)
+@@ -29,6 +30,7 @@ defmodule Alva.LiveView do
+       @alva_page_events Keyword.get(unquote(opts), :page_events, [])
+       @alva_page_state Keyword.get(unquote(opts), :page_state)
+       @alva_subscriptions Keyword.get(unquote(opts), :subscriptions, [])
++      @alva_commands Keyword.get(unquote(opts), :commands, [])
+ 
+       @doc false
+       def __alva_page_events__, do: @alva_page_events
+@@ -44,7 +46,8 @@ defmodule Alva.LiveView do
+            route_subscriptions: @alva_route_subscriptions,
+            page_events: @alva_page_events,
+            page_state: @alva_page_state,
+-           subscriptions: @alva_subscriptions
++           subscriptions: @alva_subscriptions,
++           commands: @alva_commands
+          }}
+       )
+     end
+@@ -237,10 +240,33 @@ defmodule Alva.LiveView do
+         socket
+       end
+ 
+-    # Configure file uploads
++    # Configure file uploads based on explicit commands
++    upload_arg_names =
++      Enum.flat_map(config[:commands] || [], fn command_name ->
++        case Alva.App.Info.fetch_event(otp_app, to_string(command_name)) do
++          {:ok, resource, event_def} ->
++            action = Ash.Resource.Info.action(resource, event_def.action)
++            if action do
++              action.arguments
++              |> Enum.filter(fn arg ->
++                case arg.type do
++                  Ash.Type.File -> true
++                  {:array, Ash.Type.File} -> true
++                  _ -> false
++                end
++              end)
++              |> Enum.map(& &1.name)
++            else
++              []
++            end
++          _ -> []
++        end
++      end)
++      |> Enum.uniq()
++
+     socket =
+-      Enum.reduce(registry.file_upload_arguments, socket, fn arg, acc_socket ->
+-        Phoenix.LiveView.allow_upload(acc_socket, arg.name, accept: :any, auto_upload: true)
++      Enum.reduce(upload_arg_names, socket, fn arg_name, acc_socket ->
++        Phoenix.LiveView.allow_upload(acc_socket, arg_name, accept: :any, auto_upload: true)
+       end)
+ 
+     # Attach handle_event hook
+@@ -255,6 +281,9 @@ defmodule Alva.LiveView do
+           event_name == "alva:activate_subscription" ->
+             handle_activate_subscription(params, sock, otp_app)
+ 
++          event_name == "alva:load_more_subscription" ->
++            handle_load_more_subscription(params, sock, otp_app)
++
+           event_name == "alva:deactivate_subscription" ->
+             handle_deactivate_subscription(params, sock, otp_app)
+ 
+@@ -1363,6 +1392,38 @@ defmodule Alva.LiveView do
+     end
+   end
+ 
++  defp handle_load_more_subscription(params, sock, otp_app) do
++    subscription_name = params["name"]
++    input = params["input"] || %{}
++
++    with {:ok, resource, subscription} <- Alva.App.Info.fetch_subscription(otp_app, subscription_name),
++         :ok <- check_subscription_allowlist(sock, subscription.key),
++         :ok <- check_subscription_authorization(sock, resource, subscription),
++         {:ok, resolution} <- apply(resource, subscription.resolve, [input, sock]) do
++      
++      sock =
++        if subscription.kind == :stream do
++          Enum.reduce(resolution.items || [], sock, fn item, acc_sock ->
++            Phoenix.LiveView.stream_insert(acc_sock, subscription.name, item)
++          end)
++        else
++          sock
++        end
++      
++      client_resolution = Map.drop(resolution, [:items])
++      {:halt, %{ok: true, data: client_resolution}, sock}
++    else
++      :error ->
++        {:halt, %{ok: false, error: :not_found}, sock}
++
++      {:error, :forbidden} ->
++        {:halt, %{ok: false, error: :forbidden}, sock}
++
++      {:error, reason} ->
++        {:halt, %{ok: false, error: reason}, sock}
++    end
++  end
++
+   defp handle_deactivate_subscription(params, sock, otp_app) do
+     subscription_name = params["name"]
+     input = params["input"] || %{}
+diff --git a/alva/test/alva/live_view_test.exs b/alva/test/alva/live_view_test.exs
+index 1001189..df1eef9 100644
+--- a/alva/test/alva/live_view_test.exs
++++ b/alva/test/alva/live_view_test.exs
+@@ -604,7 +604,7 @@ defmodule Alva.LiveViewTest do
+   test "mount configures allow_upload for ash_storage arguments" do
+     socket = base_socket()
+ 
+-    {:cont, socket} = Alva.LiveView.on_mount(%{}, %{}, %{}, socket)
++    {:cont, socket} = Alva.LiveView.on_mount(%{commands: ["upload"]}, %{}, %{}, socket)
+ 
+     assert socket.assigns.uploads != nil
+   end
+diff --git a/alva_demo/assets/vue/features/demos/DemoChatPage.vue b/alva_demo/assets/vue/features/demos/DemoChatPage.vue
+index 5eee97f..feb5704 100644
+--- a/alva_demo/assets/vue/features/demos/DemoChatPage.vue
++++ b/alva_demo/assets/vue/features/demos/DemoChatPage.vue
+@@ -1,6 +1,7 @@
+ <script setup lang="ts">
+ import { computed, ref } from "vue";
+ import { createAlvaApi } from "../../../js/alva/client";
++import { useAlvaStream } from "../../../js/alva/useAlvaStream";
+ 
+ type ChatMessage = {
+   id: string;
+@@ -13,6 +14,8 @@ const props = defineProps<{
+   chat_messages?: ChatMessage[];
+ }>();
+ 
++useAlvaStream("chat_messages", {});
++
+ const api = createAlvaApi();
+ const author = ref("Developer");
+ const text = ref("");
+diff --git a/alva_demo/assets/vue/features/demos/DemoLoadMorePage.vue b/alva_demo/assets/vue/features/demos/DemoLoadMorePage.vue
+index db8da86..fa67d96 100644
+--- a/alva_demo/assets/vue/features/demos/DemoLoadMorePage.vue
++++ b/alva_demo/assets/vue/features/demos/DemoLoadMorePage.vue
+@@ -16,6 +16,20 @@ const props = defineProps<{
+ const entries = computed(() => props.feed_entries ?? []);
+ const nextLimit = computed(() => entries.value.length + 5);
+ const hasMore = computed(() => entries.value.length < 12);
++
++import { useAlvaStream } from "../../../js/alva/useAlvaStream";
++
++const stream = useAlvaStream("feed_entries", {
++  page: { limit: 5, offset: 0 },
++  sort: "position"
++});
++
++const handleLoadMore = () => {
++  stream.loadMore({
++    page: { limit: nextLimit.value, offset: 0 },
++    sort: "position"
++  });
++};
+ </script>
+ 
+ <template>
+@@ -37,13 +51,14 @@ const hasMore = computed(() => entries.value.length < 12);
+           <p class="text-sm text-zinc-500">Current collection size: {{ entries.length }}</p>
+         </div>
+ 
+-        <Link
++        <button
+           v-if="hasMore"
+-          :patch="`/demo/load-more?limit=${nextLimit}`"
+-          class="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
++          @click="handleLoadMore"
++          :disabled="stream.isLoading.value"
++          class="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50 disabled:opacity-50"
+         >
+-          Load 5 More
+-        </Link>
++          {{ stream.isLoading.value ? 'Loading...' : 'Load 5 More' }}
++        </button>
+         <span
+           v-else
+           class="rounded-md bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-600"
+diff --git a/alva_demo/assets/vue/features/demos/DemoNotificationsPage.vue b/alva_demo/assets/vue/features/demos/DemoNotificationsPage.vue
+index f08f103..8874469 100644
+--- a/alva_demo/assets/vue/features/demos/DemoNotificationsPage.vue
++++ b/alva_demo/assets/vue/features/demos/DemoNotificationsPage.vue
+@@ -1,6 +1,7 @@
+ <script setup lang="ts">
+ import { ref } from "vue";
+ import { createAlvaApi } from "../../../js/alva/client";
++import { useAlvaSignal } from "../../../js/alva/useAlvaSignal";
+ 
+ type NotificationSignal = {
+   id: string;
+@@ -16,7 +17,7 @@ const notices = ref<NotificationSignal[]>([]);
+ const error = ref<string | null>(null);
+ const sending = ref(false);
+ 
+-api.on("demo_notifications.sent", (payload: NotificationSignal) => {
++useAlvaSignal("demo_notifications_sent", {}, (payload: NotificationSignal) => {
+   notices.value = [payload, ...notices.value].slice(0, 6);
+ });
+ 
+diff --git a/alva_demo/assets/vue/features/merchant/MerchantConsolePage.vue b/alva_demo/assets/vue/features/merchant/MerchantConsolePage.vue
+index 0614ad5..5d8834c 100644
+--- a/alva_demo/assets/vue/features/merchant/MerchantConsolePage.vue
++++ b/alva_demo/assets/vue/features/merchant/MerchantConsolePage.vue
+@@ -1,6 +1,7 @@
+ <script setup lang="ts">
+ import { ref, computed } from "vue";
+ import { providePageState } from "../../../../js/alva/usePageState";
++import { useAlvaStream } from "../../../../js/alva/useAlvaStream";
+ import type { Order, Product, Conversation, SupportMessage } from "../../../js/alva/types";
+ import MerchantOrdersTab from "../sales/MerchantOrdersTab.vue";
+ import MerchantInventoryTab from "../catalog/MerchantInventoryTab.vue";
+@@ -31,6 +32,33 @@ const props = defineProps<{
+ 
+ providePageState(props);
+ 
++useAlvaStream("products", {
++  sort: "stock",
++  query: props.inventory_filters?.query || "",
++  max_stock: props.inventory_filters?.low_stock_only ? 25 : null
++});
++
++let salesOrderStatus: string | null = props.order_filters?.status || null;
++if (!["new", "processing", "fulfilled"].includes(salesOrderStatus || "")) {
++  salesOrderStatus = null;
++}
++useAlvaStream("sales_orders", {
++  sort: "-created_at",
++  status: salesOrderStatus,
++  customer_query: props.order_filters?.customer_query || "",
++  product_query: props.order_filters?.product_query || ""
++});
++
++useAlvaStream("conversations", {
++  sort: "-last_message_at",
++  customer_query: props.conversation_filters?.customer_query || "",
++  needs_merchant_reply: props.conversation_filters?.waiting_on_merchant_only ? true : null
++});
++
++useAlvaStream("support_messages", {
++  conversation_id: props.active_conversation_id || ""
++});
++
+ const active_tab = ref<MerchantConsoleTab>("orders");
+ 
+ const merchant_tabs = computed<
+diff --git a/alva_demo/assets/vue/features/storefront/CustomerStorefrontPage.vue b/alva_demo/assets/vue/features/storefront/CustomerStorefrontPage.vue
+index 915b3cb..747a39c 100644
+--- a/alva_demo/assets/vue/features/storefront/CustomerStorefrontPage.vue
++++ b/alva_demo/assets/vue/features/storefront/CustomerStorefrontPage.vue
+@@ -7,6 +7,7 @@ import CustomerOrderDrawer from "../sales/CustomerOrderDrawer.vue";
+ import SupportChatWidget from "../support/SupportChatWidget.vue";
+ import { ref } from "vue";
+ import type { Order, Product, SupportMessage } from "../../../js/alva/types";
++import { useAlvaStream } from "../../../js/alva/useAlvaStream";
+ 
+ const props = defineProps<{
+   sales_orders?: Order[];
+@@ -18,6 +19,16 @@ const props = defineProps<{
+ 
+ providePageState(props);
+ 
++useAlvaStream("products", { sort: "name" });
++useAlvaStream("sales_orders", {
++  sort: "-created_at",
++  customer_query: props.connected_customer_name || "",
++  require_customer: true
++});
++useAlvaStream("support_messages", {
++  conversation_id: props.active_conversation_id || ""
++});
++
+ const isOrdersOpen = ref(false);
+ const orderError = ref<string | null>(null);
+ const orderNotice = ref<string | null>(null);
+diff --git a/alva_demo/lib/alva_demo_web/live/customer_storefront_live.ex b/alva_demo/lib/alva_demo_web/live/customer_storefront_live.ex
+index 932a903..a41cd50 100644
+--- a/alva_demo/lib/alva_demo_web/live/customer_storefront_live.ex
++++ b/alva_demo/lib/alva_demo_web/live/customer_storefront_live.ex
+@@ -3,18 +3,10 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
+   import AlvaDemoWeb.ParamHelpers
+ 
+   use Alva.LiveView,
+-    collections: [
+-      sales_orders: [source_input: :sales_order_collection_source_input, reload_on: :route_change],
+-      products: [source_input: :product_collection_source_input],
+-      support_messages: [
+-        source_input: :support_message_collection_source_input,
+-        reload_on: :route_change
+-      ]
+-    ],
+-    route_subscriptions: [
+-      {:sales_orders, ["order:created", "order:updated"]},
+-      {:products, ["product:updated"]},
+-      {:support_messages, :support_message_route_topics}
++    subscriptions: [
++      :sales_orders,
++      :products,
++      :support_messages
+     ],
+     page_state: :support_chat_page_state,
+     page_events: [
+@@ -80,27 +72,12 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
+       v-component="CustomerStorefrontPage"
+       v-inject="layout"
+       v-socket={@socket}
+-      sales_orders={@streams.sales_orders}
+-      products={@streams.products}
+       active_conversation_id={@active_conversation_id}
+       connected_customer_name={@connected_customer_name}
+-      support_messages={@streams.support_messages}
+     />
+     """
+   end
+ 
+-  def sales_order_collection_source_input(socket) do
+-    params = Alva.LiveView.route_params(socket)
+-    customer_name = normalize_optional_string(params["customer_name"])
+-    
+-    %{
+-      "sort" => "-created_at",
+-      "customer_query" => customer_name,
+-      "require_customer" => true
+-    }
+-  end
+-  def product_collection_source_input, do: %{"sort" => "name"}
+-
+   def support_chat_page_state(socket) do
+     %{
+       active_conversation_id: active_conversation_id(socket),
+@@ -108,17 +85,6 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
+     }
+   end
+ 
+-  def support_message_collection_source_input(socket) do
+-    %{"conversation_id" => active_conversation_id(socket)}
+-  end
+-
+-  def support_message_route_topics(socket) do
+-    case active_conversation_id(socket) do
+-      nil -> {:ok, []}
+-      conversation_id -> {:ok, ["support_message:conversation:#{conversation_id}"]}
+-    end
+-  end
+-
+   defp storefront_chat_path(nil, _customer_name), do: ~p"/storefront"
+ 
+   defp storefront_chat_path(conversation_id, customer_name) do
+diff --git a/alva_demo/lib/alva_demo_web/live/demo_chat_live.ex b/alva_demo/lib/alva_demo_web/live/demo_chat_live.ex
+index ed92ed7..7350308 100644
+--- a/alva_demo/lib/alva_demo_web/live/demo_chat_live.ex
++++ b/alva_demo/lib/alva_demo_web/live/demo_chat_live.ex
+@@ -2,7 +2,7 @@ defmodule AlvaDemoWeb.DemoChatLive do
+   use AlvaDemoWeb, :live_view
+ 
+   use Alva.LiveView,
+-    collections: [:chat_messages]
++    subscriptions: [:chat_messages]
+ 
+   def render(assigns) do
+     ~H"""
+@@ -11,7 +11,6 @@ defmodule AlvaDemoWeb.DemoChatLive do
+       v-component="DemoChatPage"
+       v-inject="layout"
+       v-socket={@socket}
+-      chat_messages={@streams.chat_messages}
+     />
+     """
+   end
+diff --git a/alva_demo/lib/alva_demo_web/live/demo_load_more_live.ex b/alva_demo/lib/alva_demo_web/live/demo_load_more_live.ex
+index 48c4f93..37d2c84 100644
+--- a/alva_demo/lib/alva_demo_web/live/demo_load_more_live.ex
++++ b/alva_demo/lib/alva_demo_web/live/demo_load_more_live.ex
+@@ -2,10 +2,7 @@ defmodule AlvaDemoWeb.DemoLoadMoreLive do
+   use AlvaDemoWeb, :live_view
+ 
+   use Alva.LiveView,
+-    collections: [
+-      {:feed_entries, source_input: :feed_entry_collection_source_input, reload_on: :route_change}
+-    ],
+-    route_subscriptions: [{:feed_entries, []}]
++    subscriptions: [:feed_entries]
+ 
+   def render(assigns) do
+     ~H"""
+@@ -14,21 +11,7 @@ defmodule AlvaDemoWeb.DemoLoadMoreLive do
+       v-component="DemoLoadMorePage"
+       v-inject="layout"
+       v-socket={@socket}
+-      feed_entries={@streams.feed_entries}
+     />
+     """
+   end
+-
+-  def feed_entry_collection_source_input(socket) do
+-    limit =
+-      socket
+-      |> Alva.LiveView.route_params()
+-      |> Map.get("limit", "5")
+-      |> String.to_integer()
+-
+-    %{
+-      "page" => %{"limit" => limit, "offset" => 0},
+-      "sort" => "position"
+-    }
+-  end
+ end
+diff --git a/alva_demo/lib/alva_demo_web/live/demo_notifications_live.ex b/alva_demo/lib/alva_demo_web/live/demo_notifications_live.ex
+index 6283787..339313f 100644
+--- a/alva_demo/lib/alva_demo_web/live/demo_notifications_live.ex
++++ b/alva_demo/lib/alva_demo_web/live/demo_notifications_live.ex
+@@ -2,7 +2,7 @@ defmodule AlvaDemoWeb.DemoNotificationsLive do
+   use AlvaDemoWeb, :live_view
+ 
+   use Alva.LiveView,
+-    signals: [:demo_notifications_sent]
++    subscriptions: [:demo_notifications_sent]
+ 
+   def render(assigns) do
+     ~H"""
+diff --git a/alva_demo/lib/alva_demo_web/live/merchant_console_live.ex b/alva_demo/lib/alva_demo_web/live/merchant_console_live.ex
+index e0dc794..d97ef06 100644
+--- a/alva_demo/lib/alva_demo_web/live/merchant_console_live.ex
++++ b/alva_demo/lib/alva_demo_web/live/merchant_console_live.ex
+@@ -3,29 +3,11 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
+   import AlvaDemoWeb.ParamHelpers
+ 
+   use Alva.LiveView,
+-    collections: [
+-      sales_orders: [
+-        source_input: :sales_order_collection_source_input,
+-        reload_on: :route_change
+-      ],
+-      products: [
+-        source_input: :product_collection_source_input,
+-        reload_on: :route_change
+-      ],
+-      conversations: [
+-        source_input: :conversation_collection_source_input,
+-        reload_on: :route_change
+-      ],
+-      support_messages: [
+-        source_input: :support_message_collection_source_input,
+-        reload_on: :route_change
+-      ]
+-    ],
+-    route_subscriptions: [
+-      {:sales_orders, ["order:created", "order:updated"]},
+-      {:products, ["product:updated"]},
+-      {:conversations, ["conversation:created", "conversation:updated"]},
+-      {:support_messages, :support_message_route_topics}
++    subscriptions: [
++      :sales_orders,
++      :products,
++      :conversations,
++      :support_messages
+     ],
+     page_state: :console_page_state,
+     page_events: [
+@@ -94,11 +76,7 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
+       v-inject="layout"
+       v-socket={@socket}
+       media={@uploads.media}
+-      sales_orders={@streams.sales_orders}
+-      products={@streams.products}
+-      conversations={@streams.conversations}
+       active_conversation_id={@active_conversation_id}
+-      support_messages={@streams.support_messages}
+       new_orders_count={@new_orders_count}
+       processing_orders_count={@processing_orders_count}
+       waiting_conversations_count={@waiting_conversations_count}
+@@ -114,49 +92,7 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
+     """
+   end
+ 
+-  def sales_order_collection_source_input(socket) do
+-    params = Alva.LiveView.route_params(socket)
+-    status = normalize_optional_string(params["order_status"])
+-    status = if status in ["new", "processing", "fulfilled"], do: String.to_atom(status), else: nil
+-
+-    %{
+-      "sort" => "-created_at",
+-      "status" => status,
+-      "customer_query" => normalize_optional_string(params["order_customer"]),
+-      "product_query" => normalize_optional_string(params["order_product"])
+-    }
+-  end
+-
+-  def product_collection_source_input(socket) do
+-    params = Alva.LiveView.route_params(socket)
+-    
+-    %{
+-      "sort" => "stock",
+-      "query" => normalize_optional_string(params["inv_query"]),
+-      "max_stock" => if(params["inv_low_stock"] == "true", do: 25, else: nil)
+-    }
+-  end
+-
+-  def support_message_collection_source_input(socket) do
+-    %{"conversation_id" => normalize_conversation_id(Alva.LiveView.route_params(socket))}
+-  end
+-
+-  def support_message_route_topics(socket) do
+-    case normalize_conversation_id(Alva.LiveView.route_params(socket)) do
+-      nil -> {:ok, []}
+-      conversation_id -> {:ok, ["support_message:conversation:#{conversation_id}"]}
+-    end
+-  end
+ 
+-  def conversation_collection_source_input(socket) do
+-    params = Alva.LiveView.route_params(socket)
+-    
+-    %{
+-      "sort" => "-last_message_at",
+-      "customer_query" => normalize_optional_string(params["conv_customer"]),
+-      "needs_merchant_reply" => if(params["conv_waiting"] == "true", do: true, else: nil)
+-    }
+-  end
+ 
+   def console_page_state(socket) do
+     require Ash.Query
+diff --git a/docs/alva-demo-api-surface.md b/docs/alva-demo-api-surface.md
+index 09bea1d..b18dd5e 100644
+--- a/docs/alva-demo-api-surface.md
++++ b/docs/alva-demo-api-surface.md
+@@ -1,49 +1,71 @@
+ # Alva Demo API Surface
+ 
+-The commerce showcase should model the current Alva route-state API, not the
+-older route-owned assign plus legacy read-result binding workaround.
++The commerce showcase models the unified V2 Alva API, where realtime data delivery is completely decoupled from lifecycle intent.
+ 
+-Route-owned lists are Alva Collections:
++Route-owned reactive data uses `subscriptions:` and `useAlvaStream`.
++Transient notifications use `subscriptions:` and `useAlvaSignal`.
+ 
+-- `sales_orders`
+-- `products`
+-- `conversations`
++## 1. Backend Activation
+ 
+-Declare each list in the resource `live_vue` block with an explicit `source`
+-event, then activate it from the LiveView through `use Alva.LiveView,
+-collections: [...]`. At the render boundary, pass Collection state to Vue with
+-explicit stream props:
++Declare each capability in the resource `live_vue` block (e.g., `stream :sales_orders` or `signal :demo_notifications_sent`).
++
++Then, activate it from the LiveView through the unified `subscriptions:` list:
+ 
+ ```elixir
+-<.vue
+-  v-component="MerchantConsolePage"
+-  sales_orders={@streams.sales_orders}
+-  products={@streams.products}
+-  conversations={@streams.conversations}
+-/>
++  use Alva.LiveView,
++    subscriptions: [
++      :sales_orders,
++      :products,
++      :conversations,
++      :demo_notifications_sent
++    ]
++
++  def render(assigns) do
++    ~H"""
++    <.vue
++      v-component="MerchantConsolePage"
++      v-socket={@socket}
++    />
++    """
++  end
++```
++
++At the render boundary, do **not** pass stream state to Vue with explicit props. Vue components must fetch the data using `useAlvaStream`.
++
++## 2. Frontend Lifecycle
++
++Inside the Vue component, use `useAlvaStream` to activate the stream on mount and deactivate on unmount.
++The input payload is typed, and changes to the stream data are automatically managed by LiveVue via native LiveView streams:
++
++```typescript
++import { useAlvaStream } from "../../../js/alva/useAlvaStream";
++
++useAlvaStream("sales_orders", {
++  sort: "-created_at",
++  status: null,
++  customer_query: "",
++  product_query: ""
++});
+ ```
+ 
+-Plain assigns are still appropriate for non-Collection props, especially state
+-that is not owned by the route as a full list. In this demo, support messages
+-are intentionally not a Collection because their history source depends on the
+-conversation selected in Vue. The chat surfaces fetch history with
+-`support.list_messages` for the active `conversation_id` and should use
+-raw Phoenix PubSub wiring for live `support_messages` pushes until that
+-behavior is modeled as a proper Collection or Signal. Declarative
+-`subscriptions:` and declarative `streams:` are not part of the recommended
+-public activation surface. Filter those live messages by the active
+-conversation before rendering the transcript.
+-
+-Do not reintroduce route-owned list setup like:
+-
+-- `assign(:products, load_collection(...))`
+-- `assign(:conversations, load_collection(...))`
+-- the removed `bind_stream_query("catalog.list_products", :products, ...)` bridge
+-- the removed `bind_stream_query("support.list_conversations", :conversations, ...)` bridge
+-
+-If a route-owned list needs initial data plus realtime updates, make it a
+-Collection. If a future route truly needs route-dependent Collection input,
+-activate the Collection manually with explicit `source_input:` derived from
+-`Alva.LiveView.route_params(socket)` instead of hiding another route-owned list
+-loader behind an `on_mount` hook. Declarative `params:` is not part of the
+-supported activation surface.
++For transient callbacks (e.g., notifications), use `useAlvaSignal`:
++
++```typescript
++import { useAlvaSignal } from "../../../js/alva/useAlvaSignal";
++
++useAlvaSignal("demo_notifications_sent", {}, (payload) => {
++  console.log("Received notification:", payload);
++});
++```
++
++## 3. Infinite Scrolling (Load More)
++
++To support infinite scrolling without destroying the subscription, `useAlvaStream` returns a controller object containing a `loadMore(params)` function. This tells the backend to fetch and stream_insert the next page of data while keeping the existing PubSub connection intact:
++
++```typescript
++const stream = useAlvaStream("feed_entries", { page: { limit: 5, offset: 0 } });
++
++const handleLoadMore = () => {
++  stream.loadMore({ page: { limit: 10, offset: 0 } });
++};
++```
+diff --git a/fix_context.py b/fix_context.py
+new file mode 100644
+index 0000000..0aaef82
+--- /dev/null
++++ b/fix_context.py
+@@ -0,0 +1,47 @@
++import re
++
++with open("CONTEXT.md", "r") as f:
++    text = f.read()
++
++# Remove specific deprecated definitions
++text = re.sub(r"- \*\*Collection\*\*:.*?\n", "", text, flags=re.MULTILINE)
++text = re.sub(r"- \*\*Collection Source\*\*:.*?\n", "", text, flags=re.MULTILINE)
++text = re.sub(r"- \*\*Collection Activation Options\*\*:.*?\n", "", text, flags=re.MULTILINE)
++text = re.sub(r"- \*\*Route Collection\*\*:.*?\n", "", text, flags=re.MULTILINE)
++text = re.sub(r"- \*\*Source Input\*\*:.*?\n", "", text, flags=re.MULTILINE)
++text = re.sub(r"- \*\*Collection Refresh\*\*:.*?\n", "", text, flags=re.MULTILINE)
++text = re.sub(r"- \*\*Route Change Reload\*\*:.*?\n", "", text, flags=re.MULTILINE)
++text = re.sub(r"- \*\*Collection Block\*\*:.*?\n", "", text, flags=re.MULTILINE)
++text = re.sub(r"- \*\*Signal Block\*\*:.*?\n", "", text, flags=re.MULTILINE)
++text = re.sub(r"- \*\*Signal Activation\*\*:.*?\n", "", text, flags=re.MULTILINE)
++
++# Replace Collections with Streams
++text = text.replace("Collections, Streams, and Signals", "Streams and Signals")
++text = text.replace("Collection delta", "Stream delta")
++text = text.replace("active Collections and Signals", "active Streams and Signals")
++text = text.replace("even on pages without route-change Collection refresh behavior", "")
++text = text.replace("before any route-change Collection refresh runs", "")
++text = text.replace("update multiple Collections and/or fire multiple Signals", "update multiple Streams and/or fire multiple Signals")
++text = text.replace("non-collection cases", "non-stream cases")
++text = text.replace("Collection Sources", "Stream sources")
++text = text.replace("Collection operation", "Stream operation")
++text = text.replace("reusable Collection or Signal mapping", "reusable Stream or Signal mapping")
++text = text.replace("described as Collections", "described as Streams")
++text = text.replace("updating a collection", "updating a stream")
++text = text.replace("old collections: and signals:", "old collections: and signals:")
++text = text.replace("Collections, Signals, Streams,", "Streams, Signals,")
++text = text.replace("collections:, signals:,", "subscriptions:,")
++text = text.replace("activate a given Collection or Signal", "activate a given Stream or Signal")
++text = text.replace("Duplicate entries in collections: or signals:", "Duplicate entries in subscriptions:")
++text = text.replace("collections:, signals:, and projection-keyed", "subscriptions: and projection-keyed")
++text = text.replace("as both a Collection and a Signal", "as both a Stream and a Signal")
++text = text.replace("back both a Collection and a Signal", "back both a Stream and a Signal")
++text = text.replace("owned by a route Collection", "owned by a route Stream")
++text = text.replace("out-of-band collection updates", "out-of-band stream updates")
++text = text.replace("collections: and signals:", "collections: and signals:")
++
++# Add Subscription Block
++text = text.replace("- **Stream**:", "- **Subscription Block**: The resource-level DSL boundary that unifies the old Collection and Signal blocks. It declares what server-owned reactive streams or callbacks are allowed to reach Vue.\n- **Stream**:")
++
++with open("CONTEXT.md", "w") as f:
++    f.write(text)
+diff --git a/fix_context2.py b/fix_context2.py
+new file mode 100644
+index 0000000..daafe1e
+--- /dev/null
++++ b/fix_context2.py
+@@ -0,0 +1,21 @@
++with open("CONTEXT.md", "r") as f:
++    text = f.read()
++
++text = text.replace("non-collection occurrences", "non-stream occurrences")
++text = text.replace("such as a Collection Source event", "such as a Stream source event")
++text = text.replace("already-active Collections or Signals", "already-active Streams or Signals")
++text = text.replace("updates a collection", "updates a stream")
++text = text.replace("Collection Source Input", "Stream Input")
++text = text.replace("shape as Collections:", "shape as Streams:")
++text = text.replace("do not own collection synchronization", "do not own stream synchronization")
++text = text.replace("in a **Collection** operation", "in a **Stream** operation")
++text = text.replace("reusable **Collection**", "reusable **Stream**")
++text = text.replace("such as `collections:`, `signals:`", "such as `subscriptions:`")
++text = text.replace("in `collections:` or `signals:`", "in `subscriptions:`")
++text = text.replace("across `collections:`, `signals:`, and", "across `subscriptions:` and")
++text = text.replace("both a **Collection**", "both a **Stream**")
++text = text.replace("primary collection/list update path", "primary stream/list update path")
++text = text.replace("non-collection push path", "non-stream push path")
++
++with open("CONTEXT.md", "w") as f:
++    f.write(text)

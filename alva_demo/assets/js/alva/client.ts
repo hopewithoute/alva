@@ -27,3 +27,5 @@ export function createAlvaApi() {
 
   return create_deep_proxy();
 }
+
+export const ashCall = createAlvaApi().call;

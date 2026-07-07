@@ -103,5 +103,5 @@ export function useAlvaForm<
         loading,
         errors: ref(pseudoForm.errors), // Compatibility
         values: pseudoForm.values as FormValues, // Compatibility
-    };
+    } as any;
 }

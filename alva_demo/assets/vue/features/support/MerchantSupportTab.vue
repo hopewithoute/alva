@@ -2,7 +2,7 @@
 import { ref, reactive, watch, computed, nextTick } from "vue";
 import { usePageEvent, usePageState } from "alva";
 import type { MerchantConsoleLiveEvents } from "../../../js/alva/MerchantConsoleLive.events";
-import { createAlvaApi } from "../../../js/alva/client";
+import { ashCall } from "../../../js/alva/client";
 import type { Conversation, SupportMessage } from "../../../js/alva/types";
 import type { ConversationFilters } from "../merchant/types";
 import Button from "../../shared/ui/button/Button.vue";
@@ -16,7 +16,7 @@ const { conversations, active_conversation_id, support_messages, is_conversation
   conversation_filters?: ConversationFilters;
 }>();
 
-const api = createAlvaApi();
+
 
 const conversation_filters = reactive<ConversationFilters>({
   customer: initial_filters?.value?.customer || "",
@@ -98,7 +98,7 @@ const sendReply = async () => {
   send_reply_error.value = null;
 
   try {
-    const result = await api.call("support.send_message", {
+    const result = await ashCall("support.send_message", {
       text: text,
       sender: "merchant",
       conversation_id: active_conversation_id.value,

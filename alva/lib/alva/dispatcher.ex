@@ -114,7 +114,16 @@ defmodule Alva.Dispatcher do
                 case Ash.read(query, read_opts) do
                   {:ok, %{results: records} = page}
                   when is_struct(page, Ash.Page.Offset) or is_struct(page, Ash.Page.Keyset) ->
-                    dispatch_success(records, event_def, page)
+                    if action.get? do
+                      case records do
+                        [record | _] -> 
+                          dispatch_success(record, event_def, page)
+                        [] -> 
+                          handle_error(Ash.Error.Query.NotFound.exception(resource: resource, primary_key: %{}))
+                      end
+                    else
+                      dispatch_success(records, event_def, page)
+                    end
 
                   {:ok, records} ->
                     if action.get? do
