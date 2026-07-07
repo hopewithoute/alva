@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, reactive, nextTick, watch } from "vue";
-import { ashUpload as ash_upload } from "alva";
+import { ashUpload as ash_upload, usePageEvent } from "alva";
+import type { MerchantConsoleLiveEvents } from "../js/alva/MerchantConsoleLive.events";
 import { createAlvaApi } from "../js/alva/client";
-import { useChatMessages } from "./composables/useChatMessages";
 import { getStatusColor } from "./utils/ui";
 import Button from "./components/ui/button/Button.vue";
 
@@ -22,8 +22,10 @@ const props = defineProps<{
   sales_orders?: Order[];
   products?: Product[];
   conversations?: Conversation[];
+  active_conversation_id?: string | null;
   support_messages?: SupportMessage[];
 }>();
+
 
 const pending_order_actions = ref<Record<string, "processing" | "fulfilling">>(
   {},
@@ -38,14 +40,10 @@ const media_upload = ash_upload("media", { maxFiles: 1 });
 const uploading_media_product_id = ref<string | null>(null);
 const upload_error = ref<string | null>(null);
 
-const active_conversation_id = ref<string | null>(null);
-const historical_messages = ref<SupportMessage[]>([]);
 const new_message_text = ref("");
-const is_loading_messages = ref(false);
 const is_sending_reply = ref(false);
-const chat_error = ref<string | null>(null);
+const send_reply_error = ref<string | null>(null);
 const chat_messages_el = ref<HTMLElement | null>(null);
-let message_request_id = 0;
 
 const order_filters = reactive<{
   status: OrderStatusFilter;
@@ -69,6 +67,12 @@ const conversation_filters = reactive({
 
 const api = createAlvaApi();
 const active_tab = ref<MerchantConsoleTab>("orders");
+const active_conversation_id = computed(
+  () => props.active_conversation_id ?? null,
+);
+const chat_messages = computed(() => props.support_messages ?? []);
+
+const selectConversationEvent = usePageEvent<MerchantConsoleLiveEvents, "support.select_conversation">("support.select_conversation");
 
 const order_status_options: Array<{ label: string; value: OrderStatusFilter }> =
   [
@@ -352,45 +356,34 @@ const clearConversationFilters = () => {
 };
 
 const triggerMediaUpload = (product_id: string) => {
+  if (uploading_media_product_id.value) return;
+
   uploading_media_product_id.value = product_id;
   upload_error.value = null;
-  media_upload.showFilePicker();
-};
 
-watch(media_upload.progress, async (new_progress: number) => {
-  if (
-    new_progress === 100 &&
-    media_upload.files.value.length > 0 &&
-    uploading_media_product_id.value
-  ) {
-    const product_id = uploading_media_product_id.value;
+  const upload_request = media_upload.dispatch(async ({ primaryReference }) => {
+    const result = await api.call("catalog.upload_media", {
+      id: product_id,
+      media: primaryReference,
+    });
 
-    try {
-      const refs = media_upload.getFileReferences();
-      const reference = refs[0];
-
-      if (!reference) {
-        upload_error.value =
-          "Failed to upload media: No uploaded file reference was produced.";
-        return;
-      }
-
-      const result = await api.call("catalog.upload_media", {
-        id: product_id,
-        media: reference as unknown as File,
-      });
-
-      if (!result.ok) {
-        upload_error.value = `Failed to upload media: ${result.error?.message || "Unknown error"}`;
-      }
-    } catch (error) {
-      upload_error.value = `Failed to upload media: ${error instanceof Error ? error.message : "Unknown error"}`;
-    } finally {
-      media_upload.clear();
-      uploading_media_product_id.value = null;
+    if (!result.ok) {
+      throw new Error(result.error?.message || "Unknown error");
     }
-  }
-});
+
+    return result;
+  });
+
+  media_upload.showFilePicker();
+
+  void upload_request
+    .catch((error) => {
+      upload_error.value = `Failed to upload media: ${error instanceof Error ? error.message : "Unknown error"}`;
+    })
+    .finally(() => {
+      uploading_media_product_id.value = null;
+    });
+};
 
 const beginProcessing = async (order_id: string) => {
   setPendingOrderAction(order_id, "processing");
@@ -442,30 +435,9 @@ const adjustStock = async (product_id: string) => {
 };
 
 const selectConversation = async (conversation_id: string) => {
-  const request_id = ++message_request_id;
-  active_conversation_id.value = conversation_id;
-  historical_messages.value = [];
-  is_loading_messages.value = true;
-  chat_error.value = null;
-
-  try {
-    const messages_result = await api.call("support.list_messages", {
-      conversation_id: conversation_id,
-    });
-
-    if (request_id !== message_request_id) return;
-
-    if (messages_result.ok) {
-      historical_messages.value = messages_result.data as SupportMessage[];
-    } else {
-      chat_error.value =
-        messages_result.error?.message || "Failed to load messages.";
-    }
-  } finally {
-    if (request_id === message_request_id) {
-      is_loading_messages.value = false;
-    }
-  }
+  await selectConversationEvent.call({
+    conversation_id: conversation_id,
+  });
 };
 
 const sendReply = async () => {
@@ -474,7 +446,7 @@ const sendReply = async () => {
 
   new_message_text.value = "";
   is_sending_reply.value = true;
-  chat_error.value = null;
+  send_reply_error.value = null;
 
   try {
     const result = await api.call("support.send_message", {
@@ -484,7 +456,7 @@ const sendReply = async () => {
     });
 
     if (!result.ok) {
-      chat_error.value = result.error?.message || "Failed to send reply.";
+      send_reply_error.value = result.error?.message || "Failed to send reply.";
       new_message_text.value = text;
     }
   } finally {
@@ -492,45 +464,12 @@ const sendReply = async () => {
   }
 };
 
-const chat_messages = useChatMessages(
-  active_conversation_id,
-  historical_messages,
-  computed(() => props.support_messages),
-);
-
 watch(chat_messages, async () => {
   await nextTick();
   if (chat_messages_el.value) {
     chat_messages_el.value.scrollTop = chat_messages_el.value.scrollHeight;
   }
 });
-
-watch(
-  () =>
-    all_conversations.value
-      .map((conversation) =>
-        [
-          conversation.id,
-          conversation.customer_name,
-          conversation.last_message_at || "",
-          conversation.last_message_sender || "",
-          conversation.message_count || 0,
-          conversation.needs_merchant_reply ? "1" : "0",
-        ].join(":"),
-      )
-      .join("|"),
-  () => {
-    if (
-      active_conversation_id.value &&
-      !all_conversations.value.some(
-        (conversation) => conversation.id === active_conversation_id.value,
-      )
-    ) {
-      active_conversation_id.value = null;
-      historical_messages.value = [];
-    }
-  },
-);
 
 const orderActionLabel = (order: Order) => {
   const pending = pending_order_actions.value[order.id];
@@ -1262,14 +1201,15 @@ const runOrderAction = (order: Order) => {
               class="flex-1 space-y-3 overflow-y-auto bg-zinc-50/30 p-4"
             >
               <div
-                v-if="chat_error"
+                v-if="selectConversationEvent.error.value || send_reply_error"
                 class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
               >
-                {{ chat_error }}
+                {{ (selectConversationEvent.error.value?.message) || send_reply_error }}
               </div>
+
               <div
-                v-if="is_loading_messages"
-                class="mt-4 text-center text-sm text-zinc-500"
+                v-if="selectConversationEvent.isLoading.value"
+                class="rounded-lg border border-dashed border-zinc-200 bg-white px-4 py-5 text-sm text-zinc-500"
               >
                 Loading messages...
               </div>

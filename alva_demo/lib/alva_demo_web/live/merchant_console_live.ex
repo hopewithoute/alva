@@ -1,39 +1,45 @@
 defmodule AlvaDemoWeb.MerchantConsoleLive do
   use AlvaDemoWeb, :live_view
+  import AlvaDemoWeb.ParamHelpers
 
   use Alva.LiveView,
     collections: [
       sales_orders: [source_input: :sales_order_collection_source_input],
       products: [source_input: :product_collection_source_input],
-      conversations: [source_input: :conversation_collection_source_input]
+      conversations: [source_input: :conversation_collection_source_input],
+      support_messages: [
+        source_input: :support_message_collection_source_input,
+        reload_on: :route_change
+      ]
+    ],
+    route_subscriptions: [
+      {:sales_orders, ["order:created", "order:updated"]},
+      {:products, ["product:updated"]},
+      {:conversations, ["conversation:created", "conversation:updated"]},
+      {:support_messages, :support_message_route_topics}
+    ],
+    page_state: :support_chat_page_state,
+    page_events: [
+      {"support.select_conversation", :select_conversation_page_event,
+       %{
+         input: "{ conversation_id: string }",
+         output: "void"
+       }}
     ]
 
-  def mount(_params, _session, socket) do
-    socket =
-      socket
-      |> assign(:support_messages, [])
-      |> maybe_subscribe_support_messages()
+  def select_conversation_page_event(%{"conversation_id" => conversation_id}, socket) do
+    conversation_id = conversation_id |> to_string() |> String.trim()
 
-    {:ok, socket}
-  end
-
-  def handle_info(
-        %Phoenix.Socket.Broadcast{
-          topic: "support_message:created",
-          event: "create",
-          payload: %Ash.Notifier.Notification{data: data}
-        },
+    if conversation_id == "" do
+      {:reply, %{ok: false, error: %{message: "Select a conversation first."}}, socket}
+    else
+      socket =
         socket
-      ) do
-    {:noreply, update(socket, :support_messages, &upsert_support_message(&1, data))}
+        |> Phoenix.LiveView.push_patch(to: console_conversation_path(conversation_id))
+
+      {:reply, %{ok: true}, socket}
+    end
   end
-
-  def handle_info(_message, socket), do: {:noreply, socket}
-
-  # LiveView uploads require the change/submit events to exist even when
-  # Alva handles the actual domain command separately after auto-upload.
-  def handle_event("validate_upload", _params, socket), do: {:noreply, socket}
-  def handle_event("save_upload", _params, socket), do: {:noreply, socket}
 
   def render(assigns) do
     ~H"""
@@ -46,7 +52,8 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
       sales_orders={@streams.sales_orders}
       products={@streams.products}
       conversations={@streams.conversations}
-      support_messages={@support_messages}
+      active_conversation_id={@active_conversation_id}
+      support_messages={@streams.support_messages}
     />
     """
   end
@@ -55,27 +62,31 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
   def product_collection_source_input, do: %{"sort" => "stock"}
   def conversation_collection_source_input, do: %{"sort" => "-last_message_at"}
 
-  defp maybe_subscribe_support_messages(socket) do
-    if Phoenix.LiveView.connected?(socket) do
-      :ok = AlvaDemoWeb.Endpoint.subscribe("support_message:created")
-      socket
-    else
-      socket
+  def support_chat_page_state(socket) do
+    %{
+      active_conversation_id: active_conversation_id(socket)
+    }
+  end
+
+  def support_message_collection_source_input(socket) do
+    %{"conversation_id" => active_conversation_id(socket)}
+  end
+
+  def support_message_route_topics(socket) do
+    case active_conversation_id(socket) do
+      nil -> {:ok, []}
+      conversation_id -> {:ok, ["support_message:conversation:#{conversation_id}"]}
     end
   end
 
-  defp upsert_support_message(messages, data) do
-    message = Alva.Dispatcher.strip_metadata(data)
-    message_id = message.id
-    messages = messages || []
+  defp console_conversation_path(nil), do: ~p"/console"
 
-    if Enum.any?(messages, &(&1.id == message_id)) do
-      Enum.map(messages, fn
-        %{id: ^message_id} -> message
-        existing -> existing
-      end)
-    else
-      messages ++ [message]
-    end
+  defp console_conversation_path(conversation_id),
+    do: ~p"/console?#{%{conversation_id: conversation_id}}"
+
+  defp active_conversation_id(socket) do
+    socket
+    |> Alva.LiveView.route_params()
+    |> normalize_conversation_id()
   end
 end
