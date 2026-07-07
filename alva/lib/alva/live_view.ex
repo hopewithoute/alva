@@ -15,6 +15,9 @@ defmodule Alva.LiveView do
   @upload_change_event "alva.validate_upload"
   @upload_submit_event "alva.save_upload"
 
+  @err_opts_expected "use Alva.LiveView expects keyword options. Use keyword-form declarative activation with :collections, :signals, :route_subscriptions, :page_events, and :page_state."
+  defp err_unsupported_key(key), do: "Alva declarative page activation only accepts :collections, :signals, :route_subscriptions, :page_events, and :page_state. Unsupported key: #{inspect(key)}"
+
   defmacro __using__(opts) do
     validate_use_opts!(opts, __CALLER__)
 
@@ -31,8 +34,7 @@ defmodule Alva.LiveView do
       end
 
       def handle_params(_params, _uri, socket), do: {:noreply, socket}
-      def handle_info(_message, socket), do: {:noreply, socket}
-      defoverridable handle_params: 3, handle_info: 2
+      defoverridable handle_params: 3
 
       on_mount(
         {Alva.LiveView,
@@ -1345,8 +1347,7 @@ defmodule Alva.LiveView do
       raise CompileError,
         file: caller.file,
         line: caller.line,
-        description:
-          "use Alva.LiveView expects keyword options. Use keyword-form declarative activation with :collections, :signals, :route_subscriptions, :page_events, and :page_state."
+        description: @err_opts_expected
     end
   end
 
@@ -1354,8 +1355,7 @@ defmodule Alva.LiveView do
     raise CompileError,
       file: caller.file,
       line: caller.line,
-      description:
-        "use Alva.LiveView expects keyword options. Use keyword-form declarative activation with :collections, :signals, :route_subscriptions, :page_events, and :page_state."
+      description: @err_opts_expected
   end
 
   defp maybe_validate_collection_use_declarations!(collections, caller) do
@@ -1453,8 +1453,7 @@ defmodule Alva.LiveView do
       raise CompileError,
         file: caller.file,
         line: caller.line,
-        description:
-          "Alva declarative page activation only accepts :collections, :signals, :route_subscriptions, :page_events, and :page_state. Unsupported key: #{inspect(key)}"
+        description: err_unsupported_key(key)
     end
   end
 
@@ -1704,55 +1703,36 @@ defmodule Alva.LiveView do
 
   defp validate_page_event_use_declarations!(page_events, caller) when is_list(page_events) do
     event_names =
-      Enum.map(page_events, fn
-        {event_name, callback} when is_binary(event_name) and is_atom(callback) ->
-          event_name
+      Enum.map(page_events, fn tuple ->
+        {event_name, callback} =
+          case tuple do
+            {e, c} -> {e, c}
+            {e, c, _} -> {e, c}
+            {:{}, _, [e, c, _]} -> {e, c}
+            other ->
+              raise CompileError,
+                file: caller.file,
+                line: caller.line,
+                description:
+                  "Alva declarative page_events entries must be {event_name, callback} or {event_name, callback, types} tuples. Got: #{inspect(other)}"
+          end
 
-        {:{}, _, [event_name, callback, _types]} when is_binary(event_name) and is_atom(callback) ->
-          event_name
-
-        {event_name, callback, types} when is_binary(event_name) and is_atom(callback) and is_map(types) ->
-          event_name
-
-        shape when (is_tuple(shape) and tuple_size(shape) == 2 and is_binary(elem(shape, 0))) or
-                     (is_tuple(shape) and tuple_size(shape) == 3 and is_binary(elem(shape, 0))) or
-                     (is_tuple(shape) and tuple_size(shape) == 3 and elem(shape, 0) == :{} and is_list(elem(shape, 2)) and is_binary(hd(elem(shape, 2)))) ->
-          # Extract event_name and callback for the error message
-          {event_name, callback} =
-            case shape do
-              {e, c} -> {e, c}
-              {e, c, _} -> {e, c}
-              {:{}, _, [e, c, _]} -> {e, c}
-            end
-
-          raise CompileError,
-            file: caller.file,
-            line: caller.line,
-            description: "Alva declarative page_events callback for #{inspect(event_name)} must be a local callback atom, got: #{inspect(callback)}"
-
-        {event_name, _callback} ->
+        unless is_binary(event_name) do
           raise CompileError,
             file: caller.file,
             line: caller.line,
             description: "Alva declarative page_events event names must be binaries, got: #{inspect(event_name)}"
+        end
 
-        {:{}, _, [event_name, _callback, _types]} ->
+        unless is_atom(callback) do
           raise CompileError,
             file: caller.file,
             line: caller.line,
-            description: "Alva declarative page_events event names must be binaries, got: #{inspect(event_name)}"
+            description:
+              "Alva declarative page_events callback for #{inspect(event_name)} must be a local callback atom, got: #{inspect(callback)}"
+        end
 
-        {event_name, _callback, _types} ->
-          raise CompileError,
-            file: caller.file,
-            line: caller.line,
-            description: "Alva declarative page_events event names must be binaries, got: #{inspect(event_name)}"
-
-        other ->
-          raise CompileError,
-            file: caller.file,
-            line: caller.line,
-            description: "Alva declarative page_events entries must be {event_name, callback} or {event_name, callback, types} tuples. Got: #{inspect(other)}"
+        event_name
       end)
 
     validate_unique_page_event_use_names!(event_names, caller)
@@ -1824,8 +1804,10 @@ defmodule Alva.LiveView do
               "Alva declarative page activation no longer accepts top-level `subscriptions:`. Move topic wiring to top-level `route_subscriptions:` or use raw Phoenix PubSub outside Alva projections."
 
       key ->
-        raise ArgumentError,
-              "Alva declarative page activation only accepts :collections, :signals, :route_subscriptions, :page_events, and :page_state. Unsupported key: #{inspect(key)}"
+        unless key in @public_activation_keys do
+          raise ArgumentError,
+                err_unsupported_key(key)
+        end
     end)
   end
 

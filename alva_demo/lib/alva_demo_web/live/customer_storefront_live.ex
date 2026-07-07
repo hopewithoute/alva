@@ -80,27 +80,10 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
     }
   end
 
-  def support_message_collection_source_input(socket) do
-    %{"conversation_id" => active_conversation_id(socket)}
-  end
-
-  def support_message_route_topics(socket) do
-    case active_conversation_id(socket) do
-      nil -> {:ok, []}
-      conversation_id -> {:ok, ["support_message:conversation:#{conversation_id}"]}
-    end
-  end
-
   defp storefront_chat_path(nil, _customer_name), do: ~p"/storefront"
 
   defp storefront_chat_path(conversation_id, customer_name) do
     ~p"/storefront?#{%{conversation_id: conversation_id, customer_name: customer_name}}"
-  end
-
-  defp active_conversation_id(socket) do
-    socket
-    |> Alva.LiveView.route_params()
-    |> normalize_conversation_id()
   end
 
   defp connected_customer_name(socket) do

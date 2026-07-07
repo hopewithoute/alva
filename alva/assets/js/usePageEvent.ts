@@ -19,8 +19,9 @@ export function usePageEvent<
             }
             return reply as Events[E]["output"];
         } catch (e: any) {
-            error.value = { type: "unknown", message: e.message || "Unknown error" };
-            throw e;
+            const liveError = { type: "unknown", message: e.message || "Unknown error" };
+            error.value = liveError;
+            return { ok: false, error: liveError } as Events[E]["output"];
         } finally {
             isLoading.value = false;
         }
