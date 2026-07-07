@@ -1,4 +1,6 @@
 defmodule Alva.Codegen.PageEventsGenerator do
+  def generate!(_module, page_events) when not is_list(page_events) or page_events == [], do: :ok
+  
   def generate!(module, page_events) do
     output_dir = Application.get_env(:alva, :output_dir, "assets/js/alva")
     File.mkdir_p!(output_dir)

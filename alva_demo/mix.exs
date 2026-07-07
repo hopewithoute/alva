@@ -10,7 +10,7 @@ defmodule AlvaDemo.MixProject do
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
-      compilers: [:phoenix_live_view, :alva_page_events] ++ Mix.compilers(),
+      compilers: [:phoenix_live_view] ++ Mix.compilers() ++ [:alva_page_events],
       listeners: [Phoenix.CodeReloader],
       consolidate_protocols: Mix.env() not in [:dev, :test]
     ]

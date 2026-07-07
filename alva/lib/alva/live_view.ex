@@ -29,7 +29,8 @@ defmodule Alva.LiveView do
       @alva_page_events Keyword.get(unquote(opts), :page_events, [])
       @alva_page_state Keyword.get(unquote(opts), :page_state)
 
-
+      @doc false
+      def __alva_page_events__, do: @alva_page_events
 
       def handle_params(_params, _uri, socket), do: {:noreply, socket}
       defoverridable handle_params: 3
