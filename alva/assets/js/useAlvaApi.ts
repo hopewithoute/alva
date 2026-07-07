@@ -1,6 +1,6 @@
 import { useLiveVue, useLiveEvent } from "live_vue";
 
-export type LiveErrorType =
+export type AlvaErrorType =
     | "validation"
     | "forbidden"
     | "not_found"
@@ -9,24 +9,24 @@ export type LiveErrorType =
     | "cancelled"
     | "unknown";
 
-export type LiveError = {
-    type: LiveErrorType;
+export type AlvaError = {
+    type: AlvaErrorType;
     message: string;
     code?: string;
     fields?: Record<string, string[]>;
     meta?: unknown;
 };
 
-export type LiveResult<T = any> =
+export type AlvaResult<T = any> =
     | { ok: true; data: T; meta?: Record<string, unknown> }
-    | { ok: false; error: LiveError };
+    | { ok: false; error: AlvaError };
 
 export interface AlvaApiConfig {
-    onError?: (error: LiveError, event: string) => void;
+    onError?: (error: AlvaError, event: string) => void;
     onSuccess?: (data: unknown, event: string) => void;
 }
 
-export interface AshCallOptions {
+export interface AlvaCallOptions {
     optimisticUpdate?: boolean;
     // Future options for optimistic UI, caching, etc. can be added here
 }
@@ -36,7 +36,7 @@ export interface AshCallOptions {
  * It offers request/reply command execution via `call` and semantic Signal delivery via `on`.
  */
 export function useAlvaApi<
-    Events extends Record<string, { input: any; output: LiveResult<any> }> =
+    Events extends Record<string, { input: any; output: AlvaResult<any> }> =
         any,
     SignalEvents extends Record<string, any> = any,
 >(config?: AlvaApiConfig) {
@@ -45,10 +45,10 @@ export function useAlvaApi<
     /**
      * Execute a remote event (mutation or ad hoc read) and return an immediate promise.
      */
-    const ashCall = <E extends keyof Events>(
+    const call = <E extends keyof Events>(
         event: E,
         payload: Events[E]["input"],
-        options?: AshCallOptions,
+        options?: AlvaCallOptions,
     ): Promise<Events[E]["output"]> => {
         return new Promise((resolve) => {
             // Opt-in pathway for optimistic UI
@@ -81,7 +81,7 @@ export function useAlvaApi<
     };
 
     return {
-        call: ashCall,
+        call,
         on,
     };
 }
