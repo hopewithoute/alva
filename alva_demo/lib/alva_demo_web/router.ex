@@ -17,6 +17,11 @@ defmodule AlvaDemoWeb.Router do
       live "/", HomeLive
       live "/storefront", CustomerStorefrontLive
       live "/console", MerchantConsoleLive
+      
+      # Isolated Realtime Demos
+      live "/demo/chat", DemoChatLive
+      live "/demo/load-more", DemoLoadMoreLive
+      live "/demo/notifications", DemoNotificationsLive
     end
   end
 end

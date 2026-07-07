@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { createAlvaApi } from "../js/alva/client";
+import { createAlvaApi } from "../../../js/alva/client";
 
 type NotificationSignal = {
   id: string;

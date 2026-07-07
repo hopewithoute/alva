@@ -66,11 +66,16 @@ vi.mock("alva", async () => {
   uploadMock.files = ref([]);
 
   return {
-    ashUpload: () => uploadMock
+    ashUpload: () => uploadMock,
+    usePageEvent: () => ({
+      call: vi.fn(),
+      isLoading: ref(false),
+      error: ref(null)
+    })
   };
 });
 
-vi.mock("../js/alva/client", () => ({
+vi.mock("../../../../js/alva/client", () => ({
   createAlvaApi: () => ({
     call: apiCall
   })
@@ -199,15 +204,9 @@ describe("MerchantConsolePage tabs", () => {
     expect(wrapper.get('[data-testid="merchant-console-tab-orders"]').attributes("aria-selected")).toBe(
       "true"
     );
-    expect(
-      isHidden(wrapper.get('[data-testid="merchant-console-panel-orders"]').attributes("style"))
-    ).toBe(false);
-    expect(
-      isHidden(wrapper.get('[data-testid="merchant-console-panel-inventory"]').attributes("style"))
-    ).toBe(true);
-    expect(
-      isHidden(wrapper.get('[data-testid="merchant-console-panel-support"]').attributes("style"))
-    ).toBe(true);
+    expect(wrapper.find('[data-testid="merchant-console-panel-orders"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="merchant-console-panel-inventory"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="merchant-console-panel-support"]').exists()).toBe(false);
 
     expect(wrapper.get('[data-testid="merchant-console-tab-orders"]').text()).toContain("1");
     expect(wrapper.get('[data-testid="merchant-console-tab-inventory"]').text()).toContain("1");

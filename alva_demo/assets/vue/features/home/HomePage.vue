@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from "live_vue";
-import ShowcaseStatus from "./ShowcaseStatus.vue";
+import ShowcaseStatus from "../../shared/layout/ShowcaseStatus.vue";
 </script>
 
 <template>

@@ -23,13 +23,13 @@ describe("AppLayout", () => {
 
     expect(navText).toContain("Customer Storefront");
     expect(navText).toContain("Merchant Console");
-    expect(navText).not.toContain("Chat Demo");
-    expect(navText).not.toContain("Signals Demo");
-    expect(navText).not.toContain("Load More Demo");
+    expect(navText).toContain("Chat (Stream)");
+    expect(navText).toContain("Infinite Scroll (Signal)");
+    expect(navText).toContain("Toast (Global)");
     expect(wrapper.html()).toContain('href="/storefront"');
     expect(wrapper.html()).toContain('href="/console"');
-    expect(wrapper.html()).not.toContain('href="/demo/chat"');
-    expect(wrapper.html()).not.toContain('href="/demo/notifications"');
-    expect(wrapper.html()).not.toContain('href="/demo/load-more"');
+    expect(wrapper.html()).toContain('href="/demo/chat"');
+    expect(wrapper.html()).toContain('href="/demo/notifications"');
+    expect(wrapper.html()).toContain('href="/demo/load-more"');
   });
 });

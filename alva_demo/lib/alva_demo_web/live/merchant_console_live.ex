@@ -118,6 +118,10 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
       new_orders_count={@new_orders_count}
       processing_orders_count={@processing_orders_count}
       waiting_conversations_count={@waiting_conversations_count}
+      merchant_attention_count={@merchant_attention_count}
+      is_order_filtered={@is_order_filtered}
+      is_inventory_filtered={@is_inventory_filtered}
+      is_conversation_filtered={@is_conversation_filtered}
       low_stock_count={@low_stock_count}
       route_filters={@route_filters}
     />
@@ -199,6 +203,10 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
       processing_orders_count: processing_orders_count,
       waiting_conversations_count: waiting_conversations_count,
       low_stock_count: low_stock_count,
+      merchant_attention_count: new_orders_count + waiting_conversations_count,
+      is_order_filtered: normalize_optional_string(params["order_status"]) not in [nil, "all"] or normalize_optional_string(params["order_customer"]) != nil or normalize_optional_string(params["order_product"]) != nil,
+      is_inventory_filtered: normalize_optional_string(params["inv_query"]) != nil or params["inv_low_stock"] == "true",
+      is_conversation_filtered: normalize_optional_string(params["conv_customer"]) != nil or params["conv_waiting"] == "true",
       route_filters: %{
         order_status: normalize_optional_string(params["order_status"]) || "all",
         order_customer: normalize_optional_string(params["order_customer"]) || "",

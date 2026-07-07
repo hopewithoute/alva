@@ -39,7 +39,7 @@ const hasMore = computed(() => entries.value.length < 12);
 
         <Link
           v-if="hasMore"
-          :navigate="`/demo/load-more?limit=${nextLimit}`"
+          :patch="`/demo/load-more?limit=${nextLimit}`"
           class="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
         >
           Load 5 More

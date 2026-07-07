@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { createAlvaApi } from "../js/alva/client";
+import { createAlvaApi } from "../../../js/alva/client";
 
 type ChatMessage = {
   id: string;

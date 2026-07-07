@@ -1,5 +1,5 @@
 import { computed, Ref } from "vue";
-import type { SupportMessage } from "../../js/alva/types";
+import type { SupportMessage } from "../../../../js/alva/types";
 
 export function useChatMessages(
   active_conversation_id: Ref<string | null | undefined>,
