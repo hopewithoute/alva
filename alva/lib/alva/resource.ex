@@ -44,7 +44,7 @@ defmodule Alva.Resource.SubscriptionOperation do
 end
 
 defmodule Alva.Resource.Subscription do
-  defstruct [:key, :name, :kind, :source, :scope, :resolve, :on, :operations, :__spark_metadata__]
+  defstruct [:key, :name, :kind, :source, :scope, :resolve, :authorize_with, :on, :operations, :__spark_metadata__]
 end
 
 defmodule Alva.Resource do
@@ -369,6 +369,11 @@ defmodule Alva.Resource do
         type: :atom,
         required: true,
         doc: "The local function to call to resolve scope and topics."
+      ],
+      authorize_with: [
+        type: :atom,
+        required: false,
+        doc: "The action to use with Ash.can? for authorization."
       ],
       on: [
         type: {:or, [:atom, :string]},

@@ -47,6 +47,26 @@ defmodule Alva.App.Info do
     end
   end
 
+  def subscription_map(otp_app) when is_atom(otp_app) and not is_nil(otp_app) do
+    registry(otp_app).subscription_map
+  end
+
+  def fetch_subscription(otp_app, subscription_name)
+      when is_atom(otp_app) and not is_nil(otp_app) and is_binary(subscription_name) do
+    case Enum.find(subscription_map(otp_app), fn {_key, {_res, sub}} -> sub.name == subscription_name end) do
+      {_key, {resource, subscription}} -> {:ok, resource, subscription}
+      nil -> :error
+    end
+  end
+
+  def fetch_subscription_by_key(otp_app, subscription_key)
+      when is_atom(otp_app) and not is_nil(otp_app) and is_atom(subscription_key) do
+    case Map.fetch(subscription_map(otp_app), subscription_key) do
+      {:ok, {resource, subscription}} -> {:ok, resource, subscription}
+      :error -> :error
+    end
+  end
+
   def otp_app(%{endpoint: endpoint}), do: otp_app(endpoint)
 
   def otp_app(endpoint) when is_atom(endpoint) do

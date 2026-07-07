@@ -216,6 +216,9 @@ defmodule Alva.LiveView do
           upload_lifecycle_event?(event_name) ->
             {:halt, sock}
 
+          event_name == "alva:activate_subscription" ->
+            handle_activate_subscription(params, sock, otp_app)
+
           Map.has_key?(page_event_callbacks, event_name) ->
             handle_page_event(page_event_callbacks, event_name, params, sock)
 
@@ -1118,6 +1121,18 @@ defmodule Alva.LiveView do
   end
 
   defp matching_projection_operations(socket, notification_resource, occurrence_keys) do
+    otp_app = alva_state(socket).otp_app
+    alva_options = Map.get(socket.private, :alva_options, [])
+    allowlist = Keyword.get(alva_options, :subscriptions, [])
+
+    active_subscriptions =
+      Enum.flat_map(allowlist, fn sub_key ->
+        case Alva.App.Info.fetch_subscription_by_key(otp_app, sub_key) do
+          {:ok, resource, subscription} -> [{sub_key, {resource, subscription}}]
+          :error -> []
+        end
+      end)
+
     %{
       collections:
         socket
@@ -1130,7 +1145,18 @@ defmodule Alva.LiveView do
           else
             []
           end
-        end),
+        end)
+        |> Kernel.++(
+          Enum.flat_map(active_subscriptions, fn {name, {resource, subscription}} ->
+            if subscription.kind == :stream and resource == notification_resource do
+              subscription.operations
+              |> Enum.filter(&MapSet.member?(occurrence_keys, &1.on))
+              |> Enum.map(&{name, &1})
+            else
+              []
+            end
+          end)
+        ),
       signals:
         socket
         |> active_signal_projections()
@@ -1141,6 +1167,16 @@ defmodule Alva.LiveView do
             []
           end
         end)
+        |> Kernel.++(
+          Enum.flat_map(active_subscriptions, fn {name, {resource, subscription}} ->
+            if subscription.kind == :signal and resource == notification_resource and
+                 MapSet.member?(occurrence_keys, subscription.on) do
+              [{name, subscription}]
+            else
+              []
+            end
+          end)
+        )
     }
   end
 
@@ -1189,6 +1225,71 @@ defmodule Alva.LiveView do
 
       projection ->
         projection
+    end
+  end
+
+  defp find_collection_projection(state, collection_name) do
+    Enum.find(state, fn {_dom_id, _key, col} ->
+      col.name == collection_name
+    end)
+  end
+
+  defp handle_activate_subscription(params, sock, otp_app) do
+    subscription_name = params["name"]
+    input = params["input"] || %{}
+
+    with {:ok, resource, subscription} <- Alva.App.Info.fetch_subscription(otp_app, subscription_name),
+         :ok <- check_subscription_allowlist(sock, subscription.key),
+         :ok <- check_subscription_authorization(sock, resource, subscription),
+         {:ok, resolution} <- apply(resource, subscription.resolve, [input, sock]) do
+      
+      # Subscribe to topics
+      if Phoenix.LiveView.connected?(sock) do
+        Enum.each(resolution.topics || [], fn topic ->
+          subscribe_transport_topic(sock, topic)
+        end)
+      end
+      
+      # Return success and metadata
+      {:halt, %{ok: true, data: resolution}, sock}
+    else
+      :error ->
+        {:halt, %{ok: false, error: :not_found}, sock}
+
+      {:error, :forbidden} ->
+        {:halt, %{ok: false, error: :forbidden}, sock}
+
+      {:error, error} ->
+        {:halt, %{ok: false, error: error}, sock}
+    end
+  end
+
+  defp check_subscription_allowlist(sock, subscription_key) do
+    alva_options = Map.get(sock.private, :alva_options, [])
+    allowlist = Keyword.get(alva_options, :subscriptions, [])
+
+    if subscription_key in allowlist do
+      :ok
+    else
+      {:error, :forbidden}
+    end
+  end
+
+  defp check_subscription_authorization(sock, resource, subscription) do
+    if subscription.authorize_with do
+      actor = sock.assigns[:current_user] || sock.assigns[:current_actor]
+      tenant = sock.assigns[:current_tenant]
+
+      # Run authorization
+      # If unauthorized, Ash.can? returns false or Ash.can returns {:error, ...}
+      # The PRD says "using authorize_with".
+      case Ash.can({resource, subscription.authorize_with}, actor, tenant: tenant, return_forbidden_error?: true) do
+        {:ok, true} -> :ok
+        {:ok, false} -> {:error, :forbidden}
+        {:error, _error} -> {:error, :forbidden}
+      end
+    else
+      :ok
     end
   end
 
