@@ -1346,28 +1346,12 @@ defmodule Alva.LiveView do
   end
 
   defp handle_activate_subscription(params, sock, otp_app) do
-    subscription_name = params["name"]
-    input = params["input"] || %{}
-
-    with {:ok, resource, subscription} <- Alva.App.Info.fetch_subscription(otp_app, subscription_name),
-         :ok <- check_subscription_allowlist(sock, subscription.key),
-         :ok <- check_subscription_authorization(sock, resource, subscription),
-         {:ok, resolution} <- apply(resource, subscription.resolve, [input, sock]) do
+    case resolve_and_authorize_subscription(params, sock, otp_app) do
+      {:ok, subscription, resolution} ->
+        sock = apply_subscription_resolution(sock, subscription, resolution)
+        client_resolution = Map.drop(resolution, [:items])
+        {:halt, %{ok: true, data: client_resolution}, sock}
       
-      sock = apply_subscription_resolution(sock, subscription, resolution)
-      
-      # Strip raw data from client reply to prevent leaking it; streams use props, signals use ash.on
-      client_resolution = Map.drop(resolution, [:items])
-      
-      # Return success
-      {:halt, %{ok: true, data: client_resolution}, sock}
-    else
-      :error ->
-        {:halt, %{ok: false, error: :not_found}, sock}
-
-      {:error, :forbidden} ->
-        {:halt, %{ok: false, error: :forbidden}, sock}
-
       {:error, reason} ->
         {:halt, %{ok: false, error: reason}, sock}
     end
@@ -1393,6 +1377,26 @@ defmodule Alva.LiveView do
   end
 
   defp handle_load_more_subscription(params, sock, otp_app) do
+    case resolve_and_authorize_subscription(params, sock, otp_app) do
+      {:ok, subscription, resolution} ->
+        sock =
+          if subscription.kind == :stream do
+            Enum.reduce(resolution.items || [], sock, fn item, acc_sock ->
+              Phoenix.LiveView.stream_insert(acc_sock, subscription.name, item)
+            end)
+          else
+            sock
+          end
+        
+        client_resolution = Map.drop(resolution, [:items])
+        {:halt, %{ok: true, data: client_resolution}, sock}
+
+      {:error, reason} ->
+        {:halt, %{ok: false, error: reason}, sock}
+    end
+  end
+
+  defp resolve_and_authorize_subscription(params, sock, otp_app) do
     subscription_name = params["name"]
     input = params["input"] || %{}
 
@@ -1400,27 +1404,11 @@ defmodule Alva.LiveView do
          :ok <- check_subscription_allowlist(sock, subscription.key),
          :ok <- check_subscription_authorization(sock, resource, subscription),
          {:ok, resolution} <- apply(resource, subscription.resolve, [input, sock]) do
-      
-      sock =
-        if subscription.kind == :stream do
-          Enum.reduce(resolution.items || [], sock, fn item, acc_sock ->
-            Phoenix.LiveView.stream_insert(acc_sock, subscription.name, item)
-          end)
-        else
-          sock
-        end
-      
-      client_resolution = Map.drop(resolution, [:items])
-      {:halt, %{ok: true, data: client_resolution}, sock}
+      {:ok, subscription, resolution}
     else
-      :error ->
-        {:halt, %{ok: false, error: :not_found}, sock}
-
-      {:error, :forbidden} ->
-        {:halt, %{ok: false, error: :forbidden}, sock}
-
-      {:error, reason} ->
-        {:halt, %{ok: false, error: reason}, sock}
+      :error -> {:error, %{type: "not_found", message: "Resource not found"}}
+      {:error, :forbidden} -> {:error, %{type: "forbidden", message: "Forbidden"}}
+      {:error, reason} -> {:error, Alva.Error.format(reason)}
     end
   end
 

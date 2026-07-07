@@ -1,4 +1,4 @@
-import { ref, onUnmounted, computed, getCurrentInstance } from "vue";
+import { ref, onUnmounted, computed, getCurrentInstance, watch, isRef } from "vue";
 import { useAlvaSubscriptions } from "./useAlvaSubscriptions";
 import type { AlvaSubscriptionDef } from "./useAlvaSubscriptions";
 
@@ -7,7 +7,7 @@ export function useAlvaStream<
     S extends keyof Subs = keyof Subs
 >(
     name: S,
-    input: Subs[S]["input"]
+    input: Subs[S]["input"] | import("vue").Ref<Subs[S]["input"]> | (() => Subs[S]["input"])
 ) {
     const subs = useAlvaSubscriptions<Subs>();
     const isLoading = ref(false);
@@ -22,9 +22,22 @@ export function useAlvaStream<
         return streamPropData !== undefined;
     });
 
-    if (!hasEagerData.value) {
+    const getInputVal = () => {
+        if (typeof input === 'function') {
+            return (input as Function)();
+        } else if (isRef(input)) {
+            return input.value;
+        } else {
+            return input;
+        }
+    };
+
+    let currentInputValStr = JSON.stringify(getInputVal());
+
+    const doActivate = () => {
+        const val = getInputVal();
         isLoading.value = true;
-        subs.activate(name, input)
+        subs.activate(name, val)
             .then((result) => {
                 if (!result.ok) {
                     error.value = result.error;
@@ -36,10 +49,29 @@ export function useAlvaStream<
             .finally(() => {
                 isLoading.value = false;
             });
+    };
+
+    if (!hasEagerData.value) {
+        doActivate();
     }
 
+    watch(
+        () => JSON.stringify(getInputVal()),
+        (newStr, oldStr) => {
+            if (newStr !== oldStr) {
+                if (oldStr) {
+                    subs.deactivate(name, JSON.parse(oldStr));
+                }
+                currentInputValStr = newStr;
+                doActivate();
+            }
+        }
+    );
+
     onUnmounted(() => {
-        subs.deactivate(name, input);
+        if (currentInputValStr) {
+            subs.deactivate(name, JSON.parse(currentInputValStr));
+        }
     });
 
     const loadMore = (params: Subs[S]["input"]) => {

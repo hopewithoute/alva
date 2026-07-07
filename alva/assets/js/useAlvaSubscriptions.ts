@@ -1,3 +1,4 @@
+import { onScopeDispose } from "vue";
 import { useLiveVue } from "live_vue";
 import type { AlvaResult } from "./useAlvaApi";
 
@@ -14,35 +15,36 @@ interface ActiveSubscription {
     refCount: number;
 }
 
-// Global registry for healing subscriptions across reconnects
-const activeSubscriptions = new Map<string, ActiveSubscription>();
-let isListeningToReconnect = false;
+// Track whether the page has loaded at least once globally to identify reconnects
 let initialLoadComplete = false;
 
 export function useAlvaSubscriptions<
     Subs extends Record<string, AlvaSubscriptionDef> = any,
 >() {
     const live = useLiveVue();
+    const localSubscriptions = new Map<string, ActiveSubscription>();
 
-    // Setup reconnection healing once
-    if (!isListeningToReconnect && typeof window !== 'undefined') {
-        isListeningToReconnect = true;
-        
-        window.addEventListener("phx:page-loading-stop", (info: any) => {
-            if (info.detail?.kind === 'initial') {
-                if (initialLoadComplete) {
-                    // This is a reconnect! Heal all active subscriptions
-                    for (const sub of activeSubscriptions.values()) {
-                        live.pushEvent(
-                            "alva:activate_subscription",
-                            { name: sub.name, input: sub.input },
-                            () => {}
-                        );
-                    }
-                } else {
-                    initialLoadComplete = true;
+    const onReconnect = (info: any) => {
+        if (info.detail?.kind === 'initial') {
+            if (initialLoadComplete) {
+                // This is a reconnect! Heal all active subscriptions for this component
+                for (const sub of localSubscriptions.values()) {
+                    live.pushEvent(
+                        "alva:activate_subscription",
+                        { name: sub.name, input: sub.input },
+                        () => {}
+                    );
                 }
+            } else {
+                initialLoadComplete = true;
             }
+        }
+    };
+
+    if (typeof window !== 'undefined') {
+        window.addEventListener("phx:page-loading-stop", onReconnect);
+        onScopeDispose(() => {
+            window.removeEventListener("phx:page-loading-stop", onReconnect);
         });
     }
 
@@ -52,11 +54,11 @@ export function useAlvaSubscriptions<
     ): Promise<AlvaResult<{ key: any; topics: string[] }>> => {
         const cacheKey = `${String(name)}:${JSON.stringify(input)}`;
         
-        const existing = activeSubscriptions.get(cacheKey);
+        const existing = localSubscriptions.get(cacheKey);
         if (existing) {
             existing.refCount++;
         } else {
-            activeSubscriptions.set(cacheKey, {
+            localSubscriptions.set(cacheKey, {
                 name: String(name),
                 input,
                 refCount: 1
@@ -95,11 +97,11 @@ export function useAlvaSubscriptions<
     ): Promise<AlvaResult> => {
         const cacheKey = `${String(name)}:${JSON.stringify(input)}`;
         
-        const existing = activeSubscriptions.get(cacheKey);
+        const existing = localSubscriptions.get(cacheKey);
         if (existing) {
             existing.refCount--;
             if (existing.refCount <= 0) {
-                activeSubscriptions.delete(cacheKey);
+                localSubscriptions.delete(cacheKey);
             }
         }
 

@@ -71,6 +71,9 @@ export function useAlvaForm<
 
         if (result && !result.ok && result.error && result.error.fields) {
             // Ash backend returned validation errors, sync them to our pseudoForm
+            for (const key of Object.keys(pseudoForm.errors)) {
+                delete (pseudoForm.errors as any)[key];
+            }
             Object.assign(pseudoForm.errors, result.error.fields);
             if (rollbackFn) rollbackFn();
         } else if (result && result.ok) {
