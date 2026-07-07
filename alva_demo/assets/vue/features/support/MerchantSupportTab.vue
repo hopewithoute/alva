@@ -7,22 +7,22 @@ import type { Conversation, SupportMessage } from "../../../js/alva/types";
 import Button from "../../shared/ui/button/Button.vue";
 import { useDebounce } from "../../utils/debounce";
 
-const { conversations, active_conversation_id, support_messages, is_conversation_filtered, route_filters } = usePageState<{
+const { conversations, active_conversation_id, support_messages, is_conversation_filtered, conversation_filters: initial_filters } = usePageState<{
   conversations?: Conversation[];
   active_conversation_id?: string | null;
   support_messages?: SupportMessage[];
   is_conversation_filtered?: boolean;
-  route_filters?: {
-    conv_customer?: string;
-    conv_waiting?: boolean;
+  conversation_filters?: {
+    customer?: string;
+    waiting?: boolean;
   };
 }>();
 
 const api = createAlvaApi();
 
 const conversation_filters = reactive({
-  customer_query: route_filters?.value?.conv_customer || "",
-  waiting_on_merchant_only: route_filters?.value?.conv_waiting || false,
+  customer_query: initial_filters?.value?.customer || "",
+  waiting_on_merchant_only: initial_filters?.value?.waiting || false,
 });
 
 const new_message_text = ref("");

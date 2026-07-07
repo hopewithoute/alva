@@ -4,6 +4,7 @@ import { usePageEvent } from "alva";
 import type { AlvaEvents } from "../../js/alva/events";
 import type { Order } from "../../js/alva/types";
 import { getStatusColor } from "../../shared/utils/ui";
+import OrderStatusBadge from "../../shared/ui/badge/OrderStatusBadge.vue";
 import Button from "../../shared/ui/button/Button.vue";
 
 const props = defineProps<{
@@ -88,14 +89,7 @@ const operationError = computed(() => {
     </div>
 
     <div class="flex flex-wrap items-center gap-3 lg:justify-end">
-      <div
-        :class="[
-          'rounded-full border px-3 py-1 text-sm font-medium capitalize',
-          getStatusColor(order.lifecycle_status),
-        ]"
-      >
-        {{ order.lifecycle_status }}
-      </div>
+      <OrderStatusBadge :status="order.lifecycle_status" />
 
       <div class="flex min-w-[136px] justify-end">
         <Button

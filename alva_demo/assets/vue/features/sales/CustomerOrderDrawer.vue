@@ -2,7 +2,7 @@
 import { ref, watch, computed } from "vue";
 import { usePageState } from "alva";
 import type { Order } from "../../../js/alva/types";
-import { getStatusColor } from "../../shared/utils/ui";
+import OrderStatusBadge from "../../shared/ui/badge/OrderStatusBadge.vue";
 import Button from "../../shared/ui/button/Button.vue";
 
 const props = defineProps<{
@@ -112,9 +112,7 @@ defineExpose<CustomerOrderDrawerExpose>({ selectOrder });
                 {{ selectedOrder.product?.name || selectedOrder.product_id }}
               </h3>
             </div>
-            <div :class="['rounded-full border px-3 py-1 text-sm font-medium capitalize', getStatusColor(selectedOrder.lifecycle_status)]">
-              {{ selectedOrder.lifecycle_status }}
-            </div>
+            <OrderStatusBadge :status="selectedOrder.lifecycle_status" />
           </div>
 
           <dl class="mt-6 grid gap-4 sm:grid-cols-2">

@@ -7,18 +7,18 @@ import MerchantInventoryItem from "./MerchantInventoryItem.vue";
 import Button from "../../shared/ui/button/Button.vue";
 import { useDebounce } from "../../utils/debounce";
 
-const { products, is_inventory_filtered, route_filters } = usePageState<{
+const { products, is_inventory_filtered, inventory_filters: initial_filters } = usePageState<{
   products?: Product[];
   is_inventory_filtered?: boolean;
-  route_filters?: {
-    inv_query?: string;
-    inv_low_stock?: boolean;
+  inventory_filters?: {
+    query?: string;
+    low_stock?: boolean;
   };
 }>();
 
 const inventory_filters = reactive({
-  query: route_filters?.value?.inv_query || "",
-  low_stock_only: route_filters?.value?.inv_low_stock || false,
+  query: initial_filters?.value?.query || "",
+  low_stock_only: initial_filters?.value?.low_stock || false,
 });
 
 const filterInventoryEvent = usePageEvent<MerchantConsoleLiveEvents, "console.filter_inventory">("console.filter_inventory");

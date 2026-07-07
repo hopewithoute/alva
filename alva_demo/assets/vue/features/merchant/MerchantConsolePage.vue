@@ -22,14 +22,18 @@ const props = defineProps<{
   is_inventory_filtered?: boolean;
   is_conversation_filtered?: boolean;
   low_stock_count?: number;
-  route_filters?: {
-    order_status: string;
-    order_customer: string;
-    order_product: string;
-    inv_query: string;
-    inv_low_stock: boolean;
-    conv_customer: string;
-    conv_waiting: boolean;
+  order_filters?: {
+    status: string;
+    customer: string;
+    product: string;
+  };
+  inventory_filters?: {
+    query: string;
+    low_stock: boolean;
+  };
+  conversation_filters?: {
+    customer: string;
+    waiting: boolean;
   };
 }>();
 

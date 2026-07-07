@@ -107,7 +107,9 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
       is_inventory_filtered={@is_inventory_filtered}
       is_conversation_filtered={@is_conversation_filtered}
       low_stock_count={@low_stock_count}
-      route_filters={@route_filters}
+      order_filters={@order_filters}
+      inventory_filters={@inventory_filters}
+      conversation_filters={@conversation_filters}
     />
     """
   end
@@ -191,14 +193,18 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
       is_order_filtered: normalize_optional_string(params["order_status"]) not in [nil, "all"] or normalize_optional_string(params["order_customer"]) != nil or normalize_optional_string(params["order_product"]) != nil,
       is_inventory_filtered: normalize_optional_string(params["inv_query"]) != nil or params["inv_low_stock"] == "true",
       is_conversation_filtered: normalize_optional_string(params["conv_customer"]) != nil or params["conv_waiting"] == "true",
-      route_filters: %{
-        order_status: normalize_optional_string(params["order_status"]) || "all",
-        order_customer: normalize_optional_string(params["order_customer"]) || "",
-        order_product: normalize_optional_string(params["order_product"]) || "",
-        inv_query: normalize_optional_string(params["inv_query"]) || "",
-        inv_low_stock: params["inv_low_stock"] == "true",
-        conv_customer: normalize_optional_string(params["conv_customer"]) || "",
-        conv_waiting: params["conv_waiting"] == "true"
+      order_filters: %{
+        status: normalize_optional_string(params["order_status"]) || "all",
+        customer: normalize_optional_string(params["order_customer"]) || "",
+        product: normalize_optional_string(params["order_product"]) || ""
+      },
+      inventory_filters: %{
+        query: normalize_optional_string(params["inv_query"]) || "",
+        low_stock: params["inv_low_stock"] == "true"
+      },
+      conversation_filters: %{
+        customer: normalize_optional_string(params["conv_customer"]) || "",
+        waiting: params["conv_waiting"] == "true"
       }
     }
   end

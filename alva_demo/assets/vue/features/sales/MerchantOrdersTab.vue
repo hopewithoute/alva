@@ -7,13 +7,13 @@ import { useDebounce } from "../../utils/debounce";
 import MerchantOrderItem from "./MerchantOrderItem.vue";
 import Button from "../../shared/ui/button/Button.vue";
 
-const { sales_orders, is_order_filtered, route_filters } = usePageState<{
+const { sales_orders, is_order_filtered, order_filters: initial_filters } = usePageState<{
   sales_orders?: Order[];
   is_order_filtered?: boolean;
-  route_filters?: {
-    order_status?: string;
-    order_customer?: string;
-    order_product?: string;
+  order_filters?: {
+    status?: string;
+    customer?: string;
+    product?: string;
   };
 }>();
 
@@ -24,9 +24,9 @@ const order_filters = reactive<{
   customer_query: string;
   product_query: string;
 }>({
-  status: (route_filters?.value?.order_status as OrderStatusFilter) || "all",
-  customer_query: route_filters?.value?.order_customer || "",
-  product_query: route_filters?.value?.order_product || "",
+  status: (initial_filters?.value?.status as OrderStatusFilter) || "all",
+  customer_query: initial_filters?.value?.customer || "",
+  product_query: initial_filters?.value?.product || "",
 });
 
 const filterOrdersEvent = usePageEvent<MerchantConsoleLiveEvents, "console.filter_orders">("console.filter_orders");
