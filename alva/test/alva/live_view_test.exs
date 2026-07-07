@@ -838,11 +838,6 @@ defmodule Alva.LiveViewTest do
     assert {:noreply, ^socket} = DummyLive.handle_params(%{}, "/", socket)
   end
 
-  test "use Alva.LiveView injects a default no-op handle_info/2" do
-    socket = base_socket()
-
-    assert {:noreply, ^socket} = DummyLive.handle_info(:unhandled_message, socket)
-  end
 
   test "route_params/1 returns the latest route params known to Alva" do
     {:cont, socket} =

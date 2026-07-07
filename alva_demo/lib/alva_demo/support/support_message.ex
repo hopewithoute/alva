@@ -9,15 +9,18 @@ defmodule AlvaDemo.Support.SupportMessage do
     module(AlvaDemoWeb.Endpoint)
     prefix("support_message")
     publish(:create, ["created"])
+    publish(:create, ["conversation", :conversation_id])
   end
 
   live_vue do
     event(:support_list_messages, name: "support.list_messages", action: :read_for_conversation)
     event(:support_send_message, name: "support.send_message", action: :create)
 
-    # Message history is scoped by the conversation selected in Vue, so it stays
-    # command-driven. Live messages arrive through raw Phoenix PubSub props and
-    # are filtered by the active conversation on each chat surface.
+    collection :support_messages do
+      # The page owns conversation scope; Alva owns the canonical transcript.
+      source(event: :support_list_messages, mode: :reset)
+      insert(on: :create)
+    end
   end
 
   actions do
@@ -30,10 +33,21 @@ defmodule AlvaDemo.Support.SupportMessage do
 
     read :read_for_conversation do
       public?(true)
-      argument(:conversation_id, :uuid, allow_nil?: false)
-      filter(expr(conversation_id == ^arg(:conversation_id)))
+      argument(:conversation_id, :uuid, allow_nil?: true)
 
       prepare(fn query, _context ->
+        require Ash.Query
+        require Ash.Expr
+
+        query =
+          case Ash.Query.get_argument(query, :conversation_id) do
+            nil ->
+              Ash.Query.filter(query, Ash.Expr.expr(false))
+
+            conversation_id ->
+              Ash.Query.filter(query, Ash.Expr.expr(conversation_id == ^conversation_id))
+          end
+
         Ash.Query.sort(query, created_at: :asc)
       end)
     end

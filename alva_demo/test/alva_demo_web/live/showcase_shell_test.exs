@@ -37,40 +37,6 @@ defmodule AlvaDemoWeb.ShowcaseShellTest do
     assert html =~ ~s(data-inject="layout")
   end
 
-  test "Chat demo route injects the LiveVue host page into the persistent layout", %{conn: conn} do
-    {:ok, _view, html} = live(conn, ~p"/demo/chat")
-
-    assert html =~ ~s(id="layout")
-    assert html =~ ~s(data-name="AppLayout")
-    assert html =~ ~s(id="demo-chat-page")
-    assert html =~ "DemoChatPage"
-    assert html =~ ~s(data-inject="layout")
-  end
-
-  test "Notifications demo route injects the LiveVue host page into the persistent layout", %{
-    conn: conn
-  } do
-    {:ok, _view, html} = live(conn, ~p"/demo/notifications")
-
-    assert html =~ ~s(id="layout")
-    assert html =~ ~s(data-name="AppLayout")
-    assert html =~ ~s(id="demo-notifications-page")
-    assert html =~ "DemoNotificationsPage"
-    assert html =~ ~s(data-inject="layout")
-  end
-
-  test "Load more demo route injects the LiveVue host page into the persistent layout", %{
-    conn: conn
-  } do
-    {:ok, _view, html} = live(conn, ~p"/demo/load-more")
-
-    assert html =~ ~s(id="layout")
-    assert html =~ ~s(data-name="AppLayout")
-    assert html =~ ~s(id="demo-load-more-page")
-    assert html =~ "DemoLoadMorePage"
-    assert html =~ ~s(data-inject="layout")
-  end
-
   test "showcase LiveViews do not reintroduce legacy declarative activation shapes" do
     Enum.each(@showcase_live_files, fn path ->
       content = File.read!(path)

@@ -220,6 +220,24 @@ defmodule AlvaDemoWeb.SynchronizationTest do
     {:ok, storefront_live, _html} = live(conn, "/storefront")
     {:ok, console_live, _html} = live(conn, "/console")
 
+    render_hook(storefront_live, "support.join_chat", %{
+      "customer_name" => active_conversation.customer_name
+    })
+
+    storefront_patch = assert_patch(storefront_live)
+
+    assert_storefront_chat_patch(
+      storefront_patch,
+      active_conversation.id,
+      active_conversation.customer_name
+    )
+
+    render_hook(console_live, "support.select_conversation", %{
+      "conversation_id" => active_conversation.id
+    })
+
+    assert_patch(console_live, "/console?conversation_id=#{active_conversation.id}")
+
     storefront_history = list_messages_for(active_conversation)
     console_history = list_messages_for(active_conversation)
 
@@ -271,5 +289,16 @@ defmodule AlvaDemoWeb.SynchronizationTest do
       })
 
     result.data
+  end
+
+  defp assert_storefront_chat_patch(path, conversation_id, customer_name) do
+    uri = URI.parse(path)
+
+    assert uri.path == "/storefront"
+
+    assert URI.decode_query(uri.query || "") == %{
+             "conversation_id" => conversation_id,
+             "customer_name" => customer_name
+           }
   end
 end

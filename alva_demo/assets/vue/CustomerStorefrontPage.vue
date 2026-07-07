@@ -35,24 +35,16 @@ const chat_messages_el = ref<HTMLElement | null>(null);
 const api = createAlvaApi();
 const joinChatEvent = usePageEvent<CustomerStorefrontLiveEvents, "support.join_chat">("support.join_chat");
 const resetChatEvent = usePageEvent<CustomerStorefrontLiveEvents, "support.reset_chat">("support.reset_chat");
-const active_conversation_id = computed(() => props.active_conversation_id ?? null);
-const connected_customer_name = computed(
-  () => props.connected_customer_name ?? null,
-);
+
 
 const formatPrice = (cents: number) => {
   return `$${(cents / 100).toFixed(2)}`;
 };
 
 const current_customer_name = computed(() => customer_name.value.trim());
-const chat_messages = computed(() => props.support_messages ?? []);
 
-const getProductName = (product_id: string) => {
-  const product = props.products?.find(
-    (candidate: Product) => candidate.id === product_id,
-  );
-  return product ? product.name : product_id;
-};
+
+
 
 const customer_orders = computed(() => {
   const customerName = current_customer_name.value.toLowerCase();
@@ -87,8 +79,8 @@ const selected_order = computed(() => {
 
 const is_chat_connected = computed(() => {
   return Boolean(
-    active_conversation_id.value &&
-    connected_customer_name.value === current_customer_name.value,
+    props.active_conversation_id &&
+    props.connected_customer_name === current_customer_name.value,
   );
 });
 
@@ -102,7 +94,7 @@ const chat_status = computed(() => {
   }
 
   if (is_chat_connected.value) {
-    return `Connected as ${connected_customer_name.value}.`;
+    return `Connected as ${props.connected_customer_name}.`;
   }
 
   return "Connect once, then keep chatting with merchant support here.";
@@ -202,7 +194,7 @@ const sendMessage = async () => {
     await joinChat();
   }
 
-  if (!active_conversation_id.value) return;
+  if (!props.active_conversation_id) return;
 
   new_message_text.value = "";
   is_sending_message.value = true;
@@ -212,7 +204,7 @@ const sendMessage = async () => {
     const result = await api.call("support.send_message", {
       text: text,
       sender: "shopper",
-      conversation_id: active_conversation_id.value,
+      conversation_id: props.active_conversation_id,
     });
 
     if (!result.ok) {
@@ -226,9 +218,9 @@ const sendMessage = async () => {
   }
 };
 
-watch(chat_messages, async () => {
+watch(() => props.support_messages, async () => {
   await scrollChatToBottom();
-});
+}, { deep: true });
 
 watch(
   customer_orders,
@@ -255,7 +247,7 @@ watch(current_customer_name, (next, prev) => {
     closeRecentOrders();
   }
 
-  if (connected_customer_name.value && next !== connected_customer_name.value) {
+  if (props.connected_customer_name && next !== props.connected_customer_name) {
     void resetChatState();
   }
 
@@ -451,14 +443,14 @@ watch(current_customer_name, (next, prev) => {
             thread with the merchant console.
           </div>
           <div
-            v-else-if="chat_messages.length === 0"
+            v-else-if="!props.support_messages?.length"
             class="rounded-lg border border-dashed border-zinc-200 bg-white px-4 py-5 text-sm text-zinc-500"
           >
             Send a message to start the conversation.
           </div>
           <div v-else class="space-y-3">
             <div
-              v-for="msg in chat_messages"
+              v-for="msg in props.support_messages"
               :key="msg.id"
               :class="[
                 'flex',
@@ -560,9 +552,9 @@ watch(current_customer_name, (next, prev) => {
               @click="selectOrder(order.id)"
             >
               <div class="flex items-center justify-between gap-3">
-                <span class="text-sm font-medium">{{
-                  getProductName(order.product_id)
-                }}</span>
+                <div class="font-medium">
+                  {{ order.product?.name || order.product_id }}
+                </div>
                 <span class="text-xs font-medium uppercase tracking-wide">
                   x{{ order.quantity }}
                 </span>
@@ -588,7 +580,7 @@ watch(current_customer_name, (next, prev) => {
               <div>
                 <p class="text-sm font-medium text-zinc-500">Order Detail</p>
                 <h3 class="mt-1 text-2xl font-semibold text-zinc-950">
-                  {{ getProductName(selected_order.product_id) }}
+                  {{ selected_order.product?.name || selected_order.product_id }}
                 </h3>
               </div>
               <div

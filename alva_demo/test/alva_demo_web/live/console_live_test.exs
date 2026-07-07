@@ -82,16 +82,6 @@ defmodule AlvaDemoWeb.MerchantConsoleLiveTest do
     refute ref == "dummy-ref"
   end
 
-  test "accepts LiveView upload lifecycle events without crashing" do
-    socket = %Phoenix.LiveView.Socket{assigns: %{}, private: %{}}
-
-    assert {:noreply, ^socket} =
-             AlvaDemoWeb.MerchantConsoleLive.handle_event("validate_upload", %{}, socket)
-
-    assert {:noreply, ^socket} =
-             AlvaDemoWeb.MerchantConsoleLive.handle_event("save_upload", %{}, socket)
-  end
-
   test "merchant console advances the order lifecycle through the route stream", %{
     conn: conn
   } do
@@ -141,5 +131,57 @@ defmodule AlvaDemoWeb.MerchantConsoleLiveTest do
              _ ->
                false
            end)
+  end
+
+  test "conversation selection and transcript scope are owned by the merchant console page", %{
+    conn: conn
+  } do
+    first_conversation =
+      Ash.Seed.seed!(%AlvaDemo.Support.Conversation{
+        customer_name: "Waiting Shopper"
+      })
+
+    second_conversation =
+      Ash.Seed.seed!(%AlvaDemo.Support.Conversation{
+        customer_name: "Resolved Shopper"
+      })
+
+    Ash.Seed.seed!(%AlvaDemo.Support.SupportMessage{
+      conversation_id: first_conversation.id,
+      sender: :shopper,
+      text: "Waiting history"
+    })
+
+    Ash.Seed.seed!(%AlvaDemo.Support.SupportMessage{
+      conversation_id: second_conversation.id,
+      sender: :merchant,
+      text: "Resolved history"
+    })
+
+    {:ok, page_live, _html} = live(conn, "/console")
+
+    render_hook(page_live, "support.select_conversation", %{
+      "conversation_id" => first_conversation.id
+    })
+
+    assert_patch(page_live, "/console?conversation_id=#{first_conversation.id}")
+
+    first_render = render(page_live)
+
+    assert first_render =~ first_conversation.id
+    assert first_render =~ "Waiting history"
+    refute first_render =~ "Resolved history"
+
+    render_hook(page_live, "support.select_conversation", %{
+      "conversation_id" => second_conversation.id
+    })
+
+    assert_patch(page_live, "/console?conversation_id=#{second_conversation.id}")
+
+    second_render = render(page_live)
+
+    assert second_render =~ second_conversation.id
+    assert second_render =~ "Resolved history"
+    refute second_render =~ "Waiting history"
   end
 end

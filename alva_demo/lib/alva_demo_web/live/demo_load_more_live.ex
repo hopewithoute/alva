@@ -19,8 +19,6 @@ defmodule AlvaDemoWeb.DemoLoadMoreLive do
     """
   end
 
-  def handle_params(_params, _uri, socket), do: {:noreply, socket}
-
   def feed_entry_collection_source_input(socket) do
     limit =
       socket

@@ -23,15 +23,6 @@ import { Link } from "live_vue";
           <Link navigate="/console" class="rounded-md px-3 py-2 hover:bg-zinc-100">
             Merchant Console
           </Link>
-          <Link navigate="/demo/chat" class="rounded-md px-3 py-2 hover:bg-zinc-100">
-            Chat Demo
-          </Link>
-          <Link navigate="/demo/notifications" class="rounded-md px-3 py-2 hover:bg-zinc-100">
-            Signals Demo
-          </Link>
-          <Link navigate="/demo/load-more" class="rounded-md px-3 py-2 hover:bg-zinc-100">
-            Load More Demo
-          </Link>
         </div>
       </nav>
     </header>

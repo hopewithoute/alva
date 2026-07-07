@@ -27,6 +27,19 @@ export interface AshUploadOptions {
     maxSize?: number; // in bytes
 }
 
+export interface AshUploadDispatchContext {
+    files: UploadEntry[];
+    references: string[];
+    primaryReference: string;
+}
+
+export interface AshUploadDispatchOptions {
+    clear?: boolean;
+}
+
+export const ALVA_UPLOAD_CHANGE_EVENT = "alva.validate_upload";
+export const ALVA_UPLOAD_SUBMIT_EVENT = "alva.save_upload";
+
 type UploadConfigShape = {
     ref: string;
     name: string;
@@ -49,8 +62,8 @@ export function ashUpload(name: string, options?: AshUploadOptions) {
 
     // @ts-ignore
     const upload = useLiveUpload(getUploadConfig, {
-        changeEvent: "validate_upload",
-        submitEvent: "save_upload",
+        changeEvent: ALVA_UPLOAD_CHANGE_EVENT,
+        submitEvent: ALVA_UPLOAD_SUBMIT_EVENT,
         ...(options || {})
     }) as unknown as UseLiveUploadReturn;
 
@@ -103,12 +116,79 @@ export function ashUpload(name: string, options?: AshUploadOptions) {
         return files.value.map((file: UploadEntry) => file.ref);
     };
 
+    const waitForCompletion = () => {
+        return new Promise<AshUploadDispatchContext>((resolve, reject) => {
+            let settled = false;
+            let stop: (() => void) | undefined;
+
+            const settle = (callback: () => void) => {
+                if (settled) return;
+                settled = true;
+                stop?.();
+                callback();
+            };
+
+            const tryComplete = () => {
+                if (files.value.length === 0 || progress.value !== 100) return;
+
+                const references = getFileReferences();
+                const primaryReference = references[0];
+
+                if (!primaryReference) {
+                    settle(() =>
+                        reject(
+                            new Error(
+                                "No uploaded file reference was produced.",
+                            ),
+                        ),
+                    );
+                    return;
+                }
+
+                settle(() =>
+                    resolve({
+                        files: [...files.value],
+                        references,
+                        primaryReference,
+                    }),
+                );
+            };
+
+            tryComplete();
+
+            if (settled) return;
+
+            stop = watch(
+                [files, progress],
+                () => {
+                    tryComplete();
+                },
+                { deep: true },
+            );
+        });
+    };
+
+    const dispatch = async <T>(
+        submit: (upload: AshUploadDispatchContext) => Promise<T>,
+        options: AshUploadDispatchOptions = {},
+    ) => {
+        try {
+            const upload = await waitForCompletion();
+            return await submit(upload);
+        } finally {
+            if (options.clear !== false) {
+                upload.clear?.();
+            }
+        }
+    };
+
     return {
         ...upload,
         files,
         errors,
         progress,
         getFileReferences,
+        dispatch,
     };
 }
 
@@ -169,6 +249,11 @@ function missingUpload(name: string) {
         console.warn(warning);
     };
 
+    const dispatch = async () => {
+        warn();
+        throw new Error(warning);
+    };
+
     return {
         name,
         entries: files,
@@ -183,5 +268,6 @@ function missingUpload(name: string) {
         cancel: () => {},
         clear: () => {},
         getFileReferences: () => [],
+        dispatch,
     };
 }

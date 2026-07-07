@@ -62,6 +62,46 @@ defmodule Alva.LiveViewActivationTest do
     """)
   end
 
+  test "compiles successfully when page_events are declared" do
+    assert_compile("""
+    defmodule TestLiveViewActivation.PageEventsLive do
+      use Phoenix.LiveView
+
+      use Alva.LiveView,
+        page_events: [
+          {"support.join_chat", :join_chat_page_event},
+          {"support.reset_chat", :reset_chat_page_event}
+        ]
+
+      def join_chat_page_event(_params, socket), do: {:reply, %{ok: true}, socket}
+      def reset_chat_page_event(_params, socket), do: {:reply, %{ok: true}, socket}
+
+      def render(assigns) do
+        ~H"<div />"
+      end
+    end
+    """)
+  end
+
+  test "compiles successfully when page_state is declared" do
+    assert_compile("""
+    defmodule TestLiveViewActivation.PageStateLive do
+      use Phoenix.LiveView
+
+      use Alva.LiveView,
+        page_state: :support_page_state
+
+      def support_page_state(_socket) do
+        %{active_conversation_id: nil}
+      end
+
+      def render(assigns) do
+        ~H"<div />"
+      end
+    end
+    """)
+  end
+
   test "fails to compile when declarative streams are declared" do
     assert_raise CompileError,
                  ~r/no longer accepts top-level `streams:`/,
@@ -277,6 +317,85 @@ defmodule Alva.LiveViewActivationTest do
                  end
   end
 
+  test "fails to compile when declarative page_events contain duplicates" do
+    assert_raise CompileError,
+                 ~r/page_events contains duplicate entries for "support.join_chat"/,
+                 fn ->
+                   compile_module("""
+                   defmodule TestLiveViewActivation.DuplicatePageEventsLive do
+                     use Phoenix.LiveView
+
+                     use Alva.LiveView,
+                       page_events: [
+                         {"support.join_chat", :join_chat_page_event},
+                         {"support.join_chat", :reset_chat_page_event}
+                       ]
+
+                     def render(assigns) do
+                       ~H"<div />"
+                     end
+                   end
+                   """)
+                 end
+  end
+
+  test "fails to compile when declarative page_events use invalid entry shapes" do
+    assert_raise CompileError,
+                 ~r/page_events entries must be \{event_name, callback\} or \{event_name, callback, types\} tuples/,
+                 fn ->
+                   compile_module("""
+                   defmodule TestLiveViewActivation.InvalidPageEventsShapeLive do
+                     use Phoenix.LiveView
+
+                     use Alva.LiveView,
+                       page_events: ["support.join_chat"]
+
+                     def render(assigns) do
+                       ~H"<div />"
+                     end
+                   end
+                   """)
+                 end
+  end
+
+  test "fails to compile when declarative page_events use non-atom callbacks" do
+    assert_raise CompileError,
+                 ~r/page_events callback for "support.join_chat" must be a local callback atom/,
+                 fn ->
+                   compile_module("""
+                   defmodule TestLiveViewActivation.InvalidPageEventsCallbackLive do
+                     use Phoenix.LiveView
+
+                     use Alva.LiveView,
+                       page_events: [{"support.join_chat", "join_chat_page_event"}]
+
+                     def render(assigns) do
+                       ~H"<div />"
+                     end
+                   end
+                   """)
+                 end
+  end
+
+  test "fails to compile when declarative page_state callback is not an atom" do
+    assert_raise CompileError,
+                 ~r/declarative `page_state:` must be a local callback atom/,
+                 fn ->
+                   compile_module("""
+                   defmodule TestLiveViewActivation.InvalidPageStateLive do
+                     use Phoenix.LiveView
+
+                     use Alva.LiveView,
+                       page_state: "support_page_state"
+
+                     def render(assigns) do
+                       ~H"<div />"
+                     end
+                   end
+                   """)
+                 end
+  end
+
   test "fails to compile when declarative collections and signals share a projection key" do
     assert_raise CompileError,
                  ~r/cannot activate the same projection key in both `collections:` and `signals:`: :sales_orders/,
@@ -308,7 +427,9 @@ defmodule Alva.LiveViewActivationTest do
     purge_modules([
       TestLiveViewActivation.ValidLive,
       TestLiveViewActivation.ValidSignalRouteLive,
-      TestLiveViewActivation.AttributeBackedLive
+      TestLiveViewActivation.AttributeBackedLive,
+      TestLiveViewActivation.PageEventsLive,
+      TestLiveViewActivation.PageStateLive
     ])
   end
 
@@ -327,6 +448,10 @@ defmodule Alva.LiveViewActivationTest do
       TestLiveViewActivation.DuplicateSignalsLive,
       TestLiveViewActivation.DuplicateRouteSubscriptionsLive,
       TestLiveViewActivation.InactiveRouteSubscriptionLive,
+      TestLiveViewActivation.DuplicatePageEventsLive,
+      TestLiveViewActivation.InvalidPageEventsShapeLive,
+      TestLiveViewActivation.InvalidPageEventsCallbackLive,
+      TestLiveViewActivation.InvalidPageStateLive,
       TestLiveViewActivation.CrossKindCollisionLive
     ])
   end

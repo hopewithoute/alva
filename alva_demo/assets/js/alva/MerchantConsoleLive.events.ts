@@ -9,4 +9,19 @@ export type MerchantConsoleLiveEvents = {
     output: LiveResult<void>;
   };
 
+  "console.filter_orders": {
+    input: { status?: string, customer_query?: string, product_query?: string };
+    output: LiveResult<void>;
+  };
+
+  "console.filter_inventory": {
+    input: { query?: string, low_stock_only?: boolean };
+    output: LiveResult<void>;
+  };
+
+  "console.filter_conversations": {
+    input: { customer_query?: string, waiting_on_merchant_only?: boolean };
+    output: LiveResult<void>;
+  };
+
 };

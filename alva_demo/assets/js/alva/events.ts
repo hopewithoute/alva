@@ -23,7 +23,7 @@ export type AlvaEvents = {
 
   "catalog.upload_media": {
     input: {
-              media: File;
+              media: string;
               id: string;
             };
     output: LiveResult<Types.Product>;
@@ -111,7 +111,7 @@ export type AlvaEvents = {
 
   "support.list_messages": {
     input: {
-              conversation_id: string;
+              conversation_id?: string;
             };
     output: LiveResult<Types.SupportMessage[]>;
   };

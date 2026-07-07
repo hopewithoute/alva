@@ -24,8 +24,20 @@ const props = defineProps<{
   conversations?: Conversation[];
   active_conversation_id?: string | null;
   support_messages?: SupportMessage[];
+  new_orders_count?: number;
+  processing_orders_count?: number;
+  waiting_conversations_count?: number;
+  low_stock_count?: number;
+  route_filters?: {
+    order_status: string;
+    order_customer: string;
+    order_product: string;
+    inv_query: string;
+    inv_low_stock: boolean;
+    conv_customer: string;
+    conv_waiting: boolean;
+  };
 }>();
-
 
 const pending_order_actions = ref<Record<string, "processing" | "fulfilling">>(
   {},
@@ -50,29 +62,83 @@ const order_filters = reactive<{
   customer_query: string;
   product_query: string;
 }>({
-  status: "all",
-  customer_query: "",
-  product_query: "",
+  status: (props.route_filters?.order_status as OrderStatusFilter) || "all",
+  customer_query: props.route_filters?.order_customer || "",
+  product_query: props.route_filters?.order_product || "",
 });
 
 const inventory_filters = reactive({
-  query: "",
-  low_stock_only: false,
+  query: props.route_filters?.inv_query || "",
+  low_stock_only: props.route_filters?.inv_low_stock || false,
 });
 
 const conversation_filters = reactive({
-  customer_query: "",
-  waiting_on_merchant_only: false,
+  customer_query: props.route_filters?.conv_customer || "",
+  waiting_on_merchant_only: props.route_filters?.conv_waiting || false,
 });
 
 const api = createAlvaApi();
 const active_tab = ref<MerchantConsoleTab>("orders");
-const active_conversation_id = computed(
-  () => props.active_conversation_id ?? null,
-);
-const chat_messages = computed(() => props.support_messages ?? []);
 
-const selectConversationEvent = usePageEvent<MerchantConsoleLiveEvents, "support.select_conversation">("support.select_conversation");
+const selectConversationEvent = usePageEvent<
+  MerchantConsoleLiveEvents,
+  "support.select_conversation"
+>("support.select_conversation");
+const filterOrdersEvent = usePageEvent<
+  MerchantConsoleLiveEvents,
+  "console.filter_orders"
+>("console.filter_orders");
+const filterInventoryEvent = usePageEvent<
+  MerchantConsoleLiveEvents,
+  "console.filter_inventory"
+>("console.filter_inventory");
+const filterConversationsEvent = usePageEvent<
+  MerchantConsoleLiveEvents,
+  "console.filter_conversations"
+>("console.filter_conversations");
+
+// Debounce helper
+let timeoutId: any = null;
+const debounce = (fn: Function, ms = 300) => {
+  return (...args: any[]) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), ms);
+  };
+};
+
+watch(
+  order_filters,
+  debounce((filters: any) => {
+    filterOrdersEvent.call({
+      status: filters.status,
+      customer_query: filters.customer_query,
+      product_query: filters.product_query,
+    });
+  }),
+  { deep: true },
+);
+
+watch(
+  inventory_filters,
+  debounce((filters: any) => {
+    filterInventoryEvent.call({
+      query: filters.query,
+      low_stock_only: filters.low_stock_only,
+    });
+  }),
+  { deep: true },
+);
+
+watch(
+  conversation_filters,
+  debounce((filters: any) => {
+    filterConversationsEvent.call({
+      customer_query: filters.customer_query,
+      waiting_on_merchant_only: filters.waiting_on_merchant_only,
+    });
+  }),
+  { deep: true },
+);
 
 const order_status_options: Array<{ label: string; value: OrderStatusFilter }> =
   [
@@ -82,35 +148,10 @@ const order_status_options: Array<{ label: string; value: OrderStatusFilter }> =
     { label: "Fulfilled", value: "fulfilled" },
   ];
 
-const all_orders = computed(() => props.sales_orders ?? []);
-const all_products = computed(() => props.products ?? []);
-const all_conversations = computed(() => props.conversations ?? []);
-
-const new_orders_count = computed(() => {
-  return all_orders.value.filter((order) => order.lifecycle_status === "new")
-    .length;
-});
-
-const processing_orders_count = computed(() => {
-  return all_orders.value.filter(
-    (order) => order.lifecycle_status === "processing",
-  ).length;
-});
-
-const waiting_conversations_count = computed(() => {
-  return all_conversations.value.filter(
-    (conversation) => conversation.needs_merchant_reply,
-  ).length;
-});
-
-const low_stock_count = computed(() => {
-  return all_products.value.filter(
-    (product) => product.stock <= LOW_STOCK_THRESHOLD,
-  ).length;
-});
-
 const merchant_attention_count = computed(() => {
-  return new_orders_count.value + waiting_conversations_count.value;
+  return (
+    (props.new_orders_count ?? 0) + (props.waiting_conversations_count ?? 0)
+  );
 });
 
 const merchant_tabs = computed<
@@ -124,19 +165,19 @@ const merchant_tabs = computed<
   {
     label: "Orders",
     value: "orders",
-    count: new_orders_count.value,
+    count: props.new_orders_count ?? 0,
     description: "Advance the order lifecycle and inspect filters.",
   },
   {
     label: "Inventory",
     value: "inventory",
-    count: low_stock_count.value,
+    count: props.low_stock_count ?? 0,
     description: "Track low stock and update media or counts in place.",
   },
   {
     label: "Support",
     value: "support",
-    count: waiting_conversations_count.value,
+    count: props.waiting_conversations_count ?? 0,
     description: "Work the shopper queue without losing realtime context.",
   },
 ]);
@@ -162,111 +203,19 @@ const has_conversation_query = computed(() => {
   );
 });
 
-const normalizeQuery = (value: string) => value.trim().toLowerCase();
-
-const matchesQuery = (
-  haystacks: Array<string | null | undefined>,
-  query: string,
-) => {
-  const normalized_query = normalizeQuery(query);
-  if (!normalized_query) return true;
-
-  return haystacks.some((candidate) =>
-    (candidate ?? "").toLowerCase().includes(normalized_query),
-  );
-};
-
-const visible_orders = computed(() => {
-  const source = all_orders.value.filter((order) => {
-    if (
-      order_filters.status !== "all" &&
-      order.lifecycle_status !== order_filters.status
-    ) {
-      return false;
-    }
-
-    if (!matchesQuery([order.customer_name], order_filters.customer_query)) {
-      return false;
-    }
-
-    return matchesQuery(
-      [order.product?.name, getProductName(order.product_id)],
-      order_filters.product_query,
-    );
-  });
-
-  return [...source].sort((left, right) => {
-    const left_created_at = Date.parse(left.created_at || "");
-    const right_created_at = Date.parse(right.created_at || "");
-
-    if (!Number.isNaN(left_created_at) && !Number.isNaN(right_created_at)) {
-      return right_created_at - left_created_at;
-    }
-
-    return left.customer_name.localeCompare(right.customer_name);
-  });
-});
-
-const visible_products = computed(() => {
-  const source = all_products.value.filter((product) => {
-    if (
-      inventory_filters.low_stock_only &&
-      product.stock > LOW_STOCK_THRESHOLD
-    ) {
-      return false;
-    }
-
-    return matchesQuery(
-      [product.name, product.description],
-      inventory_filters.query,
-    );
-  });
-
-  return [...source].sort((left, right) => {
-    if (left.stock === right.stock) {
-      return left.name.localeCompare(right.name);
-    }
-
-    return left.stock - right.stock;
-  });
-});
-
-const visible_conversations = computed(() => {
-  const source = all_conversations.value.filter((conversation) => {
-    if (
-      conversation_filters.waiting_on_merchant_only &&
-      !conversation.needs_merchant_reply
-    ) {
-      return false;
-    }
-
-    return matchesQuery(
-      [conversation.customer_name],
-      conversation_filters.customer_query,
-    );
-  });
-
-  return [...source].sort((left, right) => {
-    const left_time = Date.parse(left.last_message_at || "");
-    const right_time = Date.parse(right.last_message_at || "");
-
-    if (!Number.isNaN(left_time) || !Number.isNaN(right_time)) {
-      return right_time - left_time;
-    }
-
-    return left.customer_name.localeCompare(right.customer_name);
-  });
-});
+const visible_orders = computed(() => props.sales_orders ?? []);
+const visible_products = computed(() => props.products ?? []);
+const visible_conversations = computed(() => props.conversations ?? []);
 
 const active_conversation = computed(() => {
-  if (!active_conversation_id.value) return null;
+  if (!props.active_conversation_id) return null;
 
   return (
     visible_conversations.value.find(
-      (conversation) => conversation.id === active_conversation_id.value,
+      (conversation) => conversation.id === props.active_conversation_id,
     ) ??
-    all_conversations.value.find(
-      (conversation) => conversation.id === active_conversation_id.value,
+    props.conversations?.find(
+      (conversation) => conversation.id === props.active_conversation_id,
     ) ??
     null
   );
@@ -319,16 +268,8 @@ const formatDateTime = (value?: string | null) => {
   });
 };
 
-const getProductName = (product_id: string) => {
-  if (!props.products) return product_id;
-  const product = props.products.find(
-    (candidate) => candidate.id === product_id,
-  );
-  return product ? product.name : product_id;
-};
-
 const getOrderProductName = (order: Order) => {
-  return order.product?.name ?? getProductName(order.product_id);
+  return order.product?.name || order.product_id;
 };
 
 const getProductStockTone = (product: Product) => {
@@ -442,7 +383,7 @@ const selectConversation = async (conversation_id: string) => {
 
 const sendReply = async () => {
   const text = new_message_text.value.trim();
-  if (!text || !active_conversation_id.value || is_sending_reply.value) return;
+  if (!text || !props.active_conversation_id || is_sending_reply.value) return;
 
   new_message_text.value = "";
   is_sending_reply.value = true;
@@ -452,7 +393,7 @@ const sendReply = async () => {
     const result = await api.call("support.send_message", {
       text: text,
       sender: "merchant",
-      conversation_id: active_conversation_id.value,
+      conversation_id: props.active_conversation_id,
     });
 
     if (!result.ok) {
@@ -464,12 +405,15 @@ const sendReply = async () => {
   }
 };
 
-watch(chat_messages, async () => {
-  await nextTick();
-  if (chat_messages_el.value) {
-    chat_messages_el.value.scrollTop = chat_messages_el.value.scrollHeight;
-  }
-});
+watch(
+  () => props.support_messages,
+  async () => {
+    await nextTick();
+    if (chat_messages_el.value) {
+      chat_messages_el.value.scrollTop = chat_messages_el.value.scrollHeight;
+    }
+  },
+);
 
 const orderActionLabel = (order: Order) => {
   const pending = pending_order_actions.value[order.id];
@@ -580,7 +524,7 @@ const runOrderAction = (order: Order) => {
             </p>
             <div class="mt-2 flex items-end justify-between gap-3">
               <span class="text-3xl font-semibold text-emerald-800">{{
-                all_conversations.length
+                props.conversations?.length ?? 0
               }}</span>
               <span
                 class="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-emerald-700"
@@ -693,7 +637,7 @@ const runOrderAction = (order: Order) => {
             <span
               class="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-zinc-700"
             >
-              {{ all_orders.length }} total
+              {{ props.sales_orders?.length ?? 0 }} total
             </span>
           </div>
         </div>
@@ -846,7 +790,7 @@ const runOrderAction = (order: Order) => {
                 Inventory Snapshot
               </h2>
               <span
-                v-if="low_stock_count > 0"
+                v-if="(low_stock_count ?? 0) > 0"
                 class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700"
               >
                 {{ low_stock_count }} low stock
@@ -864,7 +808,7 @@ const runOrderAction = (order: Order) => {
             <span
               class="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-zinc-700"
             >
-              {{ all_products.length }} products
+              {{ props.products?.length ?? 0 }} products
             </span>
           </div>
         </div>
@@ -919,7 +863,6 @@ const runOrderAction = (order: Order) => {
         >
           {{ upload_error }}
         </div>
-
       </div>
 
       <div
@@ -1043,7 +986,7 @@ const runOrderAction = (order: Order) => {
             <div class="flex items-center gap-2">
               <h2 class="text-xl font-semibold text-zinc-950">Support Chat</h2>
               <span
-                v-if="waiting_conversations_count > 0"
+                v-if="(waiting_conversations_count ?? 0) > 0"
                 class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700"
               >
                 {{ waiting_conversations_count }} waiting
@@ -1061,7 +1004,7 @@ const runOrderAction = (order: Order) => {
             <span
               class="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-zinc-700"
             >
-              {{ all_conversations.length }} threads
+              {{ props.conversations?.length ?? 0 }} threads
             </span>
           </div>
         </div>
@@ -1102,7 +1045,6 @@ const runOrderAction = (order: Order) => {
             </Button>
           </div>
         </div>
-
       </div>
 
       <div
@@ -1125,7 +1067,9 @@ const runOrderAction = (order: Order) => {
               type="button"
               class="w-full border-b border-zinc-200 p-4 text-left transition-colors hover:bg-zinc-100"
               :class="
-                active_conversation_id === conversation.id ? 'bg-zinc-100' : ''
+                props.active_conversation_id === conversation.id
+                  ? 'bg-zinc-100'
+                  : ''
               "
               @click="selectConversation(conversation.id)"
             >
@@ -1204,7 +1148,10 @@ const runOrderAction = (order: Order) => {
                 v-if="selectConversationEvent.error.value || send_reply_error"
                 class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
               >
-                {{ (selectConversationEvent.error.value?.message) || send_reply_error }}
+                {{
+                  selectConversationEvent.error.value?.message ||
+                  send_reply_error
+                }}
               </div>
 
               <div
@@ -1214,13 +1161,13 @@ const runOrderAction = (order: Order) => {
                 Loading messages...
               </div>
               <div
-                v-else-if="chat_messages.length === 0"
+                v-else-if="props.support_messages?.length === 0"
                 class="mt-4 text-center text-sm text-zinc-500"
               >
                 No messages yet.
               </div>
               <div
-                v-for="msg in chat_messages"
+                v-for="msg in props.support_messages"
                 :key="msg.id"
                 :class="[
                   'flex',

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import AppLayout from "./AppLayout.vue";
 
 describe("AppLayout", () => {
-  it("exposes the realtime demo routes in the main navigation", () => {
+  it("limits the main navigation to the commerce showcase surfaces", () => {
     const wrapper = mount(AppLayout, {
       slots: {
         default: "<div>content</div>"
@@ -23,11 +23,13 @@ describe("AppLayout", () => {
 
     expect(navText).toContain("Customer Storefront");
     expect(navText).toContain("Merchant Console");
-    expect(navText).toContain("Chat Demo");
-    expect(navText).toContain("Signals Demo");
-    expect(navText).toContain("Load More Demo");
-    expect(wrapper.html()).toContain('href="/demo/chat"');
-    expect(wrapper.html()).toContain('href="/demo/notifications"');
-    expect(wrapper.html()).toContain('href="/demo/load-more"');
+    expect(navText).not.toContain("Chat Demo");
+    expect(navText).not.toContain("Signals Demo");
+    expect(navText).not.toContain("Load More Demo");
+    expect(wrapper.html()).toContain('href="/storefront"');
+    expect(wrapper.html()).toContain('href="/console"');
+    expect(wrapper.html()).not.toContain('href="/demo/chat"');
+    expect(wrapper.html()).not.toContain('href="/demo/notifications"');
+    expect(wrapper.html()).not.toContain('href="/demo/load-more"');
   });
 });

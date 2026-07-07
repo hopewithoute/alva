@@ -34,7 +34,7 @@ defmodule Alva.Codegen.InputContract do
         arguments
         |> Enum.map(fn arg ->
           optional? = arg_optional?(arg)
-          ts_type = TypeMapper.map_type(arg.type, Map.get(arg, :constraints, []))
+          ts_type = input_ts_type(arg.type, Map.get(arg, :constraints, []))
           format_field(arg.name, ts_type, optional?, indent)
         end)
 
@@ -53,7 +53,7 @@ defmodule Alva.Codegen.InputContract do
                 allow_nil_input
               )
 
-            ts_type = TypeMapper.map_type(attr.type, Map.get(attr, :constraints, []))
+            ts_type = input_ts_type(attr.type, Map.get(attr, :constraints, []))
             format_field(attr.name, ts_type, optional?, indent)
           else
             nil
@@ -120,6 +120,11 @@ defmodule Alva.Codegen.InputContract do
         true
     end
   end
+
+  defp input_ts_type({:array, Ash.Type.File}, _constraints), do: "string[]"
+  defp input_ts_type({:array, :file}, _constraints), do: "string[]"
+  defp input_ts_type(type, _constraints) when type in [Ash.Type.File, :file], do: "string"
+  defp input_ts_type(type, constraints), do: TypeMapper.map_type(type, constraints)
 
   defp format_field(name, type, true = _optional?, indent), do: "#{indent}  #{name}?: #{type};"
   defp format_field(name, type, false = _optional?, indent), do: "#{indent}  #{name}: #{type};"

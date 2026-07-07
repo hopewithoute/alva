@@ -4,6 +4,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import MerchantConsolePage from "./MerchantConsolePage.vue";
 
 const { apiCall, uploadMock } = vi.hoisted(() => {
+  let pendingDispatch:
+    | {
+        submit: (upload: {
+          primaryReference: string;
+          references: string[];
+          files: unknown[];
+        }) => Promise<unknown>;
+        resolve: (value: unknown) => void;
+        reject: (reason?: unknown) => void;
+      }
+    | null = null;
+
   return {
     apiCall: vi.fn(),
     uploadMock: {
@@ -11,7 +23,38 @@ const { apiCall, uploadMock } = vi.hoisted(() => {
       files: undefined as any,
       showFilePicker: vi.fn(),
       clear: vi.fn(),
-      getFileReferences: vi.fn(() => [])
+      getFileReferences: vi.fn(() => []),
+      dispatch: vi.fn(
+        (submit: (upload: {
+          primaryReference: string;
+          references: string[];
+          files: unknown[];
+        }) => Promise<unknown>) =>
+          new Promise((resolve, reject) => {
+            pendingDispatch = { submit, resolve, reject };
+          }),
+      ),
+      completeDispatch: async (upload: {
+        primaryReference: string;
+        references: string[];
+        files: unknown[];
+      }) => {
+        if (!pendingDispatch) {
+          throw new Error("No pending upload dispatch");
+        }
+
+        const current = pendingDispatch;
+        pendingDispatch = null;
+
+        try {
+          current.resolve(await current.submit(upload));
+        } catch (error) {
+          current.reject(error);
+        }
+      },
+      resetDispatch: () => {
+        pendingDispatch = null;
+      }
     }
   };
 });
@@ -32,17 +75,6 @@ vi.mock("../js/alva/client", () => ({
     call: apiCall
   })
 }));
-
-vi.mock("./composables/useChatMessages", async () => {
-  const { computed } = await import("vue");
-
-  return {
-    useChatMessages: (
-      _activeConversationId: unknown,
-      historicalMessages: { value: unknown[] }
-    ) => computed(() => historicalMessages.value)
-  };
-});
 
 const buildProps = () => ({
   sales_orders: [
@@ -103,6 +135,7 @@ const buildProps = () => ({
       needs_merchant_reply: false
     }
   ],
+  active_conversation_id: null,
   support_messages: []
 });
 
@@ -132,6 +165,7 @@ describe("MerchantConsolePage tabs", () => {
 
     uploadMock.progress.value = 0;
     uploadMock.files.value = [];
+    uploadMock.resetDispatch();
     uploadMock.getFileReferences.mockReset();
     uploadMock.getFileReferences.mockReturnValue([]);
     uploadMock.clear.mockReset();
@@ -247,9 +281,21 @@ describe("MerchantConsolePage tabs", () => {
       .trigger("click");
     await flushPromises();
 
-    expect(apiCall).toHaveBeenCalledWith("support.list_messages", {
+    expect(apiCall).toHaveBeenCalledWith("support.select_conversation", {
       conversation_id: "conv-waiting"
     });
+    await wrapper.setProps({
+      active_conversation_id: "conv-waiting",
+      support_messages: [
+        {
+          id: "msg-1",
+          conversation_id: "conv-waiting",
+          sender: "shopper",
+          text: "Need help with an order"
+        }
+      ]
+    } as never);
+    await flushPromises();
     expect(wrapper.text()).toContain("Chatting with Waiting Shopper");
 
     await wrapper.get('[data-testid="merchant-reply-input"]').setValue("On it, checking now.");
@@ -273,27 +319,31 @@ describe("MerchantConsolePage tabs", () => {
     await wrapper.get('[data-testid="merchant-upload-media-product-mug"]').trigger("click");
 
     expect(uploadMock.showFilePicker).toHaveBeenCalledTimes(1);
+    expect(uploadMock.dispatch).toHaveBeenCalledTimes(1);
     expect(wrapper.get('[data-testid="merchant-upload-media-product-mug"]').text()).toBe(
       "Uploading..."
     );
 
     uploadMock.progress.value = 45;
+    uploadMock.files.value = [uploadedFile];
     await flushPromises();
 
     expect(
       wrapper.get('[data-testid="merchant-upload-progress-bar-product-mug"]').attributes("style")
     ).toContain("width: 45%");
 
-    uploadMock.files.value = [uploadedFile];
-    uploadMock.getFileReferences.mockReturnValue([uploadedRef]);
     uploadMock.progress.value = 100;
+    await uploadMock.completeDispatch({
+      primaryReference: uploadedRef,
+      references: [uploadedRef],
+      files: [uploadedFile]
+    });
     await flushPromises();
 
     expect(apiCall).toHaveBeenCalledWith("catalog.upload_media", {
       id: "product-mug",
       media: uploadedRef
     });
-    expect(uploadMock.clear).toHaveBeenCalledTimes(1);
     expect(wrapper.get('[data-testid="merchant-upload-media-product-mug"]').text()).toBe(
       "Upload Media"
     );
@@ -330,12 +380,15 @@ describe("MerchantConsolePage tabs", () => {
     await wrapper.get('[data-testid="merchant-upload-media-product-mug"]').trigger("click");
 
     uploadMock.files.value = [uploadedFile];
-    uploadMock.getFileReferences.mockReturnValue([uploadedRef]);
     uploadMock.progress.value = 100;
+    await uploadMock.completeDispatch({
+      primaryReference: uploadedRef,
+      references: [uploadedRef],
+      files: [uploadedFile]
+    });
     await flushPromises();
 
     expect(wrapper.text()).toContain("Failed to upload media: Upload pipeline unavailable");
-    expect(uploadMock.clear).toHaveBeenCalledTimes(1);
     expect(wrapper.get('[data-testid="merchant-upload-media-product-mug"]').text()).toBe(
       "Upload Media"
     );

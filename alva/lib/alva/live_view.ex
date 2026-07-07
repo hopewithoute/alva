@@ -1706,9 +1706,9 @@ defmodule Alva.LiveView do
       Enum.map(page_events, fn tuple ->
         {event_name, callback} =
           case tuple do
+            {:{}, _, [e, c | _]} -> {e, c}
             {e, c} -> {e, c}
             {e, c, _} -> {e, c}
-            {:{}, _, [e, c, _]} -> {e, c}
             other ->
               raise CompileError,
                 file: caller.file,
