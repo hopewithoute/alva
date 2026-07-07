@@ -46,14 +46,25 @@ defmodule AlvaDemo.Sales.Order do
       )
 
       argument(:customer_query, :string, allow_nil?: true)
+      argument(:require_customer, :boolean, allow_nil?: false, default: false)
       argument(:product_query, :string, allow_nil?: true)
 
       prepare(fn query, _context ->
+        require_customer? = Ash.Query.get_argument(query, :require_customer)
+        customer_query = Ash.Query.get_argument(query, :customer_query)
+
+        query = 
+          if require_customer? and is_nil(customer_query) do
+            Ash.Query.filter(query, false)
+          else
+            query
+          end
+
         query
         |> Ash.Query.sort(created_at: :desc)
         |> Ash.Query.load(:product)
         |> filter_status(Ash.Query.get_argument(query, :status))
-        |> filter_customer_query(Ash.Query.get_argument(query, :customer_query))
+        |> filter_customer_query(customer_query)
         |> filter_product_query(Ash.Query.get_argument(query, :product_query))
       end)
     end
@@ -62,6 +73,7 @@ defmodule AlvaDemo.Sales.Order do
       primary?(true)
       public?(true)
       accept([:customer_name, :product_id, :quantity])
+      change(load(:product))
     end
 
     update :begin_processing do
