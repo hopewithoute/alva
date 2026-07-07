@@ -16,7 +16,7 @@ const emit = defineEmits<{
 const customerName = ref("");
 const setIdentityEvent = usePageEvent<CustomerStorefrontLiveEvents, "storefront.set_identity">("storefront.set_identity");
 
-import { useDebounce } from "../../../utils/debounce";
+import { useDebounce } from "../../utils/debounce";
 
 const handleIdentityChange = useDebounce((newName: string) => {
   const trimmed = newName.trim();
