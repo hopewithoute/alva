@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
+import { providePageState } from "../../../../js/alva/usePageState";
 import type { Order, Product, Conversation, SupportMessage } from "../../../js/alva/types";
 import MerchantOrdersTab from "../sales/MerchantOrdersTab.vue";
 import MerchantInventoryTab from "../catalog/MerchantInventoryTab.vue";
@@ -31,6 +32,8 @@ const props = defineProps<{
     conv_waiting: boolean;
   };
 }>();
+
+providePageState(props);
 
 const active_tab = ref<MerchantConsoleTab>("orders");
 
@@ -134,27 +137,16 @@ const active_tab_description = computed(() => {
     <MerchantOrdersTab
       v-if="active_tab === 'orders'"
       data-testid="merchant-console-panel-orders"
-      :sales_orders="props.sales_orders ?? []"
-      :is_filtered="props.is_order_filtered ?? false"
-      :route_filters="props.route_filters"
     />
 
     <MerchantInventoryTab
       v-else-if="active_tab === 'inventory'"
       data-testid="merchant-console-panel-inventory"
-      :products="props.products ?? []"
-      :is_filtered="props.is_inventory_filtered ?? false"
-      :route_filters="props.route_filters"
     />
 
     <MerchantSupportTab
       v-else-if="active_tab === 'support'"
       data-testid="merchant-console-panel-support"
-      :conversations="props.conversations ?? []"
-      :active_conversation_id="props.active_conversation_id ?? null"
-      :support_messages="props.support_messages ?? []"
-      :is_filtered="props.is_conversation_filtered ?? false"
-      :route_filters="props.route_filters"
     />
 
   </div>

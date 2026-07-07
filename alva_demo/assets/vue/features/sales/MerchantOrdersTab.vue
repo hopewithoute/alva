@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { reactive, watch, computed } from "vue";
-import { usePageEvent } from "alva";
+import { usePageEvent, usePageState } from "alva";
 import type { MerchantConsoleLiveEvents } from "../../../js/alva/MerchantConsoleLive.events";
 import type { Order } from "../../../js/alva/types";
 import { useDebounce } from "../../utils/debounce";
 import MerchantOrderItem from "./MerchantOrderItem.vue";
 import Button from "../../shared/ui/button/Button.vue";
 
-const props = defineProps<{
-  sales_orders: Order[];
-  is_filtered: boolean;
-  route_filters?: any;
+const { sales_orders, is_order_filtered, route_filters } = usePageState<{
+  sales_orders?: Order[];
+  is_order_filtered?: boolean;
+  route_filters?: {
+    order_status?: string;
+    order_customer?: string;
+    order_product?: string;
+  };
 }>();
 
 type OrderStatusFilter = "all" | Order["lifecycle_status"];
@@ -20,9 +24,9 @@ const order_filters = reactive<{
   customer_query: string;
   product_query: string;
 }>({
-  status: (props.route_filters?.order_status as OrderStatusFilter) || "all",
-  customer_query: props.route_filters?.order_customer || "",
-  product_query: props.route_filters?.order_product || "",
+  status: (route_filters?.value?.order_status as OrderStatusFilter) || "all",
+  customer_query: route_filters?.value?.order_customer || "",
+  product_query: route_filters?.value?.order_product || "",
 });
 
 const filterOrdersEvent = usePageEvent<MerchantConsoleLiveEvents, "console.filter_orders">("console.filter_orders");
@@ -46,7 +50,7 @@ const clearOrderFilters = () => {
 };
 
 const visible_orders = computed(() => {
-  let list = props.sales_orders || [];
+  let list = sales_orders?.value || [];
   if (order_filters.status !== "all") {
     list = list.filter(o => o.lifecycle_status === order_filters.status);
   }
@@ -105,13 +109,11 @@ const order_status_options: Array<{ label: string; value: OrderStatusFilter }> =
           placeholder="Filter by product"
           class="h-9 w-40 rounded-md border border-zinc-300 px-3 text-sm font-normal text-zinc-950"
         />
-        <Button variant="secondary" size="sm" :disabled="!props.is_filtered" @click="clearOrderFilters">
+        <Button variant="secondary" size="sm" :disabled="!is_order_filtered?.value" @click="clearOrderFilters">
           Reset
         </Button>
       </div>
-    </div>
-
-    <div v-if="visible_orders.length === 0" class="py-12 text-center text-sm text-zinc-500">
+    <div v-if="visible_orders.length === 0" class="mt-6 py-12 text-center text-sm text-zinc-500">
       No orders match your current filters.
     </div>
     <div v-else class="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-2">

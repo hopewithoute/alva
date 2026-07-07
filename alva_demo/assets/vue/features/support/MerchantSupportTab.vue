@@ -1,25 +1,28 @@
 <script setup lang="ts">
 import { ref, reactive, watch, computed, nextTick } from "vue";
-import { usePageEvent } from "alva";
+import { usePageEvent, usePageState } from "alva";
 import type { MerchantConsoleLiveEvents } from "../../../js/alva/MerchantConsoleLive.events";
 import { createAlvaApi } from "../../../js/alva/client";
 import type { Conversation, SupportMessage } from "../../../js/alva/types";
 import Button from "../../shared/ui/button/Button.vue";
 import { useDebounce } from "../../utils/debounce";
 
-const props = defineProps<{
-  conversations: Conversation[];
-  active_conversation_id: string | null;
-  support_messages: SupportMessage[];
-  is_filtered: boolean;
-  route_filters?: any;
+const { conversations, active_conversation_id, support_messages, is_conversation_filtered, route_filters } = usePageState<{
+  conversations?: Conversation[];
+  active_conversation_id?: string | null;
+  support_messages?: SupportMessage[];
+  is_conversation_filtered?: boolean;
+  route_filters?: {
+    conv_customer?: string;
+    conv_waiting?: boolean;
+  };
 }>();
 
 const api = createAlvaApi();
 
 const conversation_filters = reactive({
-  customer_query: props.route_filters?.conv_customer || "",
-  waiting_on_merchant_only: props.route_filters?.conv_waiting || false,
+  customer_query: route_filters?.value?.conv_customer || "",
+  waiting_on_merchant_only: route_filters?.value?.conv_waiting || false,
 });
 
 const new_message_text = ref("");
@@ -47,7 +50,7 @@ const clearConversationFilters = () => {
 };
 
 const visible_conversations = computed(() => {
-  let list = props.conversations || [];
+  let list = conversations?.value || [];
   if (conversation_filters.waiting_on_merchant_only) {
     list = list.filter(c => c.needs_merchant_reply);
   }
@@ -59,10 +62,10 @@ const visible_conversations = computed(() => {
 });
 
 const active_conversation = computed(() => {
-  if (!props.active_conversation_id) return null;
+  if (!active_conversation_id?.value) return null;
   return (
-    visible_conversations.value.find((c) => c.id === props.active_conversation_id) ??
-    props.conversations.find((c) => c.id === props.active_conversation_id) ??
+    visible_conversations.value.find((c) => c.id === active_conversation_id.value) ??
+    conversations?.value?.find((c) => c.id === active_conversation_id.value) ??
     null
   );
 });
@@ -80,7 +83,7 @@ const selectConversation = async (conversation_id: string) => {
 
 const sendReply = async () => {
   const text = new_message_text.value.trim();
-  if (!text || !props.active_conversation_id || is_sending_reply.value) return;
+  if (!text || !active_conversation_id?.value || is_sending_reply.value) return;
 
   new_message_text.value = "";
   is_sending_reply.value = true;
@@ -90,7 +93,7 @@ const sendReply = async () => {
     const result = await api.call("support.send_message", {
       text: text,
       sender: "merchant",
-      conversation_id: props.active_conversation_id,
+      conversation_id: active_conversation_id.value,
     });
     if (!result.ok) {
       send_reply_error.value = result.error?.message || "Failed to send reply.";
@@ -102,13 +105,15 @@ const sendReply = async () => {
 };
 
 watch(
-  () => props.support_messages,
-  async () => {
-    await nextTick();
-    if (chat_messages_el.value) {
-      chat_messages_el.value.scrollTop = chat_messages_el.value.scrollHeight;
-    }
+  () => support_messages?.value,
+  () => {
+    nextTick(() => {
+      if (chat_messages_el.value) {
+        chat_messages_el.value.scrollTop = chat_messages_el.value.scrollHeight;
+      }
+    });
   },
+  { deep: true },
 );
 </script>
 
@@ -138,7 +143,7 @@ watch(
             <input v-model="conversation_filters.waiting_on_merchant_only" type="checkbox" class="h-4 w-4 rounded border-zinc-300" />
             Waiting on merchant only
           </label>
-          <Button variant="secondary" size="sm" :disabled="!props.is_filtered" @click="clearConversationFilters">
+          <Button variant="secondary" size="sm" :disabled="!is_conversation_filtered?.value" @click="clearConversationFilters">
             Reset
           </Button>
         </div>
@@ -157,7 +162,7 @@ watch(
             :data-testid="`merchant-conversation-${conversation.id}`"
             type="button"
             class="w-full border-b border-zinc-200 p-4 text-left transition-colors hover:bg-zinc-100"
-            :class="props.active_conversation_id === conversation.id ? 'bg-zinc-100' : ''"
+            :class="active_conversation_id?.value === conversation.id ? 'bg-zinc-100' : ''"
             @click="selectConversation(conversation.id)"
           >
             <div class="flex items-start justify-between gap-3">
@@ -210,10 +215,10 @@ watch(
             <div v-if="selectConversationEvent.isLoading.value" class="rounded-lg border border-dashed border-zinc-200 bg-white px-4 py-5 text-sm text-zinc-500">
               Loading messages...
             </div>
-            <div v-else-if="props.support_messages?.length === 0" class="mt-4 text-center text-sm text-zinc-500">
+            <div v-else-if="support_messages?.value?.length === 0" class="mt-4 text-center text-sm text-zinc-500">
               No messages yet.
             </div>
-            <div v-for="msg in props.support_messages" :key="msg.id" :class="['flex', msg.sender === 'merchant' ? 'justify-end' : 'justify-start']">
+            <div v-for="msg in support_messages?.value" :key="msg.id" :class="['flex', msg.sender === 'merchant' ? 'justify-end' : 'justify-start']">
               <div :class="['max-w-[80%] rounded-lg px-3 py-2 text-sm', msg.sender === 'merchant' ? 'bg-blue-600 text-white' : 'border border-zinc-200 bg-white text-zinc-900']">
                 {{ msg.text }}
               </div>

@@ -1,21 +1,24 @@
 <script setup lang="ts">
 import { reactive, watch, computed } from "vue";
-import { usePageEvent } from "alva";
+import { usePageEvent, usePageState } from "alva";
 import type { MerchantConsoleLiveEvents } from "../../../js/alva/MerchantConsoleLive.events";
 import type { Product } from "../../../js/alva/types";
 import MerchantInventoryItem from "./MerchantInventoryItem.vue";
 import Button from "../../shared/ui/button/Button.vue";
 import { useDebounce } from "../../utils/debounce";
 
-const props = defineProps<{
-  products: Product[];
-  is_filtered: boolean;
-  route_filters?: any;
+const { products, is_inventory_filtered, route_filters } = usePageState<{
+  products?: Product[];
+  is_inventory_filtered?: boolean;
+  route_filters?: {
+    inv_query?: string;
+    inv_low_stock?: boolean;
+  };
 }>();
 
 const inventory_filters = reactive({
-  query: props.route_filters?.inv_query || "",
-  low_stock_only: props.route_filters?.inv_low_stock || false,
+  query: route_filters?.value?.inv_query || "",
+  low_stock_only: route_filters?.value?.inv_low_stock || false,
 });
 
 const filterInventoryEvent = usePageEvent<MerchantConsoleLiveEvents, "console.filter_inventory">("console.filter_inventory");
@@ -37,7 +40,7 @@ const clearInventoryFilters = () => {
 };
 
 const visible_products = computed(() => {
-  let list = props.products || [];
+  let list = products?.value || [];
   if (inventory_filters.low_stock_only) {
     list = list.filter(p => p.stock_quantity <= 25);
   }
@@ -79,7 +82,7 @@ const visible_products = computed(() => {
             />
             Low stock only
           </label>
-          <Button variant="secondary" size="sm" :disabled="!props.is_filtered" @click="clearInventoryFilters">
+          <Button variant="secondary" size="sm" :disabled="!is_inventory_filtered?.value" @click="clearInventoryFilters">
             Reset
           </Button>
         </div>
