@@ -29,8 +29,8 @@ defmodule Alva.Codegen.DtoGeneratorTest do
   test "generates types.ts content" do
     content = DtoGenerator.generate_types_ts([User, Profile])
 
-    # Contains LiveResult
-    assert content =~ "export type LiveResult<T>"
+    # Contains AlvaResult
+    assert content =~ "export type AlvaResult<T>"
 
     # Contains User interface
     assert content =~ "export interface User {"

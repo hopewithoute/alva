@@ -227,10 +227,6 @@ defmodule Alva.LiveView do
                 {:cont, sock}
 
               _ ->
-                sock =
-                  sock
-                  |> apply_event_projection_operations(event_name, res)
-
                 {:halt, res, sock}
             end
         end
@@ -475,26 +471,7 @@ defmodule Alva.LiveView do
     end
   end
 
-  defp apply_event_projection_operations(socket, event_name, %{ok: true, data: data}) do
-    state = alva_state(socket)
 
-    case find_event_projection(state, event_name) do
-      {resource, %{action: action_name}} ->
-        matches =
-          matching_projection_operations(
-            socket,
-            resource,
-            action_occurrence_keys(resource, action_name)
-          )
-
-        apply_collection_operations(socket, matches, data)
-
-      _ ->
-        socket
-    end
-  end
-
-  defp apply_event_projection_operations(socket, _event_name, _result), do: socket
 
   defp collection_source_items!(_name, _collection, nil), do: []
 
