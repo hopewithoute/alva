@@ -4,31 +4,39 @@ import { usePageEvent, usePageState } from "alva";
 import type { MerchantConsoleLiveEvents } from "../../../js/alva/MerchantConsoleLive.events";
 import type { Product } from "../../../js/alva/types";
 import MerchantInventoryItem from "./MerchantInventoryItem.vue";
+import type { InventoryFilters } from "../merchant/types";
 import Button from "../../shared/ui/button/Button.vue";
 import { useDebounce } from "../../utils/debounce";
 
 const { products, is_inventory_filtered, inventory_filters: initial_filters } = usePageState<{
   products?: Product[];
   is_inventory_filtered?: boolean;
-  inventory_filters?: {
-    query?: string;
-    low_stock?: boolean;
-  };
+  inventory_filters?: InventoryFilters;
 }>();
 
-const inventory_filters = reactive({
+const inventory_filters = reactive<InventoryFilters>({
   query: initial_filters?.value?.query || "",
-  low_stock_only: initial_filters?.value?.low_stock || false,
+  low_stock: initial_filters?.value?.low_stock || false,
 });
+
+watch(
+  () => initial_filters?.value,
+  (newVal) => {
+    if (!newVal) return;
+    inventory_filters.query = newVal.query || "";
+    inventory_filters.low_stock = newVal.low_stock || false;
+  },
+  { deep: true, immediate: true }
+);
 
 const filterInventoryEvent = usePageEvent<MerchantConsoleLiveEvents, "console.filter_inventory">("console.filter_inventory");
 
 watch(
   inventory_filters,
-  useDebounce((filters: any) => {
+  useDebounce((filters: InventoryFilters) => {
     filterInventoryEvent.call({
       query: filters.query,
-      low_stock_only: filters.low_stock_only,
+      low_stock_only: filters.low_stock,
     });
   }, 300),
   { deep: true },
@@ -36,13 +44,13 @@ watch(
 
 const clearInventoryFilters = () => {
   inventory_filters.query = "";
-  inventory_filters.low_stock_only = false;
+  inventory_filters.low_stock = false;
 };
 
 const visible_products = computed(() => {
   let list = products?.value || [];
-  if (inventory_filters.low_stock_only) {
-    list = list.filter(p => p.stock_quantity <= 25);
+  if (inventory_filters.low_stock) {
+    list = list.filter(p => p.stock <= 25);
   }
   if (inventory_filters.query) {
     const q = inventory_filters.query.toLowerCase();
@@ -74,14 +82,11 @@ const visible_products = computed(() => {
         </label>
 
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <label class="inline-flex items-center gap-2 text-sm font-medium text-zinc-700">
-            <input
-              v-model="inventory_filters.low_stock_only"
-              type="checkbox"
-              class="h-4 w-4 rounded border-zinc-300"
-            />
-            Low stock only
-          </label>
+          <label class="flex items-center gap-2 text-sm font-medium text-zinc-700">
+          <input v-model="inventory_filters.low_stock" type="checkbox" class="h-4 w-4 rounded border-zinc-300" />
+          Low stock only
+        </label>
+        <div class="h-6 w-px bg-zinc-200 hidden sm:block"></div>
           <Button variant="secondary" size="sm" :disabled="!is_inventory_filtered?.value" @click="clearInventoryFilters">
             Reset
           </Button>

@@ -4,6 +4,7 @@ import { usePageEvent, usePageState } from "alva";
 import type { MerchantConsoleLiveEvents } from "../../../js/alva/MerchantConsoleLive.events";
 import { createAlvaApi } from "../../../js/alva/client";
 import type { Conversation, SupportMessage } from "../../../js/alva/types";
+import type { ConversationFilters } from "../merchant/types";
 import Button from "../../shared/ui/button/Button.vue";
 import { useDebounce } from "../../utils/debounce";
 
@@ -12,18 +13,25 @@ const { conversations, active_conversation_id, support_messages, is_conversation
   active_conversation_id?: string | null;
   support_messages?: SupportMessage[];
   is_conversation_filtered?: boolean;
-  conversation_filters?: {
-    customer?: string;
-    waiting?: boolean;
-  };
+  conversation_filters?: ConversationFilters;
 }>();
 
 const api = createAlvaApi();
 
-const conversation_filters = reactive({
-  customer_query: initial_filters?.value?.customer || "",
-  waiting_on_merchant_only: initial_filters?.value?.waiting || false,
+const conversation_filters = reactive<ConversationFilters>({
+  customer: initial_filters?.value?.customer || "",
+  waiting: initial_filters?.value?.waiting || false,
 });
+
+watch(
+  () => initial_filters?.value,
+  (newVal) => {
+    if (!newVal) return;
+    conversation_filters.customer = newVal.customer || "";
+    conversation_filters.waiting = newVal.waiting || false;
+  },
+  { deep: true, immediate: true }
+);
 
 const new_message_text = ref("");
 const is_sending_reply = ref(false);
@@ -35,27 +43,27 @@ const selectConversationEvent = usePageEvent<MerchantConsoleLiveEvents, "support
 
 watch(
   conversation_filters,
-  useDebounce((filters: any) => {
+  useDebounce((filters: ConversationFilters) => {
     filterConversationsEvent.call({
-      customer_query: filters.customer_query,
-      waiting_on_merchant_only: filters.waiting_on_merchant_only,
+      customer_query: filters.customer,
+      waiting_on_merchant_only: filters.waiting,
     });
   }, 300),
   { deep: true },
 );
 
 const clearConversationFilters = () => {
-  conversation_filters.customer_query = "";
-  conversation_filters.waiting_on_merchant_only = false;
+  conversation_filters.customer = "";
+  conversation_filters.waiting = false;
 };
 
 const visible_conversations = computed(() => {
   let list = conversations?.value || [];
-  if (conversation_filters.waiting_on_merchant_only) {
+  if (conversation_filters.waiting) {
     list = list.filter(c => c.needs_merchant_reply);
   }
-  if (conversation_filters.customer_query) {
-    const q = conversation_filters.customer_query.toLowerCase();
+  if (conversation_filters.customer) {
+    const q = conversation_filters.customer.toLowerCase();
     list = list.filter(c => c.customer_name?.toLowerCase().includes(q));
   }
   return list;
@@ -106,14 +114,12 @@ const sendReply = async () => {
 
 watch(
   () => support_messages?.value,
-  () => {
-    nextTick(() => {
-      if (chat_messages_el.value) {
-        chat_messages_el.value.scrollTop = chat_messages_el.value.scrollHeight;
-      }
-    });
+  async () => {
+    await nextTick();
+    if (chat_messages_el.value) {
+      chat_messages_el.value.scrollTop = chat_messages_el.value.scrollHeight;
+    }
   },
-  { deep: true },
 );
 </script>
 
@@ -130,7 +136,7 @@ watch(
       <div class="flex flex-col gap-3 xl:flex-row xl:items-end">
         <label class="flex min-w-[260px] flex-col gap-2 text-sm font-medium text-zinc-700">
           <input
-            v-model="conversation_filters.customer_query"
+            v-model="conversation_filters.customer"
             data-testid="merchant-conversation-query"
             type="text"
             placeholder="Search customer name"
@@ -140,7 +146,7 @@ watch(
 
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
           <label class="inline-flex items-center gap-2 text-sm font-medium text-zinc-700">
-            <input v-model="conversation_filters.waiting_on_merchant_only" type="checkbox" class="h-4 w-4 rounded border-zinc-300" />
+            <input v-model="conversation_filters.waiting" type="checkbox" class="h-4 w-4 rounded border-zinc-300" />
             Waiting on merchant only
           </label>
           <Button variant="secondary" size="sm" :disabled="!is_conversation_filtered?.value" @click="clearConversationFilters">

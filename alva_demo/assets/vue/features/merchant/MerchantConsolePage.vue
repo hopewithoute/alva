@@ -6,6 +6,8 @@ import MerchantOrdersTab from "../sales/MerchantOrdersTab.vue";
 import MerchantInventoryTab from "../catalog/MerchantInventoryTab.vue";
 import MerchantSupportTab from "../support/MerchantSupportTab.vue";
 
+import type { OrderFilters, InventoryFilters, ConversationFilters } from "./types";
+
 type MerchantConsoleTab = "orders" | "inventory" | "support";
 
 const props = defineProps<{
@@ -22,19 +24,9 @@ const props = defineProps<{
   is_inventory_filtered?: boolean;
   is_conversation_filtered?: boolean;
   low_stock_count?: number;
-  order_filters?: {
-    status: string;
-    customer: string;
-    product: string;
-  };
-  inventory_filters?: {
-    query: string;
-    low_stock: boolean;
-  };
-  conversation_filters?: {
-    customer: string;
-    waiting: boolean;
-  };
+  order_filters?: OrderFilters;
+  inventory_filters?: InventoryFilters;
+  conversation_filters?: ConversationFilters;
 }>();
 
 providePageState(props);

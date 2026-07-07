@@ -8,7 +8,7 @@ defineProps<{
 </script>
 
 <template>
-  <div :class="['rounded-full border px-3 py-1 text-sm font-medium capitalize inline-flex items-center', getStatusColor(status)]">
+  <div :class="['rounded-full border px-3 py-1 text-sm font-medium capitalize', getStatusColor(status)]">
     {{ status }}
   </div>
 </template>
