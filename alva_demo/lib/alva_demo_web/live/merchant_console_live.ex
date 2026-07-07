@@ -29,26 +29,10 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
     ],
     page_state: :console_page_state,
     page_events: [
-      {"support.select_conversation", :select_conversation_page_event,
-       %{
-         input: "{ conversation_id: string }",
-         output: "void"
-       }},
-      {"console.filter_orders", :filter_orders_page_event,
-       %{
-         input: "{ status?: string, customer_query?: string, product_query?: string }",
-         output: "void"
-       }},
-      {"console.filter_inventory", :filter_inventory_page_event,
-       %{
-         input: "{ query?: string, low_stock_only?: boolean }",
-         output: "void"
-       }},
-      {"console.filter_conversations", :filter_conversations_page_event,
-       %{
-         input: "{ customer_query?: string, waiting_on_merchant_only?: boolean }",
-         output: "void"
-       }}
+      {"support.select_conversation", :select_conversation_page_event, %{conversation_id: :string}},
+      {"console.filter_orders", :filter_orders_page_event, %{status: :string, customer_query: :string, product_query: :string}},
+      {"console.filter_inventory", :filter_inventory_page_event, %{query: :string, low_stock_only: :boolean}},
+      {"console.filter_conversations", :filter_conversations_page_event, %{customer_query: :string, waiting_on_merchant_only: :boolean}}
     ]
 
   def select_conversation_page_event(%{"conversation_id" => conversation_id}, socket) do

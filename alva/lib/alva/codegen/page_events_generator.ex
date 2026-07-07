@@ -11,11 +11,10 @@ defmodule Alva.Codegen.PageEventsGenerator do
       page_events
       |> Enum.map(fn
         {event_name, _callback} ->
-          generate_event(event_name, %{input: "Record<string, unknown>", output: "void"})
+          generate_event(event_name, %{})
 
-        {event_name, _callback, types} ->
-          types = Map.merge(%{input: "Record<string, unknown>", output: "void"}, types)
-          generate_event(event_name, types)
+        {event_name, _callback, input_types} ->
+          generate_event(event_name, input_types)
       end)
       |> Enum.join("\n")
 
@@ -41,12 +40,33 @@ export type #{module_name}Events = {
     end
   end
   
-  defp generate_event(event_name, types) do
+  defp generate_event(event_name, input_types) do
+    input_ts = build_ts_input(input_types)
     """
       "#{event_name}": {
-        input: #{Map.get(types, :input)};
-        output: LiveResult<#{Map.get(types, :output)}>;
+        input: #{input_ts};
+        output: LiveResult<void>;
       };
     """
   end
+
+  defp build_ts_input(input_types) when map_size(input_types) == 0 do
+    "Record<string, never>"
+  end
+
+  defp build_ts_input(input_types) do
+    fields =
+      Enum.map(input_types, fn {key, type} ->
+        ts_type = map_type(type)
+        "#{key}?: #{ts_type}"
+      end)
+      |> Enum.join("; ")
+
+    "{ #{fields} }"
+  end
+
+  defp map_type(:string), do: "string"
+  defp map_type(:boolean), do: "boolean"
+  defp map_type(:integer), do: "number"
+  defp map_type(_), do: "unknown"
 end

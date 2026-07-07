@@ -5,12 +5,12 @@ import type { LiveResult } from "./types";
 
 export type CustomerStorefrontLiveEvents = {
   "storefront.set_identity": {
-    input: { customer_name: string };
+    input: { customer_name?: string };
     output: LiveResult<void>;
   };
 
   "support.join_chat": {
-    input: { customer_name: string };
+    input: { customer_name?: string };
     output: LiveResult<void>;
   };
 

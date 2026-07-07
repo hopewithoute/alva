@@ -5,22 +5,22 @@ import type { LiveResult } from "./types";
 
 export type MerchantConsoleLiveEvents = {
   "support.select_conversation": {
-    input: { conversation_id: string };
+    input: { conversation_id?: string };
     output: LiveResult<void>;
   };
 
   "console.filter_orders": {
-    input: { status?: string, customer_query?: string, product_query?: string };
+    input: { status?: string; customer_query?: string; product_query?: string };
     output: LiveResult<void>;
   };
 
   "console.filter_inventory": {
-    input: { query?: string, low_stock_only?: boolean };
+    input: { query?: string; low_stock_only?: boolean };
     output: LiveResult<void>;
   };
 
   "console.filter_conversations": {
-    input: { customer_query?: string, waiting_on_merchant_only?: boolean };
+    input: { customer_query?: string; waiting_on_merchant_only?: boolean };
     output: LiveResult<void>;
   };
 

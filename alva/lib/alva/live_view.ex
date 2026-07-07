@@ -324,11 +324,43 @@ defmodule Alva.LiveView do
   defp upload_lifecycle_event?(_event_name), do: false
 
   defp handle_page_event(page_event_callbacks, event_name, params, socket) do
-    %{callback: callback} = Map.fetch!(page_event_callbacks, event_name)
+    %{callback: callback, input_types: input_types} = Map.fetch!(page_event_callbacks, event_name)
 
-    callback
-    |> resolve_page_event_callback!(socket, event_name, params)
-    |> normalize_page_event_result!(event_name, callback)
+    if is_nil(input_types) do
+      callback
+      |> resolve_page_event_callback!(socket, event_name, params)
+      |> normalize_page_event_result!(event_name, callback)
+    else
+      changeset = Ecto.Changeset.cast({%{}, input_types}, params || %{}, Map.keys(input_types))
+      
+      if changeset.valid? do
+        casted_params =
+          changeset
+          |> Ecto.Changeset.apply_changes()
+          |> Map.new(fn {k, v} -> {Atom.to_string(k), v} end)
+          
+        callback
+        |> resolve_page_event_callback!(socket, event_name, casted_params)
+        |> normalize_page_event_result!(event_name, callback)
+      else
+        errors = 
+          Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} -> 
+            Enum.reduce(opts, msg, fn {key, value}, acc -> 
+              String.replace(acc, "%{#{key}}", to_string(value)) 
+            end) 
+          end)
+        
+        reply = %{
+          ok: false,
+          error: %{
+            message: "Validation failed for page event #{event_name}",
+            details: errors
+          }
+        }
+        
+        {:halt, reply, socket}
+      end
+    end
   end
 
   defp resolve_page_event_callback!(callback, %{view: view} = socket, event_name, params)
@@ -1898,12 +1930,11 @@ defmodule Alva.LiveView do
   end
 
   defp normalize_page_event_spec!({event_name, callback}) when is_binary(event_name) do
-    normalize_page_event_spec!({event_name, callback, %{input: "Record<string, unknown>", output: "void"}})
+    normalize_page_event_spec!({event_name, callback, nil})
   end
 
-  defp normalize_page_event_spec!({event_name, callback, types}) when is_binary(event_name) and is_atom(callback) do
-    types = Map.merge(%{input: "Record<string, unknown>", output: "void"}, types)
-    {event_name, %{callback: callback, types: types}}
+  defp normalize_page_event_spec!({event_name, callback, input_types}) when is_binary(event_name) and is_atom(callback) and (is_map(input_types) or is_nil(input_types)) do
+    {event_name, %{callback: callback, input_types: input_types}}
   end
 
   defp normalize_page_event_spec!({event_name, callback, _types}) when is_binary(event_name) do
@@ -1918,7 +1949,7 @@ defmodule Alva.LiveView do
 
   defp normalize_page_event_spec!(page_event) do
     raise ArgumentError,
-          "Alva page_events entries must be {event_name, callback} tuples like {\"support.join_chat\", :join_chat_page_event}, got: #{inspect(page_event)}"
+          "Alva page_events entries must be {event_name, callback} or {event_name, callback, input_types} tuples like {\"support.join_chat\", :join_chat_page_event, %{customer_name: :string}}, got: #{inspect(page_event)}"
   end
 
   defp validate_unique_page_event_activation_specs!(event_names) do

@@ -18,9 +18,9 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
     ],
     page_state: :support_chat_page_state,
     page_events: [
-      {"storefront.set_identity", :set_identity_page_event, %{input: "{ customer_name: string }", output: "void"}},
-      {"support.join_chat", :join_chat_page_event, %{input: "{ customer_name: string }", output: "void"}},
-      {"support.reset_chat", :reset_chat_page_event, %{input: "Record<string, never>", output: "void"}}
+      {"storefront.set_identity", :set_identity_page_event, %{customer_name: :string}},
+      {"support.join_chat", :join_chat_page_event, %{customer_name: :string}},
+      {"support.reset_chat", :reset_chat_page_event, %{}}
     ]
 
   def set_identity_page_event(%{"customer_name" => customer_name}, socket) do
