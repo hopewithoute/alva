@@ -1,49 +1,71 @@
 # Alva Demo API Surface
 
-The commerce showcase should model the current Alva route-state API, not the
-older route-owned assign plus legacy read-result binding workaround.
+The commerce showcase models the unified V2 Alva API, where realtime data delivery is completely decoupled from lifecycle intent.
 
-Route-owned lists are Alva Collections:
+Route-owned reactive data uses `subscriptions:` and `useAlvaStream`.
+Transient notifications use `subscriptions:` and `useAlvaSignal`.
 
-- `sales_orders`
-- `products`
-- `conversations`
+## 1. Backend Activation
 
-Declare each list in the resource `live_vue` block with an explicit `source`
-event, then activate it from the LiveView through `use Alva.LiveView,
-collections: [...]`. At the render boundary, pass Collection state to Vue with
-explicit stream props:
+Declare each capability in the resource `live_vue` block (e.g., `stream :sales_orders` or `signal :demo_notifications_sent`).
+
+Then, activate it from the LiveView through the unified `subscriptions:` list:
 
 ```elixir
-<.vue
-  v-component="MerchantConsolePage"
-  sales_orders={@streams.sales_orders}
-  products={@streams.products}
-  conversations={@streams.conversations}
-/>
+  use Alva.LiveView,
+    subscriptions: [
+      :sales_orders,
+      :products,
+      :conversations,
+      :demo_notifications_sent
+    ]
+
+  def render(assigns) do
+    ~H"""
+    <.vue
+      v-component="MerchantConsolePage"
+      v-socket={@socket}
+    />
+    """
+  end
 ```
 
-Plain assigns are still appropriate for non-Collection props, especially state
-that is not owned by the route as a full list. In this demo, support messages
-are intentionally not a Collection because their history source depends on the
-conversation selected in Vue. The chat surfaces fetch history with
-`support.list_messages` for the active `conversation_id` and should use
-raw Phoenix PubSub wiring for live `support_messages` pushes until that
-behavior is modeled as a proper Collection or Signal. Declarative
-`subscriptions:` and declarative `streams:` are not part of the recommended
-public activation surface. Filter those live messages by the active
-conversation before rendering the transcript.
+At the render boundary, do **not** pass stream state to Vue with explicit props. Vue components must fetch the data using `useAlvaStream`.
 
-Do not reintroduce route-owned list setup like:
+## 2. Frontend Lifecycle
 
-- `assign(:products, load_collection(...))`
-- `assign(:conversations, load_collection(...))`
-- the removed `bind_stream_query("catalog.list_products", :products, ...)` bridge
-- the removed `bind_stream_query("support.list_conversations", :conversations, ...)` bridge
+Inside the Vue component, use `useAlvaStream` to activate the stream on mount and deactivate on unmount.
+The input payload is typed, and changes to the stream data are automatically managed by LiveVue via native LiveView streams:
 
-If a route-owned list needs initial data plus realtime updates, make it a
-Collection. If a future route truly needs route-dependent Collection input,
-activate the Collection manually with explicit `source_input:` derived from
-`Alva.LiveView.route_params(socket)` instead of hiding another route-owned list
-loader behind an `on_mount` hook. Declarative `params:` is not part of the
-supported activation surface.
+```typescript
+import { useAlvaStream } from "../../../js/alva/useAlvaStream";
+
+useAlvaStream("sales_orders", {
+  sort: "-created_at",
+  status: null,
+  customer_query: "",
+  product_query: ""
+});
+```
+
+For transient callbacks (e.g., notifications), use `useAlvaSignal`:
+
+```typescript
+import { useAlvaSignal } from "../../../js/alva/useAlvaSignal";
+
+useAlvaSignal("demo_notifications_sent", {}, (payload) => {
+  console.log("Received notification:", payload);
+});
+```
+
+## 3. Infinite Scrolling (Load More)
+
+To support infinite scrolling without destroying the subscription, `useAlvaStream` returns a controller object containing a `loadMore(params)` function. This tells the backend to fetch and stream_insert the next page of data while keeping the existing PubSub connection intact:
+
+```typescript
+const stream = useAlvaStream("feed_entries", { page: { limit: 5, offset: 0 } });
+
+const handleLoadMore = () => {
+  stream.loadMore({ page: { limit: 10, offset: 0 } });
+};
+```

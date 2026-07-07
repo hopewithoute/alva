@@ -9,14 +9,15 @@ defmodule Alva.LiveView do
     :signals,
     :route_subscriptions,
     :page_events,
-    :page_state
+    :page_state,
+    :commands
   ]
   @public_collection_option_keys [:source_input, :reload_on]
   @upload_change_event "alva.validate_upload"
   @upload_submit_event "alva.save_upload"
 
-  @err_opts_expected "use Alva.LiveView expects keyword options. Use keyword-form declarative activation with :collections, :signals, :route_subscriptions, :page_events, and :page_state."
-  defp err_unsupported_key(key), do: "Alva declarative page activation only accepts :collections, :signals, :route_subscriptions, :page_events, and :page_state. Unsupported key: #{inspect(key)}"
+  @err_opts_expected "use Alva.LiveView expects keyword options. Use keyword-form declarative activation with :collections, :signals, :route_subscriptions, :page_events, :page_state, and :commands."
+  defp err_unsupported_key(key), do: "Alva declarative page activation only accepts :collections, :signals, :route_subscriptions, :page_events, :page_state, and :commands. Unsupported key: #{inspect(key)}"
 
   defmacro __using__(opts) do
     validate_use_opts!(opts, __CALLER__)
@@ -29,6 +30,7 @@ defmodule Alva.LiveView do
       @alva_page_events Keyword.get(unquote(opts), :page_events, [])
       @alva_page_state Keyword.get(unquote(opts), :page_state)
       @alva_subscriptions Keyword.get(unquote(opts), :subscriptions, [])
+      @alva_commands Keyword.get(unquote(opts), :commands, [])
 
       @doc false
       def __alva_page_events__, do: @alva_page_events
@@ -44,7 +46,8 @@ defmodule Alva.LiveView do
            route_subscriptions: @alva_route_subscriptions,
            page_events: @alva_page_events,
            page_state: @alva_page_state,
-           subscriptions: @alva_subscriptions
+           subscriptions: @alva_subscriptions,
+           commands: @alva_commands
          }}
       )
     end
@@ -237,10 +240,33 @@ defmodule Alva.LiveView do
         socket
       end
 
-    # Configure file uploads
+    # Configure file uploads based on explicit commands
+    upload_arg_names =
+      Enum.flat_map(config[:commands] || [], fn command_name ->
+        case Alva.App.Info.fetch_event(otp_app, to_string(command_name)) do
+          {:ok, resource, event_def} ->
+            action = Ash.Resource.Info.action(resource, event_def.action)
+            if action do
+              action.arguments
+              |> Enum.filter(fn arg ->
+                case arg.type do
+                  Ash.Type.File -> true
+                  {:array, Ash.Type.File} -> true
+                  _ -> false
+                end
+              end)
+              |> Enum.map(& &1.name)
+            else
+              []
+            end
+          _ -> []
+        end
+      end)
+      |> Enum.uniq()
+
     socket =
-      Enum.reduce(registry.file_upload_arguments, socket, fn arg, acc_socket ->
-        Phoenix.LiveView.allow_upload(acc_socket, arg.name, accept: :any, auto_upload: true)
+      Enum.reduce(upload_arg_names, socket, fn arg_name, acc_socket ->
+        Phoenix.LiveView.allow_upload(acc_socket, arg_name, accept: :any, auto_upload: true)
       end)
 
     # Attach handle_event hook
@@ -254,6 +280,9 @@ defmodule Alva.LiveView do
 
           event_name == "alva:activate_subscription" ->
             handle_activate_subscription(params, sock, otp_app)
+
+          event_name == "alva:load_more_subscription" ->
+            handle_load_more_subscription(params, sock, otp_app)
 
           event_name == "alva:deactivate_subscription" ->
             handle_deactivate_subscription(params, sock, otp_app)
@@ -1360,6 +1389,38 @@ defmodule Alva.LiveView do
       Phoenix.LiveView.stream(sock, subscription.name, resolution.items)
     else
       sock
+    end
+  end
+
+  defp handle_load_more_subscription(params, sock, otp_app) do
+    subscription_name = params["name"]
+    input = params["input"] || %{}
+
+    with {:ok, resource, subscription} <- Alva.App.Info.fetch_subscription(otp_app, subscription_name),
+         :ok <- check_subscription_allowlist(sock, subscription.key),
+         :ok <- check_subscription_authorization(sock, resource, subscription),
+         {:ok, resolution} <- apply(resource, subscription.resolve, [input, sock]) do
+      
+      sock =
+        if subscription.kind == :stream do
+          Enum.reduce(resolution.items || [], sock, fn item, acc_sock ->
+            Phoenix.LiveView.stream_insert(acc_sock, subscription.name, item)
+          end)
+        else
+          sock
+        end
+      
+      client_resolution = Map.drop(resolution, [:items])
+      {:halt, %{ok: true, data: client_resolution}, sock}
+    else
+      :error ->
+        {:halt, %{ok: false, error: :not_found}, sock}
+
+      {:error, :forbidden} ->
+        {:halt, %{ok: false, error: :forbidden}, sock}
+
+      {:error, reason} ->
+        {:halt, %{ok: false, error: reason}, sock}
     end
   end
 

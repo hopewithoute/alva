@@ -3,29 +3,11 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
   import AlvaDemoWeb.ParamHelpers
 
   use Alva.LiveView,
-    collections: [
-      sales_orders: [
-        source_input: :sales_order_collection_source_input,
-        reload_on: :route_change
-      ],
-      products: [
-        source_input: :product_collection_source_input,
-        reload_on: :route_change
-      ],
-      conversations: [
-        source_input: :conversation_collection_source_input,
-        reload_on: :route_change
-      ],
-      support_messages: [
-        source_input: :support_message_collection_source_input,
-        reload_on: :route_change
-      ]
-    ],
-    route_subscriptions: [
-      {:sales_orders, ["order:created", "order:updated"]},
-      {:products, ["product:updated"]},
-      {:conversations, ["conversation:created", "conversation:updated"]},
-      {:support_messages, :support_message_route_topics}
+    subscriptions: [
+      :sales_orders,
+      :products,
+      :conversations,
+      :support_messages
     ],
     page_state: :console_page_state,
     page_events: [
@@ -94,11 +76,7 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
       v-inject="layout"
       v-socket={@socket}
       media={@uploads.media}
-      sales_orders={@streams.sales_orders}
-      products={@streams.products}
-      conversations={@streams.conversations}
       active_conversation_id={@active_conversation_id}
-      support_messages={@streams.support_messages}
       new_orders_count={@new_orders_count}
       processing_orders_count={@processing_orders_count}
       waiting_conversations_count={@waiting_conversations_count}
@@ -114,49 +92,7 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
     """
   end
 
-  def sales_order_collection_source_input(socket) do
-    params = Alva.LiveView.route_params(socket)
-    status = normalize_optional_string(params["order_status"])
-    status = if status in ["new", "processing", "fulfilled"], do: String.to_atom(status), else: nil
 
-    %{
-      "sort" => "-created_at",
-      "status" => status,
-      "customer_query" => normalize_optional_string(params["order_customer"]),
-      "product_query" => normalize_optional_string(params["order_product"])
-    }
-  end
-
-  def product_collection_source_input(socket) do
-    params = Alva.LiveView.route_params(socket)
-    
-    %{
-      "sort" => "stock",
-      "query" => normalize_optional_string(params["inv_query"]),
-      "max_stock" => if(params["inv_low_stock"] == "true", do: 25, else: nil)
-    }
-  end
-
-  def support_message_collection_source_input(socket) do
-    %{"conversation_id" => normalize_conversation_id(Alva.LiveView.route_params(socket))}
-  end
-
-  def support_message_route_topics(socket) do
-    case normalize_conversation_id(Alva.LiveView.route_params(socket)) do
-      nil -> {:ok, []}
-      conversation_id -> {:ok, ["support_message:conversation:#{conversation_id}"]}
-    end
-  end
-
-  def conversation_collection_source_input(socket) do
-    params = Alva.LiveView.route_params(socket)
-    
-    %{
-      "sort" => "-last_message_at",
-      "customer_query" => normalize_optional_string(params["conv_customer"]),
-      "needs_merchant_reply" => if(params["conv_waiting"] == "true", do: true, else: nil)
-    }
-  end
 
   def console_page_state(socket) do
     require Ash.Query

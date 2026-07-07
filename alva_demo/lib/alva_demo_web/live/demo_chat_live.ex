@@ -2,7 +2,7 @@ defmodule AlvaDemoWeb.DemoChatLive do
   use AlvaDemoWeb, :live_view
 
   use Alva.LiveView,
-    collections: [:chat_messages]
+    subscriptions: [:chat_messages]
 
   def render(assigns) do
     ~H"""
@@ -11,7 +11,6 @@ defmodule AlvaDemoWeb.DemoChatLive do
       v-component="DemoChatPage"
       v-inject="layout"
       v-socket={@socket}
-      chat_messages={@streams.chat_messages}
     />
     """
   end

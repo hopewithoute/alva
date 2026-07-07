@@ -31,6 +31,13 @@ defmodule Alva.Dispatcher do
         action_name = event_def.action
         action = Ash.Resource.Info.action(resource, action_name)
         params = Map.drop(params, ["meta", :meta])
+        
+        # Unwrap form params if it matches the event name (standard LiveVue form submission)
+        params =
+          case Map.fetch(params, event_name) do
+            {:ok, unwrapped} when is_map(unwrapped) -> unwrapped
+            _ -> params
+          end
 
         socket = Keyword.get(opts, :socket)
 

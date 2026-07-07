@@ -16,6 +16,20 @@ const props = defineProps<{
 const entries = computed(() => props.feed_entries ?? []);
 const nextLimit = computed(() => entries.value.length + 5);
 const hasMore = computed(() => entries.value.length < 12);
+
+import { useAlvaStream } from "../../../js/alva/useAlvaStream";
+
+const stream = useAlvaStream("feed_entries", {
+  page: { limit: 5, offset: 0 },
+  sort: "position"
+});
+
+const handleLoadMore = () => {
+  stream.loadMore({
+    page: { limit: nextLimit.value, offset: 0 },
+    sort: "position"
+  });
+};
 </script>
 
 <template>
@@ -37,13 +51,14 @@ const hasMore = computed(() => entries.value.length < 12);
           <p class="text-sm text-zinc-500">Current collection size: {{ entries.length }}</p>
         </div>
 
-        <Link
+        <button
           v-if="hasMore"
-          :patch="`/demo/load-more?limit=${nextLimit}`"
-          class="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
+          @click="handleLoadMore"
+          :disabled="stream.isLoading.value"
+          class="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50 disabled:opacity-50"
         >
-          Load 5 More
-        </Link>
+          {{ stream.isLoading.value ? 'Loading...' : 'Load 5 More' }}
+        </button>
         <span
           v-else
           class="rounded-md bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-600"

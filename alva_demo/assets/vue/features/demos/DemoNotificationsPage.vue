@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { createAlvaApi } from "../../../js/alva/client";
+import { useAlvaSignal } from "../../../js/alva/useAlvaSignal";
 
 type NotificationSignal = {
   id: string;
@@ -16,7 +17,7 @@ const notices = ref<NotificationSignal[]>([]);
 const error = ref<string | null>(null);
 const sending = ref(false);
 
-api.on("demo_notifications.sent", (payload: NotificationSignal) => {
+useAlvaSignal("demo_notifications_sent", {}, (payload: NotificationSignal) => {
   notices.value = [payload, ...notices.value].slice(0, 6);
 });
 

@@ -42,5 +42,23 @@ export function useAlvaStream<
         subs.deactivate(name, input);
     });
 
-    return { isLoading, error };
+    const loadMore = (params: Subs[S]["input"]) => {
+        isLoading.value = true;
+        return subs.loadMore(name, params)
+            .then((result) => {
+                if (!result.ok) {
+                    error.value = result.error;
+                }
+                return result;
+            })
+            .catch((e) => {
+                error.value = e;
+                throw e;
+            })
+            .finally(() => {
+                isLoading.value = false;
+            });
+    };
+
+    return { isLoading, error, loadMore };
 }

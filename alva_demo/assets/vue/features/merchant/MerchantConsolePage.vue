@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { providePageState } from "../../../../js/alva/usePageState";
+import { useAlvaStream } from "../../../../js/alva/useAlvaStream";
 import type { Order, Product, Conversation, SupportMessage } from "../../../js/alva/types";
 import MerchantOrdersTab from "../sales/MerchantOrdersTab.vue";
 import MerchantInventoryTab from "../catalog/MerchantInventoryTab.vue";
@@ -30,6 +31,33 @@ const props = defineProps<{
 }>();
 
 providePageState(props);
+
+useAlvaStream("products", {
+  sort: "stock",
+  query: props.inventory_filters?.query || "",
+  max_stock: props.inventory_filters?.low_stock_only ? 25 : null
+});
+
+let salesOrderStatus: string | null = props.order_filters?.status || null;
+if (!["new", "processing", "fulfilled"].includes(salesOrderStatus || "")) {
+  salesOrderStatus = null;
+}
+useAlvaStream("sales_orders", {
+  sort: "-created_at",
+  status: salesOrderStatus,
+  customer_query: props.order_filters?.customer_query || "",
+  product_query: props.order_filters?.product_query || ""
+});
+
+useAlvaStream("conversations", {
+  sort: "-last_message_at",
+  customer_query: props.conversation_filters?.customer_query || "",
+  needs_merchant_reply: props.conversation_filters?.waiting_on_merchant_only ? true : null
+});
+
+useAlvaStream("support_messages", {
+  conversation_id: props.active_conversation_id || ""
+});
 
 const active_tab = ref<MerchantConsoleTab>("orders");
 

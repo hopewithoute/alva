@@ -7,6 +7,7 @@ import CustomerOrderDrawer from "../sales/CustomerOrderDrawer.vue";
 import SupportChatWidget from "../support/SupportChatWidget.vue";
 import { ref } from "vue";
 import type { Order, Product, SupportMessage } from "../../../js/alva/types";
+import { useAlvaStream } from "../../../js/alva/useAlvaStream";
 
 const props = defineProps<{
   sales_orders?: Order[];
@@ -17,6 +18,16 @@ const props = defineProps<{
 }>();
 
 providePageState(props);
+
+useAlvaStream("products", { sort: "name" });
+useAlvaStream("sales_orders", {
+  sort: "-created_at",
+  customer_query: props.connected_customer_name || "",
+  require_customer: true
+});
+useAlvaStream("support_messages", {
+  conversation_id: props.active_conversation_id || ""
+});
 
 const isOrdersOpen = ref(false);
 const orderError = ref<string | null>(null);

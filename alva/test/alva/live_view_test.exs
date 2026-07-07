@@ -604,7 +604,7 @@ defmodule Alva.LiveViewTest do
   test "mount configures allow_upload for ash_storage arguments" do
     socket = base_socket()
 
-    {:cont, socket} = Alva.LiveView.on_mount(%{}, %{}, %{}, socket)
+    {:cont, socket} = Alva.LiveView.on_mount(%{commands: ["upload"]}, %{}, %{}, socket)
 
     assert socket.assigns.uploads != nil
   end
