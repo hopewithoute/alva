@@ -50,6 +50,16 @@ export function useAlvaForm<
     let timeout: ReturnType<typeof setTimeout>;
     let pendingResolve: ((val: AlvaResult) => void) | null = null;
 
+    const cancelPendingValidation = (reason: string) => {
+        if (pendingResolve) {
+            pendingResolve({
+                ok: false,
+                error: { type: "cancelled", message: reason },
+            });
+            pendingResolve = null;
+        }
+    };
+
     const submit = async (): Promise<AlvaResult> => {
         submitCounter++;
         const currentSubmit = submitCounter;
@@ -58,13 +68,7 @@ export function useAlvaForm<
         validateCounter++; // Ensure any in-flight validation resolves without applying state
         clearTimeout(timeout);
         isValidating.value = false;
-        if (pendingResolve) {
-            pendingResolve({
-                ok: false,
-                error: { type: "cancelled", message: "Submit started" },
-            });
-            pendingResolve = null;
-        }
+        cancelPendingValidation("Submit started");
 
         loading.value = true;
         errors.value = {};
@@ -119,12 +123,7 @@ export function useAlvaForm<
         clearTimeout(timeout);
 
         // Resolve the previous hanging promise
-        if (pendingResolve) {
-            pendingResolve({
-                ok: false,
-                error: { type: "cancelled", message: "Superseded" },
-            });
-        }
+        cancelPendingValidation("Superseded");
 
         isValidating.value = true;
 

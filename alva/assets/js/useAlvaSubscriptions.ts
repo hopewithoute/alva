@@ -27,6 +27,20 @@ export function useAlvaSubscriptions<
             );
         });
     };
+    const deactivate = <S extends keyof Subs>(
+        name: S,
+        input: Subs[S]["input"]
+    ): Promise<AlvaResult> => {
+        return new Promise((resolve) => {
+            live.pushEvent(
+                "alva:deactivate_subscription",
+                { name: name as string, input },
+                (reply: any) => {
+                    resolve(reply);
+                }
+            );
+        });
+    };
 
-    return { activate };
+    return { activate, deactivate };
 }

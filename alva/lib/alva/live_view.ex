@@ -219,6 +219,9 @@ defmodule Alva.LiveView do
           event_name == "alva:activate_subscription" ->
             handle_activate_subscription(params, sock, otp_app)
 
+          event_name == "alva:deactivate_subscription" ->
+            handle_deactivate_subscription(params, sock, otp_app)
+
           Map.has_key?(page_event_callbacks, event_name) ->
             handle_page_event(page_event_callbacks, event_name, params, sock)
 
@@ -653,6 +656,45 @@ defmodule Alva.LiveView do
     pubsub = endpoint_pubsub!(socket)
     :ok = Phoenix.PubSub.unsubscribe(pubsub, topic)
     socket
+  end
+
+  defp subscribe_dynamic_topic(socket, topic) do
+    state = alva_state(socket)
+    refs = Map.get(state, :dynamic_subscription_refs, %{})
+    count = Map.get(refs, topic, 0)
+
+    socket =
+      if count == 0 and not collection_subscription_topic_owned?(socket, topic) and
+           not MapSet.member?(state.route_subscriptions, topic) do
+        subscribe_transport_topic(socket, topic)
+      else
+        socket
+      end
+    update_alva(socket, fn state ->
+      Map.put(state, :dynamic_subscription_refs, Map.put(refs, topic, count + 1))
+    end)
+  end
+
+  defp unsubscribe_dynamic_topic(socket, topic) do
+    state = alva_state(socket)
+    refs = Map.get(state, :dynamic_subscription_refs, %{})
+    count = Map.get(refs, topic, 0)
+
+    if count > 0 do
+      new_count = count - 1
+      refs = if new_count == 0, do: Map.delete(refs, topic), else: Map.put(refs, topic, new_count)
+      socket =
+        update_alva(socket, fn state -> Map.put(state, :dynamic_subscription_refs, refs) end)
+
+      if new_count == 0 and not collection_subscription_topic_owned?(socket, topic) and
+           not MapSet.member?(state.route_subscriptions, topic) do
+        unsubscribe_transport_topic(socket, topic)
+      else
+        socket
+      end
+    else
+      socket
+    end
   end
 
   defp projection_route_topics!(socket, route_subscriptions) do
@@ -1133,6 +1175,35 @@ defmodule Alva.LiveView do
         end
       end)
 
+    sub_matches =
+      Enum.reduce(active_subscriptions, %{streams: [], signals: []}, fn {name,
+                                                                         {resource, subscription}},
+                                                                        acc ->
+        if resource == notification_resource do
+          case subscription.kind do
+            :stream ->
+              ops =
+                subscription.operations
+                |> Enum.filter(&MapSet.member?(occurrence_keys, &1.on))
+                |> Enum.map(&{name, &1})
+
+              %{acc | streams: ops ++ acc.streams}
+
+            :signal ->
+              if MapSet.member?(occurrence_keys, subscription.on) do
+                %{acc | signals: [{name, subscription} | acc.signals]}
+              else
+                acc
+              end
+
+            _ ->
+              acc
+          end
+        else
+          acc
+        end
+      end)
+
     %{
       collections:
         socket
@@ -1146,17 +1217,7 @@ defmodule Alva.LiveView do
             []
           end
         end)
-        |> Kernel.++(
-          Enum.flat_map(active_subscriptions, fn {name, {resource, subscription}} ->
-            if subscription.kind == :stream and resource == notification_resource do
-              subscription.operations
-              |> Enum.filter(&MapSet.member?(occurrence_keys, &1.on))
-              |> Enum.map(&{name, &1})
-            else
-              []
-            end
-          end)
-        ),
+        |> Kernel.++(sub_matches.streams),
       signals:
         socket
         |> active_signal_projections()
@@ -1167,16 +1228,7 @@ defmodule Alva.LiveView do
             []
           end
         end)
-        |> Kernel.++(
-          Enum.flat_map(active_subscriptions, fn {name, {resource, subscription}} ->
-            if subscription.kind == :signal and resource == notification_resource and
-                 MapSet.member?(occurrence_keys, subscription.on) do
-              [{name, subscription}]
-            else
-              []
-            end
-          end)
-        )
+        |> Kernel.++(sub_matches.signals)
     }
   end
 
@@ -1228,12 +1280,6 @@ defmodule Alva.LiveView do
     end
   end
 
-  defp find_collection_projection(state, collection_name) do
-    Enum.find(state, fn {_dom_id, _key, col} ->
-      col.name == collection_name
-    end)
-  end
-
   defp handle_activate_subscription(params, sock, otp_app) do
     subscription_name = params["name"]
     input = params["input"] || %{}
@@ -1244,11 +1290,14 @@ defmodule Alva.LiveView do
          {:ok, resolution} <- apply(resource, subscription.resolve, [input, sock]) do
       
       # Subscribe to topics
-      if Phoenix.LiveView.connected?(sock) do
-        Enum.each(resolution.topics || [], fn topic ->
-          subscribe_transport_topic(sock, topic)
-        end)
-      end
+      sock =
+        if Phoenix.LiveView.connected?(sock) do
+          Enum.reduce(resolution.topics || [], sock, fn topic, acc_sock ->
+            subscribe_dynamic_topic(acc_sock, topic)
+          end)
+        else
+          sock
+        end
       
       # Return success and metadata
       {:halt, %{ok: true, data: resolution}, sock}
@@ -1261,6 +1310,30 @@ defmodule Alva.LiveView do
 
       {:error, error} ->
         {:halt, %{ok: false, error: error}, sock}
+    end
+  end
+
+  defp handle_deactivate_subscription(params, sock, otp_app) do
+    subscription_name = params["name"]
+    input = params["input"] || %{}
+
+    with {:ok, resource, subscription} <-
+           Alva.App.Info.fetch_subscription(otp_app, subscription_name),
+         :ok <- check_subscription_allowlist(sock, subscription.key),
+         {:ok, resolution} <- apply(resource, subscription.resolve, [input, sock]) do
+      sock =
+        if Phoenix.LiveView.connected?(sock) do
+          Enum.reduce(resolution.topics || [], sock, fn topic, acc_sock ->
+            unsubscribe_dynamic_topic(acc_sock, topic)
+          end)
+        else
+          sock
+        end
+
+      {:halt, %{ok: true}, sock}
+    else
+      _ ->
+        {:halt, %{ok: false}, sock}
     end
   end
 
@@ -1281,20 +1354,14 @@ defmodule Alva.LiveView do
       tenant = sock.assigns[:current_tenant]
 
       # Run authorization
-      # If unauthorized, Ash.can? returns false or Ash.can returns {:error, ...}
-      # The PRD says "using authorize_with".
-      case Ash.can({resource, subscription.authorize_with}, actor, tenant: tenant, return_forbidden_error?: true) do
-        {:ok, true} -> :ok
-        {:ok, false} -> {:error, :forbidden}
-        {:error, _error} -> {:error, :forbidden}
+      if Ash.can?({resource, subscription.authorize_with}, actor, tenant: tenant, maybe_is: false) do
+        :ok
+      else
+        {:error, :forbidden}
       end
     else
       :ok
     end
-  end
-
-  defp find_event_projection(state, event_name) do
-    Map.get(state.event_map, event_name)
   end
 
   defp projection_cache(%Alva.App.Info.Registry{} = registry) do

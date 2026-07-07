@@ -25,7 +25,6 @@ export function useAlvaSignal<
 
     onUnmounted(() => {
         unregister();
-        // Future: If we want to unsubscribe on the backend, 
-        // we'd need a deactivate intent or ref-counting.
+        subs.deactivate(name, input);
     });
 }
