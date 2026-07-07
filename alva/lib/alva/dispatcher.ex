@@ -110,7 +110,16 @@ defmodule Alva.Dispatcher do
                     dispatch_success(records, event_def, page)
 
                   {:ok, records} ->
-                    dispatch_success(records, event_def)
+                    if action.get? do
+                      case records do
+                        [record | _] -> 
+                          dispatch_success(record, event_def)
+                        [] -> 
+                          handle_error(Ash.Error.Query.NotFound.exception(resource: resource, primary_key: %{}))
+                      end
+                    else
+                      dispatch_success(records, event_def)
+                    end
 
                   {:error, error} ->
                     handle_error(error)

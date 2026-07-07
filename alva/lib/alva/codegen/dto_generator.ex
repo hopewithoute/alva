@@ -85,7 +85,7 @@ defmodule Alva.Codegen.DtoGenerator do
     action = Ash.Resource.Info.action(resource, event_def.action)
     interface = interface_name(resource)
 
-    if action.type == :read and is_nil(event_def.lookup) do
+    if action.type == :read and is_nil(event_def.lookup) and not action.get? do
       "#{interface}[]"
     else
       interface

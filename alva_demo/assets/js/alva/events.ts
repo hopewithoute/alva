@@ -82,6 +82,7 @@ export type AlvaEvents = {
     input: {
               status?: "new" | "processing" | "fulfilled";
               customer_query?: string;
+              require_customer?: boolean;
               product_query?: string;
             };
     output: LiveResult<Types.Order[]>;
@@ -98,7 +99,7 @@ export type AlvaEvents = {
     input: {
               customer_name: string;
             };
-    output: LiveResult<Types.Conversation[]>;
+    output: LiveResult<Types.Conversation>;
   };
 
   "support.list_conversations": {

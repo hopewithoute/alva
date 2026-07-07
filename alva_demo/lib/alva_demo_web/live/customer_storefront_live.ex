@@ -4,7 +4,7 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
 
   use Alva.LiveView,
     collections: [
-      sales_orders: [source_input: :sales_order_collection_source_input],
+      sales_orders: [source_input: :sales_order_collection_source_input, reload_on: :route_change],
       products: [source_input: :product_collection_source_input],
       support_messages: [
         source_input: :support_message_collection_source_input,
@@ -18,9 +18,28 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
     ],
     page_state: :support_chat_page_state,
     page_events: [
+      {"storefront.set_identity", :set_identity_page_event, %{input: "{ customer_name: string }", output: "void"}},
       {"support.join_chat", :join_chat_page_event, %{input: "{ customer_name: string }", output: "void"}},
       {"support.reset_chat", :reset_chat_page_event, %{input: "Record<string, never>", output: "void"}}
     ]
+
+  def set_identity_page_event(%{"customer_name" => customer_name}, socket) do
+    customer_name = customer_name |> to_string() |> String.trim()
+    
+    conversation_id = 
+      case Alva.Dispatcher.dispatch("support.get_conversation", %{"customer_name" => customer_name}, socket: socket) do
+        %{ok: true, data: conversation} when not is_nil(conversation) -> conversation.id
+        _ -> active_conversation_id(socket)
+      end
+
+    params = %{customer_name: customer_name, conversation_id: conversation_id}
+    
+    # Clean up empty params
+    params = params |> Enum.reject(fn {_, v} -> is_nil(v) or v == "" end) |> Enum.into(%{})
+    
+    socket = Phoenix.LiveView.push_patch(socket, to: ~p"/storefront?#{params}")
+    {:reply, %{ok: true}, socket}
+  end
 
   def join_chat_page_event(%{"customer_name" => customer_name}, socket) do
     customer_name = customer_name |> to_string() |> String.trim()
@@ -70,7 +89,16 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
     """
   end
 
-  def sales_order_collection_source_input, do: %{"sort" => "-created_at"}
+  def sales_order_collection_source_input(socket) do
+    params = Alva.LiveView.route_params(socket)
+    customer_name = normalize_optional_string(params["customer_name"])
+    
+    %{
+      "sort" => "-created_at",
+      "customer_query" => customer_name,
+      "require_customer" => true
+    }
+  end
   def product_collection_source_input, do: %{"sort" => "name"}
 
   def support_chat_page_state(socket) do
@@ -104,14 +132,8 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
   end
 
   defp normalize_customer_name(params) when is_map(params) do
-    case normalize_conversation_id(params) do
-      nil ->
-        nil
-
-      _conversation_id ->
-        params
-        |> Map.get("customer_name")
-        |> normalize_optional_string()
-    end
+    params
+    |> Map.get("customer_name")
+    |> normalize_optional_string()
   end
 end

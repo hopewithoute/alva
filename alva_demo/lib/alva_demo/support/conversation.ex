@@ -49,6 +49,7 @@ defmodule AlvaDemo.Support.Conversation do
 
     read :get_by_customer do
       public?(true)
+      get?(true)
       argument(:customer_name, :string, allow_nil?: false)
       filter(expr(customer_name == ^arg(:customer_name)))
     end
