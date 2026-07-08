@@ -1175,7 +1175,7 @@ defmodule Alva.LiveView do
   end
 
   defp signal_payload(data, signal) do
-    {payload, meta} = Alva.Dispatcher.strip_and_extract_metadata(data, signal)
+    {payload, meta} = Alva.Serializer.serialize(data, expose_metadata: signal.expose_metadata)
 
     if map_size(meta) == 0 do
       normalize_signal_payload(payload)
@@ -1198,20 +1198,20 @@ defmodule Alva.LiveView do
   end
 
   defp apply_collection_operation(socket, name, %{op: :delete}, data) do
-    Phoenix.LiveView.stream_delete(socket, name, Alva.Dispatcher.strip_metadata(data))
+    Phoenix.LiveView.stream_delete(socket, name, Alva.Serializer.strip_metadata(data))
   end
 
   defp apply_collection_operation(socket, name, %{op: :update} = operation, data) do
     Phoenix.LiveView.stream_insert(
       socket,
       name,
-      Alva.Dispatcher.strip_metadata(data),
+      Alva.Serializer.strip_metadata(data),
       collection_operation_opts(operation, update_only: true)
     )
   end
 
   defp apply_collection_operation(socket, name, %{op: :insert} = operation, data) do
-    item = Alva.Dispatcher.strip_metadata(data)
+    item = Alva.Serializer.strip_metadata(data)
 
     if pending_collection_insert?(socket, name, item) do
       socket

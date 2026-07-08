@@ -711,7 +711,7 @@ defmodule Alva.DispatcherTest do
       event_def = %Alva.Resource.Event{expose_metadata: [:sync_token]}
 
       {stripped, exposed_meta} =
-        Alva.Dispatcher.strip_and_extract_metadata(record_with_meta, event_def)
+        Alva.Serializer.serialize(record_with_meta, expose_metadata: event_def.expose_metadata)
 
       assert stripped == %{id: record.id, name: "Test"}
       assert exposed_meta == %{sync_token: "tok_abc123"}
@@ -732,7 +732,7 @@ defmodule Alva.DispatcherTest do
       event_def = %Alva.Resource.Event{expose_metadata: [:sync_token]}
 
       {_stripped, exposed_meta} =
-        Alva.Dispatcher.strip_and_extract_metadata(record_with_meta, event_def)
+        Alva.Serializer.serialize(record_with_meta, expose_metadata: event_def.expose_metadata)
 
       assert exposed_meta == %{sync_token: "tok_abc123"}
       refute Map.has_key?(exposed_meta, :internal_secret)
@@ -753,7 +753,7 @@ defmodule Alva.DispatcherTest do
       assert event.expose_metadata == []
     end
 
-    test "strip_and_extract_metadata extracts specified keys" do
+    test "serialize extracts specified keys" do
       record = %MetadataResource{
         id: "test-id",
         name: "Test",
@@ -762,13 +762,13 @@ defmodule Alva.DispatcherTest do
 
       event_def = %Alva.Resource.Event{expose_metadata: [:sync_token]}
 
-      {stripped, exposed_meta} = Alva.Dispatcher.strip_and_extract_metadata(record, event_def)
+      {stripped, exposed_meta} = Alva.Serializer.serialize(record, expose_metadata: event_def.expose_metadata)
 
       assert stripped == %{id: "test-id", name: "Test"}
       assert exposed_meta == %{sync_token: "tok_123"}
     end
 
-    test "strip_and_extract_metadata returns empty meta when no keys exposed" do
+    test "serialize returns empty meta when no keys exposed" do
       record = %MetadataResource{
         id: "test-id",
         name: "Test",
@@ -777,13 +777,13 @@ defmodule Alva.DispatcherTest do
 
       event_def = %Alva.Resource.Event{expose_metadata: []}
 
-      {stripped, exposed_meta} = Alva.Dispatcher.strip_and_extract_metadata(record, event_def)
+      {stripped, exposed_meta} = Alva.Serializer.serialize(record, expose_metadata: event_def.expose_metadata)
 
       assert stripped == %{id: "test-id", name: "Test"}
       assert exposed_meta == %{}
     end
 
-    test "strip_and_extract_metadata handles list of records" do
+    test "serialize handles list of records" do
       records = [
         %MetadataResource{id: "1", name: "A", __metadata__: %{sync_token: "tok_1"}},
         %MetadataResource{id: "2", name: "B", __metadata__: %{sync_token: "tok_2"}}
@@ -791,7 +791,7 @@ defmodule Alva.DispatcherTest do
 
       event_def = %Alva.Resource.Event{expose_metadata: [:sync_token]}
 
-      {stripped, exposed_meta} = Alva.Dispatcher.strip_and_extract_metadata(records, event_def)
+      {stripped, exposed_meta} = Alva.Serializer.serialize(records, expose_metadata: event_def.expose_metadata)
 
       assert length(stripped) == 2
       assert exposed_meta == %{sync_token: "tok_1"}
