@@ -1,5 +1,7 @@
 defmodule AlvaDemo.Support.Conversation do
   require Ash.Query
+  alias AlvaDemo.Subscriptions, as: DemoSubscriptions
+  alias AlvaDemoWeb.ParamHelpers
 
   use Ash.Resource,
     domain: AlvaDemo.Support,
@@ -19,10 +21,14 @@ defmodule AlvaDemo.Support.Conversation do
     event(:support_list_conversations, name: "support.list_conversations", action: :list)
     event(:support_get_conversation, name: "support.get_conversation", action: :get_by_customer)
 
-    collection :conversations do
-      source(event: :support_list_conversations, mode: :reset)
+    subscription :conversations do
+      name("conversations")
+      kind(:stream)
+      source(event: :support_list_conversations)
+      scope(%{customer_query: :string, needs_merchant_reply: :boolean, sort: :string})
       insert(on: :create, at: 0)
       update(on: :record_message, at: 0)
+      resolve(:resolve_conversations_scope)
     end
   end
 
@@ -122,6 +128,25 @@ defmodule AlvaDemo.Support.Conversation do
     identity(:unique_customer, [:customer_name], pre_check_with: AlvaDemo.Support)
   end
 
+  def resolve_conversations_scope(input, socket) do
+    source_input =
+      socket
+      |> conversation_stream_defaults()
+      |> DemoSubscriptions.with_defaults(input)
+
+    with {:ok, items} <-
+           DemoSubscriptions.load_stream_items(socket, "support.list_conversations", source_input) do
+      {:ok,
+       %{
+         topics: [
+           DemoSubscriptions.notifier_topic(__MODULE__, "created"),
+           DemoSubscriptions.notifier_topic(__MODULE__, "updated")
+         ],
+         items: items
+       }}
+    end
+  end
+
   defp filter_customer_query(query, search_term) do
     case search_pattern(search_term) do
       nil ->
@@ -150,4 +175,16 @@ defmodule AlvaDemo.Support.Conversation do
       trimmed -> trimmed
     end
   end
+
+  defp conversation_stream_defaults(%{view: AlvaDemoWeb.MerchantConsoleLive} = socket) do
+    params = Alva.LiveView.route_params(socket)
+
+    %{
+      "customer_query" => ParamHelpers.normalize_optional_string(params["conv_customer"]),
+      "needs_merchant_reply" => if(params["conv_waiting"] == "true", do: true, else: nil),
+      "sort" => "-last_message_at"
+    }
+  end
+
+  defp conversation_stream_defaults(_socket), do: %{"sort" => "-last_message_at"}
 end

@@ -3,7 +3,7 @@ defmodule AlvaDemoWeb.MerchantConsoleLiveTest do
   alias LiveVue.Test, as: LiveVueTest
   import Phoenix.LiveViewTest
 
-  test "mounts into the persistent layout and sets up collections", %{conn: conn} do
+  test "mounts into the persistent layout and sends eager stream payloads", %{conn: conn} do
     product =
       Ash.Seed.seed!(%AlvaDemo.Catalog.Product{
         name: "Test Console Product",
@@ -22,18 +22,21 @@ defmodule AlvaDemoWeb.MerchantConsoleLiveTest do
       customer_name: "Console Chat"
     })
 
-    {:ok, page_live, disconnected_html} = live(conn, "/console")
+    {:ok, _page_live, disconnected_html} = live(conn, "/console")
 
     assert disconnected_html =~ ~s(data-name="AppLayout")
     assert disconnected_html =~ ~s(id="merchant-console-page")
     assert disconnected_html =~ ~s(data-name="MerchantConsolePage")
     assert disconnected_html =~ ~s(data-inject="layout")
-    assert render(page_live) =~ "Test Console Product"
-    assert render(page_live) =~ "Console Buyer"
-    assert render(page_live) =~ "Console Chat"
+
+    vue = LiveVueTest.get_vue(disconnected_html, id: "merchant-console-page")
+
+    assert_stream_contains(vue, "products", %{"name" => "Test Console Product", "stock" => 10})
+    assert_stream_contains(vue, "sales_orders", %{"customer_name" => "Console Buyer"})
+    assert_stream_contains(vue, "conversations", %{"customer_name" => "Console Chat"})
   end
 
-  test "adjusting stock does not reset the products stream", %{conn: conn} do
+  test "adjusting stock pushes the updated product through the products stream", %{conn: conn} do
     product =
       Ash.Seed.seed!(%AlvaDemo.Catalog.Product{
         name: "Reset Guard Product",
@@ -44,26 +47,14 @@ defmodule AlvaDemoWeb.MerchantConsoleLiveTest do
 
     {:ok, page_live, _html} = live(conn, "/console")
 
-    html =
-      render_hook(page_live, "catalog.adjust_stock", %{
-        "id" => product.id,
-        "stock" => 25
-      })
+    render_hook(page_live, "catalog.adjust_stock", %{
+      "id" => product.id,
+      "stock" => 25
+    })
 
-    vue = LiveVueTest.get_vue(html, id: "merchant-console-page")
+    vue = LiveVueTest.get_vue(render(page_live), id: "merchant-console-page")
 
-    refute Enum.any?(vue.streams_diff, fn
-             ["replace", "/products", []] -> true
-             _ -> false
-           end)
-
-    assert Enum.any?(vue.streams_diff, fn
-             ["replace", path, %{"stock" => 25}] ->
-               path == "/products/$$products-#{product.id}"
-
-             _ ->
-               false
-           end)
+    assert_stream_contains(vue, "products", %{"id" => product.id, "stock" => 25})
   end
 
   test "passes the live upload config into the merchant console page", %{conn: conn} do
@@ -102,38 +93,30 @@ defmodule AlvaDemoWeb.MerchantConsoleLiveTest do
 
     {:ok, page_live, _html} = live(conn, "/console")
 
-    processing_html =
-      render_hook(page_live, "sales.begin_processing", %{
-        "id" => order.id
-      })
+    render_hook(page_live, "sales.begin_processing", %{
+      "id" => order.id
+    })
 
-    processing_vue = LiveVueTest.get_vue(processing_html, id: "merchant-console-page")
+    processing_vue = LiveVueTest.get_vue(render(page_live), id: "merchant-console-page")
 
-    assert Enum.any?(processing_vue.streams_diff, fn
-             ["replace", path, %{"id" => id, "lifecycle_status" => "processing"}] ->
-               path == "/sales_orders/$$sales_orders-#{order.id}" and id == order.id
+    assert_stream_contains(processing_vue, "sales_orders", %{
+      "id" => order.id,
+      "lifecycle_status" => "processing"
+    })
 
-             _ ->
-               false
-           end)
+    render_hook(page_live, "sales.fulfill", %{
+      "id" => order.id
+    })
 
-    fulfill_html =
-      render_hook(page_live, "sales.fulfill", %{
-        "id" => order.id
-      })
+    fulfill_vue = LiveVueTest.get_vue(render(page_live), id: "merchant-console-page")
 
-    fulfill_vue = LiveVueTest.get_vue(fulfill_html, id: "merchant-console-page")
-
-    assert Enum.any?(fulfill_vue.streams_diff, fn
-             ["replace", path, %{"id" => id, "lifecycle_status" => "fulfilled"}] ->
-               path == "/sales_orders/$$sales_orders-#{order.id}" and id == order.id
-
-             _ ->
-               false
-           end)
+    assert_stream_contains(fulfill_vue, "sales_orders", %{
+      "id" => order.id,
+      "lifecycle_status" => "fulfilled"
+    })
   end
 
-  test "conversation selection and transcript scope are owned by the merchant console page", %{
+  test "route params scope the active merchant conversation transcript", %{
     conn: conn
   } do
     first_conversation =
@@ -158,30 +141,25 @@ defmodule AlvaDemoWeb.MerchantConsoleLiveTest do
       text: "Resolved history"
     })
 
-    {:ok, page_live, _html} = live(conn, "/console")
+    {:ok, page_live, _html} = live(conn, "/console?conversation_id=#{second_conversation.id}")
 
-    render_hook(page_live, "support.select_conversation", %{
-      "conversation_id" => first_conversation.id
-    })
+    vue = LiveVueTest.get_vue(render(page_live), id: "merchant-console-page")
 
-    assert_patch(page_live, "/console?conversation_id=#{first_conversation.id}")
-
-    first_render = render(page_live)
-
-    assert first_render =~ first_conversation.id
-    assert first_render =~ "Waiting history"
-    refute first_render =~ "Resolved history"
-
-    render_hook(page_live, "support.select_conversation", %{
-      "conversation_id" => second_conversation.id
-    })
-
-    assert_patch(page_live, "/console?conversation_id=#{second_conversation.id}")
-
-    second_render = render(page_live)
-
-    assert second_render =~ second_conversation.id
-    assert second_render =~ "Resolved history"
-    refute second_render =~ "Waiting history"
+    assert vue.props["active_conversation_id"] == second_conversation.id
+    assert_stream_contains(vue, "support_messages", %{"text" => "Resolved history"})
+    refute render(page_live) =~ "Waiting history"
   end
+
+  defp assert_stream_contains(vue, stream_name, expected_subset) do
+    assert Enum.any?(vue.streams_diff, fn
+             [op, path, value]
+             when op in ["upsert", "replace"] and is_map(value) and is_binary(path) ->
+               String.starts_with?(path, "/#{stream_name}/") and
+                 Enum.all?(expected_subset, fn {key, expected} -> value[key] == expected end)
+
+             _ ->
+               false
+           end)
+  end
+
 end

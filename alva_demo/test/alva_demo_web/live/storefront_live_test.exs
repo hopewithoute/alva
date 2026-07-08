@@ -3,7 +3,7 @@ defmodule AlvaDemoWeb.CustomerStorefrontLiveTest do
   alias LiveVue.Test, as: LiveVueTest
   import Phoenix.LiveViewTest
 
-  test "mounts into the persistent layout and sets up collections", %{conn: conn} do
+  test "mounts into the persistent layout and sends eager stream payloads", %{conn: conn} do
     product =
       Ash.Seed.seed!(%AlvaDemo.Catalog.Product{
         name: "Test Product",
@@ -18,31 +18,19 @@ defmodule AlvaDemoWeb.CustomerStorefrontLiveTest do
     assert disconnected_html =~ ~s(id="customer-storefront-page")
     assert disconnected_html =~ ~s(data-name="CustomerStorefrontPage")
     assert disconnected_html =~ ~s(data-inject="layout")
-    assert render(page_live) =~ "CustomerStorefrontPage"
-    assert render(page_live) =~ "Test Product"
 
-    html =
+    disconnected_vue = LiveVueTest.get_vue(disconnected_html, id: "customer-storefront-page")
+
+    assert_stream_reset(disconnected_vue, "sales_orders")
+    assert_stream_contains(disconnected_vue, "products", %{"name" => "Test Product", "stock" => 10})
+    assert_stream_reset(disconnected_vue, "support_messages")
+
+    _html =
       render_hook(page_live, "sales.create_order", %{
         "customer_name" => "Storefront Buyer",
         "product_id" => product.id,
         "quantity" => 1
       })
-
-    assert render(page_live) =~ "Storefront Buyer"
-
-    vue = LiveVueTest.get_vue(html, id: "customer-storefront-page")
-
-    assert Enum.any?(vue.streams_diff, fn
-             [
-               "upsert",
-               path,
-               %{"customer_name" => "Storefront Buyer", "lifecycle_status" => "new"}
-             ] ->
-               path =~ "/sales_orders/"
-
-             _ ->
-               false
-           end)
   end
 
   test "merchant console receives storefront purchases without refresh", %{conn: conn} do
@@ -63,11 +51,21 @@ defmodule AlvaDemoWeb.CustomerStorefrontLiveTest do
       "quantity" => 1
     })
 
-    assert render(storefront_live) =~ "Cross Window Buyer"
-    assert render(console_live) =~ "Cross Window Buyer"
+    storefront_vue = LiveVueTest.get_vue(render(storefront_live), id: "customer-storefront-page")
+    console_vue = LiveVueTest.get_vue(render(console_live), id: "merchant-console-page")
+
+    assert_stream_contains(storefront_vue, "sales_orders", %{
+      "customer_name" => "Cross Window Buyer",
+      "lifecycle_status" => "new"
+    })
+
+    assert_stream_contains(console_vue, "sales_orders", %{
+      "customer_name" => "Cross Window Buyer",
+      "lifecycle_status" => "new"
+    })
   end
 
-  test "support chat join and reset are owned by the storefront page", %{conn: conn} do
+  test "route params scope support chat history for the storefront surface", %{conn: conn} do
     conversation =
       Ash.Seed.seed!(%AlvaDemo.Support.Conversation{
         customer_name: "Storefront Chat"
@@ -79,44 +77,32 @@ defmodule AlvaDemoWeb.CustomerStorefrontLiveTest do
       text: "Storefront history"
     })
 
-    {:ok, page_live, _html} = live(conn, "/storefront")
+    {:ok, page_live, _html} =
+      live(conn, "/storefront?customer_name=#{conversation.customer_name}&conversation_id=#{conversation.id}")
 
-    render_hook(page_live, "support.join_chat", %{
-      "customer_name" => "Storefront Chat"
-    })
+    vue = LiveVueTest.get_vue(render(page_live), id: "customer-storefront-page")
 
-    join_patch = assert_patch(page_live)
-
-    assert_storefront_chat_patch(
-      join_patch,
-      conversation.id,
-      conversation.customer_name
-    )
-
-    join_render = render(page_live)
-
-    assert join_render =~ "Storefront Chat"
-    assert join_render =~ conversation.id
-    assert join_render =~ "Storefront history"
-
-    render_hook(page_live, "support.reset_chat", %{})
-
-    assert_patch(page_live, "/storefront")
-
-    reset_render = render(page_live)
-
-    refute reset_render =~ conversation.id
-    refute reset_render =~ "Storefront history"
+    assert vue.props["connected_customer_name"] == conversation.customer_name
+    assert vue.props["active_conversation_id"] == conversation.id
+    assert_stream_contains(vue, "support_messages", %{"text" => "Storefront history"})
   end
 
-  defp assert_storefront_chat_patch(path, conversation_id, customer_name) do
-    uri = URI.parse(path)
+  defp assert_stream_reset(vue, stream_name) do
+    assert Enum.any?(vue.streams_diff, fn
+             ["replace", path, []] -> path == "/#{stream_name}"
+             _ -> false
+           end)
+  end
 
-    assert uri.path == "/storefront"
+  defp assert_stream_contains(vue, stream_name, expected_subset) do
+    assert Enum.any?(vue.streams_diff, fn
+             [op, path, value]
+             when op in ["upsert", "replace"] and is_map(value) and is_binary(path) ->
+               String.starts_with?(path, "/#{stream_name}/") and
+                 Enum.all?(expected_subset, fn {key, expected} -> value[key] == expected end)
 
-    assert URI.decode_query(uri.query || "") == %{
-             "conversation_id" => conversation_id,
-             "customer_name" => customer_name
-           }
+             _ ->
+               false
+           end)
   end
 end

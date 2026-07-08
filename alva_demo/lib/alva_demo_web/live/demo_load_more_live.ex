@@ -11,6 +11,7 @@ defmodule AlvaDemoWeb.DemoLoadMoreLive do
       v-component="DemoLoadMorePage"
       v-inject="layout"
       v-socket={@socket}
+      feed_entries={Map.get(assigns[:streams] || %{}, :feed_entries)}
     />
     """
   end

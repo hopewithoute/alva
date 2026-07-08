@@ -44,8 +44,14 @@ defmodule AlvaDemoWeb.ShowcaseShellTest do
       refute Regex.match?(~r/(^|\s)streams:\s/m, content),
              "#{Path.basename(path)} still uses legacy declarative streams:"
 
-      refute Regex.match?(~r/(^|\s)subscriptions:\s/m, content),
-             "#{Path.basename(path)} still uses legacy declarative subscriptions:"
+      refute Regex.match?(~r/(^|\s)collections:\s/m, content),
+             "#{Path.basename(path)} still uses legacy declarative collections:"
+
+      refute Regex.match?(~r/(^|\s)signals:\s/m, content),
+             "#{Path.basename(path)} still uses legacy declarative signals:"
+
+      refute Regex.match?(~r/(^|\s)route_subscriptions:\s/m, content),
+             "#{Path.basename(path)} still uses legacy route_subscriptions:"
 
       refute Regex.match?(~r/(^|\s)params:\s/m, content),
              "#{Path.basename(path)} still uses nested params: instead of source_input:"

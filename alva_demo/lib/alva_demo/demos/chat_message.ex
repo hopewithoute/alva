@@ -1,4 +1,6 @@
 defmodule AlvaDemo.Demos.ChatMessage do
+  alias AlvaDemo.Subscriptions, as: DemoSubscriptions
+
   use Ash.Resource,
     domain: AlvaDemo.Demos,
     data_layer: Ash.DataLayer.Ets,
@@ -15,9 +17,12 @@ defmodule AlvaDemo.Demos.ChatMessage do
     event(:demo_chat_list_messages, name: "demo_chat.list_messages", action: :list)
     event(:demo_chat_send_message, name: "demo_chat.send_message", action: :send)
 
-    collection :chat_messages do
-      source(event: :demo_chat_list_messages, mode: :reset)
+    subscription :chat_messages do
+      name("chat_messages")
+      kind(:stream)
+      source(event: :demo_chat_list_messages)
       insert(on: :send)
+      resolve(:resolve_chat_messages_scope)
     end
   end
 
@@ -59,6 +64,17 @@ defmodule AlvaDemo.Demos.ChatMessage do
 
     create_timestamp :created_at do
       public?(true)
+    end
+  end
+
+  def resolve_chat_messages_scope(input, socket) do
+    with {:ok, items} <-
+           DemoSubscriptions.load_stream_items(socket, "demo_chat.list_messages", input) do
+      {:ok,
+       %{
+         topics: [DemoSubscriptions.notifier_topic(__MODULE__, "created")],
+         items: items
+       }}
     end
   end
 end

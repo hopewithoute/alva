@@ -1,5 +1,7 @@
 defmodule AlvaDemo.Sales.Order do
   require Ash.Query
+  alias AlvaDemo.Subscriptions, as: DemoSubscriptions
+  alias AlvaDemoWeb.ParamHelpers
 
   use Ash.Resource,
     domain: AlvaDemo.Sales,
@@ -21,11 +23,23 @@ defmodule AlvaDemo.Sales.Order do
     event(:sales_begin_processing, name: "sales.begin_processing", action: :begin_processing)
     event(:sales_fulfill, name: "sales.fulfill", action: :fulfill)
 
-    collection :sales_orders do
-      source(event: :sales_list_orders, mode: :reset)
+    subscription :sales_orders do
+      name("sales_orders")
+      kind(:stream)
+      source(event: :sales_list_orders)
+
+      scope(%{
+        status: :string,
+        customer_query: :string,
+        require_customer: :boolean,
+        product_query: :string,
+        sort: :string
+      })
+
       insert(on: :create, at: 0)
       update(on: :begin_processing)
       update(on: :fulfill)
+      resolve(:resolve_sales_orders_scope)
     end
   end
 
@@ -53,7 +67,7 @@ defmodule AlvaDemo.Sales.Order do
         require_customer? = Ash.Query.get_argument(query, :require_customer)
         customer_query = Ash.Query.get_argument(query, :customer_query)
 
-        query = 
+        query =
           if require_customer? and is_nil(customer_query) do
             Ash.Query.filter(query, false)
           else
@@ -125,6 +139,25 @@ defmodule AlvaDemo.Sales.Order do
     end
   end
 
+  def resolve_sales_orders_scope(input, socket) do
+    source_input =
+      socket
+      |> sales_order_stream_defaults()
+      |> DemoSubscriptions.with_defaults(input)
+
+    with {:ok, items} <-
+           DemoSubscriptions.load_stream_items(socket, "sales.list_orders", source_input) do
+      {:ok,
+       %{
+         topics: [
+           DemoSubscriptions.notifier_topic(__MODULE__, "created"),
+           DemoSubscriptions.notifier_topic(__MODULE__, "updated")
+         ],
+         items: items
+       }}
+    end
+  end
+
   defp filter_status(query, nil), do: query
 
   defp filter_status(query, status) do
@@ -163,6 +196,39 @@ defmodule AlvaDemo.Sales.Order do
     case String.trim(search_term) do
       "" -> nil
       trimmed -> trimmed
+    end
+  end
+
+  defp sales_order_stream_defaults(%{view: AlvaDemoWeb.CustomerStorefrontLive} = socket) do
+    params = Alva.LiveView.route_params(socket)
+
+    %{
+      "customer_query" => ParamHelpers.normalize_optional_string(params["customer_name"]),
+      "require_customer" => true,
+      "sort" => "-created_at"
+    }
+  end
+
+  defp sales_order_stream_defaults(%{view: AlvaDemoWeb.MerchantConsoleLive} = socket) do
+    params = Alva.LiveView.route_params(socket)
+
+    %{
+      "status" => normalize_order_status(params["order_status"]),
+      "customer_query" => ParamHelpers.normalize_optional_string(params["order_customer"]),
+      "product_query" => ParamHelpers.normalize_optional_string(params["order_product"]),
+      "sort" => "-created_at"
+    }
+  end
+
+  defp sales_order_stream_defaults(_socket), do: %{"sort" => "-created_at"}
+
+  defp normalize_order_status(status) do
+    status
+    |> ParamHelpers.normalize_optional_string()
+    |> case do
+      nil -> nil
+      "all" -> nil
+      value -> value
     end
   end
 end

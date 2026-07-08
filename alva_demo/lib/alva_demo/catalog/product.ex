@@ -1,5 +1,7 @@
 defmodule AlvaDemo.Catalog.Product do
   require Ash.Query
+  alias AlvaDemo.Subscriptions, as: DemoSubscriptions
+  alias AlvaDemoWeb.ParamHelpers
 
   use Ash.Resource,
     domain: AlvaDemo.Catalog,
@@ -19,10 +21,14 @@ defmodule AlvaDemo.Catalog.Product do
     event(:catalog_adjust_stock, name: "catalog.adjust_stock", action: :adjust_stock)
     event(:catalog_upload_media, name: "catalog.upload_media", action: :upload_media)
 
-    collection :products do
-      source(event: :catalog_list_products, mode: :reset)
+    subscription :products do
+      name("products")
+      kind(:stream)
+      source(event: :catalog_list_products)
+      scope(%{query: :string, max_stock: :integer, sort: :string})
       update(on: :adjust_stock)
       update(on: :upload_media)
+      resolve(:resolve_products_scope)
     end
   end
 
@@ -91,6 +97,22 @@ defmodule AlvaDemo.Catalog.Product do
     end
   end
 
+  def resolve_products_scope(input, socket) do
+    source_input =
+      socket
+      |> product_stream_defaults()
+      |> DemoSubscriptions.with_defaults(input)
+
+    with {:ok, items} <-
+           DemoSubscriptions.load_stream_items(socket, "catalog.list_products", source_input) do
+      {:ok,
+       %{
+         topics: [DemoSubscriptions.notifier_topic(__MODULE__, "updated")],
+         items: items
+       }}
+    end
+  end
+
   defp filter_product_query(query, search_term) do
     case search_pattern(search_term) do
       nil ->
@@ -122,4 +144,16 @@ defmodule AlvaDemo.Catalog.Product do
       trimmed -> trimmed
     end
   end
+
+  defp product_stream_defaults(%{view: AlvaDemoWeb.MerchantConsoleLive} = socket) do
+    params = Alva.LiveView.route_params(socket)
+
+    %{
+      "query" => ParamHelpers.normalize_optional_string(params["inv_query"]),
+      "max_stock" => if(params["inv_low_stock"] == "true", do: 25, else: nil),
+      "sort" => "stock"
+    }
+  end
+
+  defp product_stream_defaults(_socket), do: %{"sort" => "name"}
 end

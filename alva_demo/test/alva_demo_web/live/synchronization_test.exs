@@ -71,14 +71,13 @@ defmodule AlvaDemoWeb.SynchronizationTest do
   } do
     {:ok, storefront_live, _html} = live(conn, "/storefront")
 
-    html =
-      render_hook(storefront_live, "sales.create_order", %{
-        "customer_name" => "Hook Shopper",
-        "product_id" => product.id,
-        "quantity" => 1
-      })
+    render_hook(storefront_live, "sales.create_order", %{
+      "customer_name" => "Hook Shopper",
+      "product_id" => product.id,
+      "quantity" => 1
+    })
 
-    assert html =~ "Hook Shopper"
+    assert render(storefront_live) =~ "Hook Shopper"
   end
 
   test "merchant console lifecycle actions sync back to the storefront without a refresh", %{
@@ -217,26 +216,13 @@ defmodule AlvaDemoWeb.SynchronizationTest do
     seed_message!(active_conversation, "Active history", :shopper)
     seed_message!(other_conversation, "Other history", :shopper)
 
-    {:ok, storefront_live, _html} = live(conn, "/storefront")
-    {:ok, console_live, _html} = live(conn, "/console")
+    {:ok, storefront_live, _html} =
+      live(
+        conn,
+        "/storefront?customer_name=#{active_conversation.customer_name}&conversation_id=#{active_conversation.id}"
+      )
 
-    render_hook(storefront_live, "support.join_chat", %{
-      "customer_name" => active_conversation.customer_name
-    })
-
-    storefront_patch = assert_patch(storefront_live)
-
-    assert_storefront_chat_patch(
-      storefront_patch,
-      active_conversation.id,
-      active_conversation.customer_name
-    )
-
-    render_hook(console_live, "support.select_conversation", %{
-      "conversation_id" => active_conversation.id
-    })
-
-    assert_patch(console_live, "/console?conversation_id=#{active_conversation.id}")
+    {:ok, console_live, _html} = live(conn, "/console?conversation_id=#{active_conversation.id}")
 
     storefront_history = list_messages_for(active_conversation)
     console_history = list_messages_for(active_conversation)
@@ -291,14 +277,4 @@ defmodule AlvaDemoWeb.SynchronizationTest do
     result.data
   end
 
-  defp assert_storefront_chat_patch(path, conversation_id, customer_name) do
-    uri = URI.parse(path)
-
-    assert uri.path == "/storefront"
-
-    assert URI.decode_query(uri.query || "") == %{
-             "conversation_id" => conversation_id,
-             "customer_name" => customer_name
-           }
-  end
 end
