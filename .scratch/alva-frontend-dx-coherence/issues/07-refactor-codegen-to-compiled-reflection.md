@@ -1,5 +1,12 @@
-Status: complete
-Labels: ready-for-agent
+Status: done
+Track: legacy-compatibility
+PRD sequence: Outside the primary migration path; preferred compatibility mechanism while `page_events:` still exist
+
+## PRD alignment
+
+This is the preferred compatibility hardening for deprecated `page_events:`
+codegen. Even with this infrastructure in place, the PRD still treats
+`page_events:` as a demoted surface rather than the main v2 teaching path.
 
 ## What to build
 

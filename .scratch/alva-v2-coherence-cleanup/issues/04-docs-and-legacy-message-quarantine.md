@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 Track: core-v2
 PRD sequence: Step 4 - quarantine legacy docs and public error copy
 
@@ -28,13 +28,13 @@ Bring the repo to one clear message:
 
 ## Acceptance criteria
 
-- [ ] Historical docs are clearly marked as historical or compatibility
+- [x] Historical docs are clearly marked as historical or compatibility
       reference if they remain in-tree.
-- [ ] Main docs no longer mention removed or absent helpers as if they are part
+- [x] Main docs no longer mention removed or absent helpers as if they are part
       of the active public surface.
-- [ ] Public fail-loud copy in `Alva.LiveView` no longer nudges users toward
+- [x] Public fail-loud copy in `Alva.LiveView` no longer nudges users toward
       pre-V2 concepts when the supported answer is `subscriptions:`.
-- [ ] Documentation and examples consistently point new readers to ADR 0009 and
+- [x] Documentation and examples consistently point new readers to ADR 0009 and
       the bridge-first demo surface first.
 
 ## Blocked by

@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 Track: core-v2
 PRD sequence: Step 2 - make the showcase consume generated subscription types
 
@@ -26,13 +26,13 @@ owning seam rather than papering over them with `as any`.
 
 ## Acceptance criteria
 
-- [ ] Showcase `useAlvaStream` and `useAlvaSignal` callsites type against
+- [x] Showcase `useAlvaStream` and `useAlvaSignal` callsites type against
       generated `AlvaSubscriptions`.
-- [ ] `vue-tsc --noEmit` becomes a meaningful guardrail for stream/signal input
+- [x] `vue-tsc --noEmit` becomes a meaningful guardrail for stream/signal input
       drift in the showcase.
-- [ ] No new silent widening or `as any` is introduced at subscription
+- [x] No new silent widening or `as any` is introduced at subscription
       activation callsites.
-- [ ] Runtime behavior for storefront, merchant console, and signal demo remains
+- [x] Runtime behavior for storefront, merchant console, and signal demo remains
       unchanged.
 
 ## Blocked by

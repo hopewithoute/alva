@@ -1,4 +1,12 @@
-Status: complete
+Status: done
+Track: legacy-compatibility
+PRD sequence: Outside the primary migration path; compatibility hardening later superseded by compiled reflection
+
+## PRD alignment
+
+This issue hardened deprecated `page_events:` tooling at the time. It should
+be read as compatibility infrastructure, not as part of the main v2 command
+and subscription rollout.
 
 ## What to build
 Migrate the `Alva.LiveView` page events codegen to a pure AST extraction mechanism (such as a custom Mix compiler task). Currently, `.events.ts` files are written as a direct side-effect of `__using__` macro expansion. This is a fragile anti-pattern that can cause deadlocks or race conditions during parallel compilation. Refactor the implementation to parse the AST out of the `.ex` files during compilation without side-effects inside the macro.

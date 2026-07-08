@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 Track: core-v2
 PRD sequence: Step 3 - narrow the generated signal story to the supported V2 path
 
@@ -28,13 +28,13 @@ Owning seams include:
 
 ## Acceptance criteria
 
-- [ ] Generated client output no longer presents `.on` as the primary V2 signal
+- [x] Generated client output no longer presents `.on` as the primary V2 signal
       path when `useAlvaSignal` is the supported wrapper.
-- [ ] If `useAlvaApi().on` remains for compatibility, its role is clearly
+- [x] If `useAlvaApi().on` remains for compatibility, its role is clearly
       demoted rather than taught as the main path.
-- [ ] Codegen and JS tests lock the chosen behavior so future slices do not
+- [x] Codegen and JS tests lock the chosen behavior so future slices do not
       reintroduce the split by accident.
-- [ ] Command ergonomics (`ashCall`, `createAlvaApi().call`) remain unchanged.
+- [x] Command ergonomics (`ashCall`, `createAlvaApi().call`) remain unchanged.
 
 ## Blocked by
 
