@@ -37,6 +37,26 @@ defmodule Alva.LiveViewActivationTest do
                    """)
                  end
   end
+  test "fails to compile when legacy V1 keys are used" do
+    for legacy_key <- [:collections, :signals, :route_subscriptions, :page_events, :page_state] do
+      assert_raise CompileError,
+                   ~r/Alva declarative page activation no longer accepts `#{legacy_key}:`/,
+                   fn ->
+                     compile_module("""
+                     defmodule TestLiveViewActivation.InvalidLegacyLive do
+                       use Phoenix.LiveView
+
+                       use Alva.LiveView,
+                         #{legacy_key}: []
+
+                       def render(assigns) do
+                         ~H"<div />"
+                       end
+                     end
+                     """)
+                   end
+    end
+  end
 
   setup_all do
     Code.compiler_options(ignore_module_conflict: true)

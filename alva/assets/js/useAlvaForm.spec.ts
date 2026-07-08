@@ -11,6 +11,7 @@ vi.mock("live_vue", () => {
             isValidating: ref(false),
             values: form.values,
             reset: vi.fn(),
+            __pseudoFormForTesting: form,
         }))
     };
 });
@@ -42,13 +43,14 @@ describe("useAlvaForm", () => {
 
         // Mock submit failure
         const mockSubmit = vi.fn().mockRejectedValue(new Error("network down"));
-        vi.mocked(live_vue.useLiveForm).mockReturnValue({
+        vi.mocked(live_vue.useLiveForm).mockImplementation((form: any) => ({
             submit: mockSubmit,
             isValid: ref(true),
             isValidating: ref(false),
-            values: { name: "A" },
+            values: form.values,
             reset: vi.fn(),
-        } as any);
+            __pseudoFormForTesting: form,
+        }) as any);
 
         const form = useAlvaForm("students.create", {
             initialValues: { name: "A" },
@@ -69,13 +71,14 @@ describe("useAlvaForm", () => {
             error: { type: "validation", fields: { name: ["can't be blank"] } }
         });
 
-        vi.mocked(live_vue.useLiveForm).mockReturnValue({
+        vi.mocked(live_vue.useLiveForm).mockImplementation((form: any) => ({
             submit: mockSubmit,
             isValid: ref(true),
             isValidating: ref(false),
-            values: { name: "A" },
+            values: form.values,
             reset: vi.fn(),
-        } as any);
+            __pseudoFormForTesting: form,
+        }) as any);
 
         const form = useAlvaForm("students.create", {
             initialValues: { name: "A" }
@@ -84,6 +87,7 @@ describe("useAlvaForm", () => {
         const result = await form.submit();
 
         expect(result.ok).toBe(false);
+        expect((form as any).__pseudoFormForTesting.errors).toEqual({ name: ["can't be blank"] });
     });
 
     it("should map uploads via prepareData", () => {

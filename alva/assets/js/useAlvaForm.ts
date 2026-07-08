@@ -45,33 +45,30 @@ export function useAlvaForm<
 
     // We map the backend result error format back to the form state
     const submit = async (): Promise<AlvaResult> => {
-        let rollbackFn: (() => void) | void = undefined;
-        if (options.onOptimisticSubmit) {
-            rollbackFn = options.onOptimisticSubmit(pseudoForm.values);
-        }
-
+        const rollbackFn = options.onOptimisticSubmit?.(pseudoForm.values);
         let result: any;
+
         try {
             result = await originalSubmit();
         } catch (e: any) {
-            if (rollbackFn) rollbackFn();
-            return { ok: false, error: { type: "unknown", message: e.message || String(e) } };
+            result = { ok: false, error: { type: "unknown", message: e.message || String(e) } };
         }
 
-        if (result && !result.ok && result.error && result.error.fields) {
-            // Ash backend returned validation errors, sync them to our pseudoForm
-            for (const key of Object.keys(pseudoForm.errors)) {
-                delete (pseudoForm.errors as any)[key];
-            }
-            Object.assign(pseudoForm.errors, result.error.fields);
+        if (!result || !result.ok) {
             if (rollbackFn) rollbackFn();
-        } else if (result && result.ok) {
+            
+            if (result?.error?.fields) {
+                // Ash backend returned validation errors, sync them to our pseudoForm
+                for (const key of Object.keys(pseudoForm.errors)) {
+                    delete (pseudoForm.errors as any)[key];
+                }
+                Object.assign(pseudoForm.errors, result.error.fields);
+            }
+        } else {
             // Success, clear errors
             for (const key of Object.keys(pseudoForm.errors)) {
                 delete (pseudoForm.errors as any)[key];
             }
-        } else if (rollbackFn) {
-             rollbackFn();
         }
 
         return result;
