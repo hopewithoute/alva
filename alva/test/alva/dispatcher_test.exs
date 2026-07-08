@@ -158,6 +158,26 @@ defmodule Alva.DispatcherTest do
           end
         end)
       end
+
+      create :upload_array do
+        accept([])
+        argument(:files, {:array, Ash.Type.File}, allow_nil?: false)
+
+        change(fn changeset, _context ->
+          files = Ash.Changeset.get_argument(changeset, :files)
+          if is_list(files) and length(files) > 0 do
+            file = hd(files)
+            filename =
+              case file do
+                %Ash.Type.File{source: source} -> Map.get(source, :filename, "unknown")
+                _ -> Map.get(file, :filename, "unknown")
+              end
+            Ash.Changeset.change_attribute(changeset, :name, filename)
+          else
+            changeset
+          end
+        end)
+      end
     end
 
     live_vue do
@@ -187,6 +207,7 @@ defmodule Alva.DispatcherTest do
       event(:test_read_tenant, name: "test.read_tenant", action: :read_with_tenant)
       event(:test_get_tenant, name: "test.get_tenant", action: :read_with_tenant, lookup: :id)
       event(:test_upload, name: "test.upload", action: :upload_file)
+      event(:test_upload_array, name: "test.upload_array", action: :upload_array)
 
       event(:test_upload_with_contents,
         name: "test.upload_with_contents",
@@ -923,6 +944,94 @@ defmodule Alva.DispatcherTest do
       assert result.ok == true
       assert result.data.name == "test.png"
       assert result.data.upload_contents == "dispatcher upload contents"
+    end
+
+    test "dispatch consumes uploads for array of files" do
+      original_path =
+        Path.join(
+          System.tmp_dir!(),
+          "dispatcher_upload_#{System.unique_integer([:positive])}.png"
+        )
+
+      File.write!(original_path, "dispatcher upload contents")
+      persisted_before = alva_upload_temp_paths()
+
+      socket = %Phoenix.LiveView.Socket{
+        assigns: %{
+          uploads: %{
+            files: %{
+              entries: [
+                %{client_name: "test.png", client_type: "image/png", path: original_path}
+              ]
+            }
+          }
+        }
+      }
+
+      result =
+        Alva.Dispatcher.dispatch(
+          "test.upload_array",
+          %{},
+          socket: socket,
+          domains: [TestDomain],
+          upload_consumer: MockUploadConsumer
+        )
+
+      persisted_after = alva_upload_temp_paths()
+
+      new_persisted_files =
+        MapSet.difference(persisted_after, persisted_before) |> MapSet.to_list()
+
+      on_exit(fn ->
+        Enum.each(new_persisted_files, &File.rm/1)
+      end)
+
+      assert result.ok == true
+      assert result.data.name == "test.png"
+    end
+
+    test "dispatch handles weird filenames empty rootname" do
+      original_path =
+        Path.join(
+          System.tmp_dir!(),
+          "dispatcher_upload_#{System.unique_integer([:positive])}.png"
+        )
+
+      File.write!(original_path, "dispatcher upload contents")
+      persisted_before = alva_upload_temp_paths()
+
+      socket = %Phoenix.LiveView.Socket{
+        assigns: %{
+          uploads: %{
+            file: %{
+              entries: [
+                %{client_name: "__", client_type: "image/png", path: original_path}
+              ]
+            }
+          }
+        }
+      }
+
+      result =
+        Alva.Dispatcher.dispatch(
+          "test.upload",
+          %{},
+          socket: socket,
+          domains: [TestDomain],
+          upload_consumer: MockUploadConsumer
+        )
+
+      persisted_after = alva_upload_temp_paths()
+
+      new_persisted_files =
+        MapSet.difference(persisted_after, persisted_before) |> MapSet.to_list()
+
+      on_exit(fn ->
+        Enum.each(new_persisted_files, &File.rm/1)
+      end)
+
+      assert result.ok == true
+      assert result.data.name == "__"
     end
   end
 end

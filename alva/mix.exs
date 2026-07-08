@@ -7,7 +7,21 @@ defmodule Alva.MixProject do
       version: "0.1.0",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      dialyzer: [plt_add_apps: [:mix]],
+      test_coverage: [tool: ExCoveralls]
+    ]
+  end
+
+  def cli do
+    [
+      preferred_envs: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.post": :test,
+        "coveralls.html": :test,
+        "coveralls.github": :test
+      ]
     ]
   end
 
@@ -24,7 +38,11 @@ defmodule Alva.MixProject do
       {:ash, "~> 3.0"},
       {:phoenix_live_view, "~> 1.0"},
       {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
-      {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false}
+      {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:sourceror, "~> 1.7", only: [:dev, :test]},
+      {:excoveralls, "~> 0.18", only: :test}
     ]
   end
 end
