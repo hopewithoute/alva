@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { providePageState } from "../../../js/alva/usePageState";
 import StorefrontHeader from "../identity/StorefrontHeader.vue";
 import StorefrontProductCard from "../catalog/StorefrontProductCard.vue";
 import CustomerOrderDrawer from "../sales/CustomerOrderDrawer.vue";
 import SupportChatWidget from "../support/SupportChatWidget.vue";
 import { ref } from "vue";
 import type { Order, Product, SupportMessage } from "../../../js/alva/types";
-import { useAlvaStream } from "../../../js/alva/useAlvaStream";
+import type { AlvaSubscriptions } from "../../../js/alva/subscriptions";
+import { useAlvaStream } from "alva";
 
 const props = defineProps<{
   sales_orders?: Order[];
@@ -17,17 +17,15 @@ const props = defineProps<{
   support_messages?: SupportMessage[];
 }>();
 
-providePageState(props);
-
-useAlvaStream("products", { sort: "name" });
-useAlvaStream("sales_orders", {
+useAlvaStream<AlvaSubscriptions>("products", { sort: "name" });
+useAlvaStream<AlvaSubscriptions>("sales_orders", () => ({
   sort: "-created_at",
-  customer_query: props.connected_customer_name || "",
+  customer_query: props.connected_customer_name || null,
   require_customer: true
-});
-useAlvaStream("support_messages", {
+}));
+useAlvaStream<AlvaSubscriptions>("support_messages", () => ({
   conversation_id: props.active_conversation_id || ""
-});
+}));
 
 const isOrdersOpen = ref(false);
 const orderError = ref<string | null>(null);
@@ -64,6 +62,7 @@ const handleOrderError = (error: string) => {
       <StorefrontHeader
         :recentOrderCount="recentOrderCount"
         :recentOrderItems="recentOrderItems"
+        :connected-customer-name="props.connected_customer_name"
         @open-orders="isOrdersOpen = true"
       />
 
@@ -84,6 +83,7 @@ const handleOrderError = (error: string) => {
           v-for="product in props.products"
           :key="product.id"
           :product="product"
+          :connected-customer-name="props.connected_customer_name"
           @order-placed="handleOrderPlaced"
           @order-error="handleOrderError"
         />
@@ -91,13 +91,18 @@ const handleOrderError = (error: string) => {
     </section>
 
     <aside class="min-w-0">
-      <SupportChatWidget />
+      <SupportChatWidget
+        :connected-customer-name="props.connected_customer_name"
+        :active-conversation-id="props.active_conversation_id"
+        :support-messages="props.support_messages"
+      />
     </aside>
 
     <CustomerOrderDrawer
       v-if="isOrdersOpen"
       ref="orderDrawerRef"
       :customerOrders="props.sales_orders || []"
+      :connected-customer-name="props.connected_customer_name"
       @close="isOrdersOpen = false"
     />
   </div>

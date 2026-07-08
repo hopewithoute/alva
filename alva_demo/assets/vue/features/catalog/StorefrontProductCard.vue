@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { usePageEvent, usePageState } from "alva";
-import type { AlvaEvents } from "../../../js/alva/events";
+import { ref } from "vue";
+import { ashCall } from "../../../js/alva/client";
 import type { Product, Order } from "../../../js/alva/types";
 import Button from "../../shared/ui/button/Button.vue";
 
 const props = defineProps<{
   product: Product;
+  connectedCustomerName?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -14,30 +14,34 @@ const emit = defineEmits<{
   (e: "order-error", error: string): void;
 }>();
 
-const { connected_customer_name } = usePageState<{ connected_customer_name: string | null }>();
-
-const createOrderEvent = usePageEvent<AlvaEvents, "sales.create_order">("sales.create_order");
-
-const isOrdering = computed(() => createOrderEvent.isLoading.value);
+const isOrdering = ref(false);
 
 const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
 const buyProduct = async () => {
-  if (!connected_customer_name.value) {
+  if (!props.connectedCustomerName) {
     emit("order-error", "Enter your name before placing an order.");
     return;
   }
 
-  const result = await createOrderEvent.call({
-    customer_name: connected_customer_name.value,
-    product_id: props.product.id,
-    quantity: 1,
-  });
+  isOrdering.value = true;
 
-  if (result.ok) {
-    emit("order-placed", result.data);
-  } else {
-    emit("order-error", `Failed to create order: ${result.error?.message || "Unknown error"}`);
+  try {
+    const result = await ashCall("sales.create_order", {
+      customer_name: props.connectedCustomerName,
+      product_id: props.product.id,
+      quantity: 1,
+    });
+
+    if (result.ok) {
+      emit("order-placed", result.data);
+    } else {
+      emit("order-error", `Failed to create order: ${result.error?.message || "Unknown error"}`);
+    }
+  } catch (error: any) {
+    emit("order-error", error.message || "Unknown error");
+  } finally {
+    isOrdering.value = false;
   }
 };
 </script>
@@ -68,7 +72,7 @@ const buyProduct = async () => {
           size="sm"
           class="w-full min-w-[112px]"
           @click="buyProduct"
-          :disabled="isOrdering || product.stock <= 0 || !connected_customer_name"
+          :disabled="isOrdering || product.stock <= 0 || !connectedCustomerName"
         >
           <span v-if="product.stock <= 0">Out of Stock</span>
           <span v-else-if="isOrdering">Ordering...</span>

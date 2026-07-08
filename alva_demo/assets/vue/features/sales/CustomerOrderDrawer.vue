@@ -1,19 +1,17 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
-import { usePageState } from "alva";
 import type { Order } from "../../../js/alva/types";
 import OrderStatusBadge from "../../shared/ui/badge/OrderStatusBadge.vue";
 import Button from "../../shared/ui/button/Button.vue";
 
 const props = defineProps<{
   customerOrders: Order[];
+  connectedCustomerName?: string | null;
 }>();
 
 const emit = defineEmits<{
   (e: "close"): void;
 }>();
-
-const { connected_customer_name } = usePageState<{ connected_customer_name: string | null }>();
 
 const selectedOrderId = ref<string | null>(null);
 
@@ -61,7 +59,7 @@ defineExpose<CustomerOrderDrawerExpose>({ selectOrder });
         <div>
           <p class="text-sm font-medium text-zinc-500">Recent Orders</p>
           <h2 class="text-xl font-semibold text-zinc-950">
-            {{ connected_customer_name || "Customer" }}
+            {{ connectedCustomerName || "Customer" }}
           </h2>
           <p class="mt-1 text-sm text-zinc-500">
             {{ recentOrderCount }} orders, {{ recentOrderItems }} items

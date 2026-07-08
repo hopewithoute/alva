@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { useAlvaStream } from "alva";
 import { ashCall } from "../../../js/alva/client";
-import { useAlvaStream } from "../../../js/alva/useAlvaStream";
 
 type ChatMessage = {
   id: string;
@@ -51,11 +51,12 @@ const sendMessage = async () => {
 <template>
   <section class="space-y-6">
     <div class="max-w-3xl space-y-3">
-      <p class="text-sm font-medium uppercase tracking-wide text-zinc-500">Collections Demo</p>
+      <p class="text-sm font-medium uppercase tracking-wide text-zinc-500">Stream Demo</p>
       <h1 class="text-3xl font-semibold tracking-tight text-zinc-950">Chat messages append in realtime.</h1>
       <p class="text-sm text-zinc-600">
-        This page keeps one collection-backed pattern in view: commands create chat messages, and
-        the route-owned collection appends those messages across every open page.
+        This page keeps one subscription-backed stream pattern in view:
+        commands create chat messages, and the server-owned stream appends
+        those messages across every open page.
       </p>
     </div>
 
@@ -77,7 +78,7 @@ const sendMessage = async () => {
             id="demo-chat-text"
             v-model="text"
             class="min-h-[120px] w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-            placeholder="Send a line and watch the collection append it."
+            placeholder="Send a line and watch the stream append it."
           ></textarea>
         </div>
 
@@ -96,7 +97,7 @@ const sendMessage = async () => {
 
       <div class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
         <div class="mb-4 flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-zinc-950">Live Collection</h2>
+          <h2 class="text-lg font-semibold text-zinc-950">Live Stream</h2>
           <span class="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600">
             {{ messages.length }} messages
           </span>

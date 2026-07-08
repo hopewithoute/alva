@@ -1,15 +1,10 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { useAlvaSignal } from "alva";
 import { ashCall } from "../../../js/alva/client";
-import { useAlvaSignal } from "../../../js/alva/useAlvaSignal";
+import type { AlvaSubscriptions } from "../../../js/alva/subscriptions";
 
-type NotificationSignal = {
-  id: string;
-  title: string;
-  severity: "info" | "success" | "warning";
-  created_at?: string;
-};
-
+type NotificationSignal = AlvaSubscriptions["demo_notifications_sent"]["payload"];
 
 const title = ref("Build finished cleanly.");
 const severity = ref<NotificationSignal["severity"]>("success");
@@ -17,9 +12,13 @@ const notices = ref<NotificationSignal[]>([]);
 const error = ref<string | null>(null);
 const sending = ref(false);
 
-useAlvaSignal("demo_notifications_sent", {}, (payload: NotificationSignal) => {
-  notices.value = [payload, ...notices.value].slice(0, 6);
-});
+useAlvaSignal<AlvaSubscriptions, "demo_notifications_sent">(
+  "demo_notifications_sent",
+  {},
+  (payload: NotificationSignal) => {
+    notices.value = [payload, ...notices.value].slice(0, 6);
+  }
+);
 
 const sendNotification = async () => {
   const trimmedTitle = title.value.trim();

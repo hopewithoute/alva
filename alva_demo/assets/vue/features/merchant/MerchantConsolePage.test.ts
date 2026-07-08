@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import MerchantConsolePage from "./MerchantConsolePage.vue";
 
-const { apiCall, uploadMock } = vi.hoisted(() => {
+const { apiCall, patchQueryMock, streamCalls, uploadMock } = vi.hoisted(() => {
   let pendingDispatch:
     | {
         submit: (upload: {
@@ -16,46 +16,55 @@ const { apiCall, uploadMock } = vi.hoisted(() => {
       }
     | null = null;
 
-  return {
-    apiCall: vi.fn(),
-    uploadMock: {
-      progress: undefined as any,
-      files: undefined as any,
-      showFilePicker: vi.fn(),
-      clear: vi.fn(),
-      getFileReferences: vi.fn(() => []),
-      dispatch: vi.fn(
-        (submit: (upload: {
-          primaryReference: string;
-          references: string[];
-          files: unknown[];
-        }) => Promise<unknown>) =>
-          new Promise((resolve, reject) => {
-            pendingDispatch = { submit, resolve, reject };
-          }),
-      ),
-      completeDispatch: async (upload: {
+  const uploadMock = {
+    progress: undefined as any,
+    files: undefined as any,
+    showFilePicker: vi.fn(),
+    clear: vi.fn(),
+    getFileReferences: vi.fn(() => []),
+    dispatch: vi.fn(
+      (submit: (upload: {
         primaryReference: string;
         references: string[];
         files: unknown[];
-      }) => {
-        if (!pendingDispatch) {
-          throw new Error("No pending upload dispatch");
-        }
-
-        const current = pendingDispatch;
-        pendingDispatch = null;
-
-        try {
-          current.resolve(await current.submit(upload));
-        } catch (error) {
-          current.reject(error);
-        }
-      },
-      resetDispatch: () => {
-        pendingDispatch = null;
+      }) => Promise<unknown>) =>
+        new Promise((resolve, reject) => {
+          pendingDispatch = { submit, resolve, reject };
+        }),
+    ),
+    completeDispatch: async (upload: {
+      primaryReference: string;
+      references: string[];
+      files: unknown[];
+    }) => {
+      if (!pendingDispatch) {
+        throw new Error("No pending upload dispatch");
       }
+
+      const current = pendingDispatch;
+      pendingDispatch = null;
+
+      try {
+        const result = await current.submit(upload);
+        current.resolve(result);
+        return result;
+      } catch (error) {
+        current.reject(error);
+        throw error;
+      } finally {
+        uploadMock.clear();
+      }
+    },
+    resetDispatch: () => {
+      pendingDispatch = null;
     }
+  };
+
+  return {
+    apiCall: vi.fn(),
+    patchQueryMock: vi.fn(),
+    streamCalls: [] as Array<{ name: string; input: unknown }>,
+    uploadMock
   };
 });
 
@@ -66,19 +75,34 @@ vi.mock("alva", async () => {
   uploadMock.files = ref([]);
 
   return {
-    ashUpload: () => uploadMock,
-    usePageEvent: () => ({
-      call: vi.fn(),
-      isLoading: ref(false),
-      error: ref(null)
-    })
+    useAlvaApi: () => ({
+      call: apiCall,
+      on: vi.fn()
+    }),
+    useAlvaUpload: () => uploadMock,
+    useAlvaStream: (name: string, input: unknown) => {
+      streamCalls.push({ name, input });
+
+      return {
+        isLoading: ref(false),
+        error: ref(null),
+        loadMore: vi.fn()
+      };
+    }
   };
 });
+
+vi.mock("../../shared/useRouteQueryPatch", () => ({
+  useRouteQueryPatch: () => ({
+    patchQuery: patchQueryMock
+  })
+}));
 
 vi.mock("../../../../js/alva/client", () => ({
   createAlvaApi: () => ({
     call: apiCall
-  })
+  }),
+  ashCall: apiCall
 }));
 
 const buildProps = () => ({
@@ -140,6 +164,11 @@ const buildProps = () => ({
       needs_merchant_reply: false
     }
   ],
+  new_orders_count: 1,
+  processing_orders_count: 1,
+  waiting_conversations_count: 1,
+  merchant_attention_count: 2,
+  low_stock_count: 1,
   active_conversation_id: null,
   support_messages: []
 });
@@ -167,6 +196,9 @@ const isHidden = (style: string | undefined) => {
 describe("MerchantConsolePage tabs", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
+    patchQueryMock.mockReset();
+    streamCalls.length = 0;
 
     uploadMock.progress.value = 0;
     uploadMock.files.value = [];
@@ -179,19 +211,9 @@ describe("MerchantConsolePage tabs", () => {
       uploadMock.files.value = [];
     });
 
-    apiCall.mockImplementation(async (event: string, payload?: Record<string, unknown>) => {
-      if (event === "support.list_messages" && payload?.conversation_id === "conv-waiting") {
-        return {
-          ok: true,
-          data: [
-            {
-              id: "msg-1",
-              conversation_id: "conv-waiting",
-              sender: "shopper",
-              text: "Need help with an order"
-            }
-          ]
-        };
+    apiCall.mockImplementation(async (event: string) => {
+      if (event === "catalog.upload_media") {
+        return { ok: true, data: {} };
       }
 
       return { ok: true, data: [] };
@@ -205,8 +227,15 @@ describe("MerchantConsolePage tabs", () => {
       "true"
     );
     expect(wrapper.find('[data-testid="merchant-console-panel-orders"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="merchant-console-panel-inventory"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="merchant-console-panel-support"]').exists()).toBe(false);
+    expect(isHidden(wrapper.get('[data-testid="merchant-console-panel-orders"]').attributes("style"))).toBe(
+      false
+    );
+    expect(isHidden(wrapper.get('[data-testid="merchant-console-panel-inventory"]').attributes("style"))).toBe(
+      true
+    );
+    expect(isHidden(wrapper.get('[data-testid="merchant-console-panel-support"]').attributes("style"))).toBe(
+      true
+    );
 
     expect(wrapper.get('[data-testid="merchant-console-tab-orders"]').text()).toContain("1");
     expect(wrapper.get('[data-testid="merchant-console-tab-inventory"]').text()).toContain("1");
@@ -229,46 +258,144 @@ describe("MerchantConsolePage tabs", () => {
     ).toBe("Alice");
   });
 
-  it("filters orders from collection props without querying orders again", async () => {
+  it("patches order filter changes while keeping rendered orders server-owned", async () => {
+    vi.useFakeTimers();
+
+    const props = buildProps();
     const wrapper = mountPage();
 
     await wrapper
       .get('[data-testid="merchant-order-customer-query"]')
       .setValue("Alice");
 
+    await vi.advanceTimersByTimeAsync(300);
+    await flushPromises();
+
+    expect(patchQueryMock).toHaveBeenCalledWith({
+      order_status: null,
+      order_customer: "Alice",
+      order_product: null
+    });
+
     const ordersPanel = wrapper.get('[data-testid="merchant-console-panel-orders"]');
 
     expect(ordersPanel.text()).toContain("Alice");
+    expect(ordersPanel.text()).toContain("Bob");
+
+    await wrapper.setProps({
+      sales_orders: [props.sales_orders[0]]
+    } as never);
+    await flushPromises();
+
+    expect(ordersPanel.text()).toContain("Alice");
     expect(ordersPanel.text()).not.toContain("Bob");
-    expect(apiCall.mock.calls.some(([event]) => event === "sales.list_orders")).toBe(
-      false
-    );
   });
 
-  it("filters inventory and conversations from collection props without querying those lists again", async () => {
+  it("patches inventory and conversation filters while rendering server-provided lists", async () => {
+    vi.useFakeTimers();
+
+    const props = buildProps();
     const wrapper = mountPage();
 
     await wrapper.get('[data-testid="merchant-console-tab-inventory"]').trigger("click");
     await wrapper.get('[data-testid="merchant-inventory-query"]').setValue("Lamp");
+    await vi.advanceTimersByTimeAsync(300);
+    await flushPromises();
+
+    expect(patchQueryMock).toHaveBeenLastCalledWith({
+      inv_query: "Lamp",
+      inv_low_stock: null
+    });
 
     const inventoryPanel = wrapper.get('[data-testid="merchant-console-panel-inventory"]');
+
+    expect(inventoryPanel.text()).toContain("Alva Desk Lamp");
+    expect(inventoryPanel.text()).toContain("Alva Mug");
+
+    await wrapper.setProps({
+      products: [props.products[1]]
+    } as never);
+    await flushPromises();
 
     expect(inventoryPanel.text()).toContain("Alva Desk Lamp");
     expect(inventoryPanel.text()).not.toContain("Alva Mug");
 
     await wrapper.get('[data-testid="merchant-console-tab-support"]').trigger("click");
     await wrapper.get('[data-testid="merchant-conversation-query"]').setValue("Resolved");
+    await vi.advanceTimersByTimeAsync(300);
+    await flushPromises();
+
+    expect(patchQueryMock).toHaveBeenLastCalledWith({
+      conv_customer: "Resolved",
+      conv_waiting: null
+    });
 
     const supportPanel = wrapper.get('[data-testid="merchant-console-panel-support"]');
 
     expect(supportPanel.text()).toContain("Resolved Shopper");
+    expect(supportPanel.text()).toContain("Waiting Shopper");
+
+    await wrapper.setProps({
+      conversations: [props.conversations[1]]
+    } as never);
+    await flushPromises();
+
+    expect(supportPanel.text()).toContain("Resolved Shopper");
     expect(supportPanel.text()).not.toContain("Waiting Shopper");
-    expect(apiCall.mock.calls.some(([event]) => event === "catalog.list_products")).toBe(
-      false
-    );
-    expect(
-      apiCall.mock.calls.some(([event]) => event === "support.list_conversations")
-    ).toBe(false);
+  });
+
+  it("derives stream activation input from the latest restored filter props", async () => {
+    const wrapper = mountPage();
+
+    const byName = (name: string) => streamCalls.find((call) => call.name === name);
+
+    const productsInput = byName("products")?.input;
+    const salesOrdersInput = byName("sales_orders")?.input;
+    const conversationsInput = byName("conversations")?.input;
+    const supportMessagesInput = byName("support_messages")?.input;
+
+    expect(typeof productsInput).toBe("function");
+    expect(typeof salesOrdersInput).toBe("function");
+    expect(typeof conversationsInput).toBe("function");
+    expect(typeof supportMessagesInput).toBe("function");
+
+    await wrapper.setProps({
+      order_filters: {
+        status: "processing",
+        customer: "Bob",
+        product: "Lamp"
+      },
+      inventory_filters: {
+        query: "Desk",
+        low_stock: true
+      },
+      conversation_filters: {
+        customer: "Resolved",
+        waiting: true
+      },
+      active_conversation_id: "conv-replied"
+    } as never);
+    await flushPromises();
+
+    expect((productsInput as () => unknown)()).toEqual({
+      sort: "stock",
+      query: "Desk",
+      max_stock: 25
+    });
+    expect((salesOrdersInput as () => unknown)()).toEqual({
+      sort: "-created_at",
+      status: "processing",
+      customer_query: "Bob",
+      product_query: "Lamp"
+    });
+    expect((conversationsInput as () => unknown)()).toEqual({
+      sort: "-last_message_at",
+      customer_query: "Resolved",
+      needs_merchant_reply: true
+    });
+    expect((supportMessagesInput as () => unknown)()).toEqual({
+      conversation_id: "conv-replied"
+    });
   });
 
   it("preserves selected conversation and draft reply across tab switches", async () => {
@@ -280,9 +407,11 @@ describe("MerchantConsolePage tabs", () => {
       .trigger("click");
     await flushPromises();
 
-    expect(apiCall).toHaveBeenCalledWith("support.select_conversation", {
-      conversation_id: "conv-waiting"
-    });
+    expect(patchQueryMock).toHaveBeenCalledWith(
+      { conversation_id: "conv-waiting" },
+      { replace: false }
+    );
+
     await wrapper.setProps({
       active_conversation_id: "conv-waiting",
       support_messages: [
@@ -295,6 +424,7 @@ describe("MerchantConsolePage tabs", () => {
       ]
     } as never);
     await flushPromises();
+
     expect(wrapper.text()).toContain("Chatting with Waiting Shopper");
 
     await wrapper.get('[data-testid="merchant-reply-input"]').setValue("On it, checking now.");
@@ -319,14 +449,14 @@ describe("MerchantConsolePage tabs", () => {
 
     expect(uploadMock.showFilePicker).toHaveBeenCalledTimes(1);
     expect(uploadMock.dispatch).toHaveBeenCalledTimes(1);
-    expect(wrapper.get('[data-testid="merchant-upload-media-product-mug"]').text()).toBe(
-      "Uploading..."
-    );
 
     uploadMock.progress.value = 45;
     uploadMock.files.value = [uploadedFile];
     await flushPromises();
 
+    expect(wrapper.get('[data-testid="merchant-upload-media-product-mug"]').text()).toBe(
+      "Uploading..."
+    );
     expect(
       wrapper.get('[data-testid="merchant-upload-progress-bar-product-mug"]').attributes("style")
     ).toContain("width: 45%");
@@ -353,22 +483,13 @@ describe("MerchantConsolePage tabs", () => {
     const uploadedFile = { name: "broken-upload.jpg" };
     const uploadedRef = "phx-upload-ref-2";
 
-    apiCall.mockImplementation(async (event: string, payload?: Record<string, unknown>) => {
+    apiCall.mockImplementation(async (event: string) => {
       if (event === "catalog.upload_media") {
-        throw new Error("Upload pipeline unavailable");
-      }
-
-      if (event === "support.list_messages" && payload?.conversation_id === "conv-waiting") {
         return {
-          ok: true,
-          data: [
-            {
-              id: "msg-1",
-              conversation_id: "conv-waiting",
-              sender: "shopper",
-              text: "Need help with an order"
-            }
-          ]
+          ok: false,
+          error: {
+            message: "Upload pipeline unavailable"
+          }
         };
       }
 
@@ -387,7 +508,7 @@ describe("MerchantConsolePage tabs", () => {
     });
     await flushPromises();
 
-    expect(wrapper.text()).toContain("Failed to upload media: Upload pipeline unavailable");
+    expect(wrapper.text()).toContain("Upload pipeline unavailable");
     expect(wrapper.get('[data-testid="merchant-upload-media-product-mug"]').text()).toBe(
       "Upload Media"
     );

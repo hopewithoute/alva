@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Link } from "live_vue";
+import { useAlvaStream } from "alva";
 
 type FeedEntry = {
   id: string;
@@ -16,8 +17,6 @@ const props = defineProps<{
 const entries = computed(() => props.feed_entries ?? []);
 const nextLimit = computed(() => entries.value.length + 5);
 const hasMore = computed(() => entries.value.length < 12);
-
-import { useAlvaStream } from "../../../js/alva/useAlvaStream";
 
 const stream = useAlvaStream("feed_entries", {
   page: { limit: 5, offset: 0 },
@@ -35,12 +34,13 @@ const handleLoadMore = () => {
 <template>
   <section class="space-y-6">
     <div class="max-w-3xl space-y-3">
-      <p class="text-sm font-medium uppercase tracking-wide text-zinc-500">Collection Reload Demo</p>
-      <h1 class="text-3xl font-semibold tracking-tight text-zinc-950">Load more by changing route-owned collection input.</h1>
+      <p class="text-sm font-medium uppercase tracking-wide text-zinc-500">Stream Pagination Demo</p>
+      <h1 class="text-3xl font-semibold tracking-tight text-zinc-950">Load more through a subscription-backed stream.</h1>
       <p class="text-sm text-zinc-600">
-        The older query-binding bridge is gone in this repo. This example shows the current pattern:
-        route params change the collection source input, and the LiveView collection refresh grows the
-        visible stream for Vue without a second client-owned list loader.
+        The older query-binding bridge is gone in this repo. This example keeps
+        data server-owned: Vue asks for a larger slice with
+        <code>loadMore(...)</code>, the backend reruns the stream source, and
+        LiveView grows the visible stream without a second client-owned list.
       </p>
     </div>
 
@@ -48,7 +48,7 @@ const handleLoadMore = () => {
       <div class="mb-4 flex items-center justify-between gap-4">
         <div>
           <h2 class="text-lg font-semibold text-zinc-950">Visible Feed Entries</h2>
-          <p class="text-sm text-zinc-500">Current collection size: {{ entries.length }}</p>
+          <p class="text-sm text-zinc-500">Current stream size: {{ entries.length }}</p>
         </div>
 
         <button

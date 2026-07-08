@@ -12,10 +12,6 @@ export function createAlvaApi() {
           return base_api.call;
         }
 
-        if (path.length === 0 && prop === "on") {
-          return base_api.on;
-        }
-
         return create_deep_proxy([...path, prop]);
       },
       apply(target, thisArg, args) {

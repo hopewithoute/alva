@@ -1,26 +1,27 @@
 <script setup lang="ts">
-import { reactive, watch, computed } from "vue";
-import { usePageEvent, usePageState } from "alva";
-import type { MerchantConsoleLiveEvents } from "../../../js/alva/MerchantConsoleLive.events";
+import { reactive, watch } from "vue";
 import type { Product } from "../../../js/alva/types";
 import MerchantInventoryItem from "./MerchantInventoryItem.vue";
 import type { InventoryFilters } from "../merchant/types";
 import Button from "../../shared/ui/button/Button.vue";
 import { useDebounce } from "../../utils/debounce";
+import { useRouteQueryPatch } from "../../shared/useRouteQueryPatch";
 
-const { products, is_inventory_filtered, inventory_filters: initial_filters } = usePageState<{
+const props = defineProps<{
   products?: Product[];
-  is_inventory_filtered?: boolean;
-  inventory_filters?: InventoryFilters;
+  isInventoryFiltered?: boolean;
+  initialFilters?: InventoryFilters;
 }>();
 
+const { patchQuery } = useRouteQueryPatch();
+
 const inventory_filters = reactive<InventoryFilters>({
-  query: initial_filters?.value?.query || "",
-  low_stock: initial_filters?.value?.low_stock || false,
+  query: props.initialFilters?.query || "",
+  low_stock: props.initialFilters?.low_stock || false,
 });
 
 watch(
-  () => initial_filters?.value,
+  () => props.initialFilters,
   (newVal) => {
     if (!newVal) return;
     inventory_filters.query = newVal.query || "";
@@ -29,14 +30,12 @@ watch(
   { deep: true, immediate: true }
 );
 
-const filterInventoryEvent = usePageEvent<MerchantConsoleLiveEvents, "console.filter_inventory">("console.filter_inventory");
-
 watch(
   inventory_filters,
   useDebounce((filters: InventoryFilters) => {
-    filterInventoryEvent.call({
-      query: filters.query,
-      low_stock_only: filters.low_stock,
+    patchQuery({
+      inv_query: filters.query || null,
+      inv_low_stock: filters.low_stock ? "true" : null,
     });
   }, 300),
   { deep: true },
@@ -47,17 +46,6 @@ const clearInventoryFilters = () => {
   inventory_filters.low_stock = false;
 };
 
-const visible_products = computed(() => {
-  let list = products?.value || [];
-  if (inventory_filters.low_stock) {
-    list = list.filter(p => p.stock <= 25);
-  }
-  if (inventory_filters.query) {
-    const q = inventory_filters.query.toLowerCase();
-    list = list.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
-  }
-  return list;
-});
 </script>
 
 <template>
@@ -66,7 +54,7 @@ const visible_products = computed(() => {
       <div class="flex items-center gap-3">
         <h2 class="text-lg font-semibold text-zinc-900">Inventory</h2>
         <span class="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-zinc-700">
-          {{ visible_products.length }} products
+          {{ props.products?.length || 0 }} products
         </span>
       </div>
 
@@ -76,7 +64,7 @@ const visible_products = computed(() => {
             v-model="inventory_filters.query"
             data-testid="merchant-inventory-query"
             type="text"
-            placeholder="Search by SKU or name"
+            placeholder="Search by name or description"
             class="h-9 rounded-md border border-zinc-300 px-3 text-sm font-normal text-zinc-950"
           />
         </label>
@@ -87,18 +75,18 @@ const visible_products = computed(() => {
           Low stock only
         </label>
         <div class="h-6 w-px bg-zinc-200 hidden sm:block"></div>
-          <Button variant="secondary" size="sm" :disabled="!is_inventory_filtered?.value" @click="clearInventoryFilters">
+          <Button variant="secondary" size="sm" :disabled="!isInventoryFiltered" @click="clearInventoryFilters">
             Reset
           </Button>
         </div>
       </div>
     </div>
 
-    <div v-if="visible_products.length === 0" class="py-12 text-center text-sm text-zinc-500">
+    <div v-if="!props.products?.length" class="py-12 text-center text-sm text-zinc-500">
       No products match your current filters.
     </div>
     <div v-else class="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
-      <MerchantInventoryItem v-for="product in visible_products" :key="product.id" :product="product" />
+      <MerchantInventoryItem v-for="product in props.products || []" :key="product.id" :product="product" />
     </div>
   </section>
 </template>

@@ -1,36 +1,76 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { usePageEvent, usePageState } from "alva";
-import type { CustomerStorefrontLiveEvents } from "../../../js/alva/CustomerStorefrontLive.events";
+import { ashCall } from "../../../js/alva/client";
 import { useDebounce } from "../../utils/debounce";
+import { useRouteQueryPatch } from "../../shared/useRouteQueryPatch";
 
 const props = defineProps<{
   recentOrderCount: number;
   recentOrderItems: number;
+  connectedCustomerName?: string | null;
 }>();
 
 const emit = defineEmits<{
   (e: "open-orders"): void;
 }>();
 
-const { connected_customer_name } = usePageState<{ connected_customer_name: string | null }>();
+const { patchQuery } = useRouteQueryPatch();
+const customerName = ref(props.connectedCustomerName || "");
+let latestIdentityRequest = 0;
 
-const customerName = ref(connected_customer_name.value || "");
-const setIdentityEvent = usePageEvent<CustomerStorefrontLiveEvents, "storefront.set_identity">("storefront.set_identity");
+watch(() => props.connectedCustomerName, (newName) => {
+  const nextName = newName || "";
 
-watch(connected_customer_name, (newName) => {
-  if (newName !== undefined && newName !== null && newName !== customerName.value) {
-    customerName.value = newName;
+  if (nextName !== customerName.value) {
+    customerName.value = nextName;
   }
 });
 
-const handleIdentityChange = useDebounce((newName: string) => {
+const handleIdentityChange = useDebounce(async (newName: string) => {
   const trimmed = newName.trim();
-  setIdentityEvent.call({ customer_name: trimmed });
+
+  if (trimmed === (props.connectedCustomerName || "")) {
+    return;
+  }
+
+  if (trimmed === "") {
+    latestIdentityRequest += 1;
+
+    patchQuery({
+      customer_name: null,
+      conversation_id: null
+    });
+
+    return;
+  }
+
+  const requestId = ++latestIdentityRequest;
+  const result = await ashCall("support.get_conversation", {
+    customer_name: trimmed
+  });
+
+  if (requestId !== latestIdentityRequest) {
+    return;
+  }
+
+  if (result.ok) {
+    patchQuery({
+      customer_name: trimmed,
+      conversation_id: result.data?.id || null
+    });
+    return;
+  }
+
+  if (result.error?.type === "not_found") {
+    patchQuery({
+      customer_name: trimmed,
+      conversation_id: null
+    });
+  }
 }, 500);
 
 watch(customerName, (newName) => {
-  handleIdentityChange(newName);
+  void handleIdentityChange(newName);
 });
 </script>
 

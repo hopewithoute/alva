@@ -1,26 +1,28 @@
 <script setup lang="ts">
-import { reactive, watch, computed } from "vue";
-import { usePageEvent, usePageState } from "alva";
-import type { MerchantConsoleLiveEvents } from "../../../js/alva/MerchantConsoleLive.events";
+import { reactive, watch } from "vue";
 import type { Order } from "../../../js/alva/types";
 import type { OrderFilters } from "../merchant/types";
 import MerchantOrderItem from "./MerchantOrderItem.vue";
 import Button from "../../shared/ui/button/Button.vue";
+import { useDebounce } from "../../utils/debounce";
+import { useRouteQueryPatch } from "../../shared/useRouteQueryPatch";
 
-const { sales_orders, is_order_filtered, order_filters: initial_filters } = usePageState<{
-  sales_orders?: Order[];
-  is_order_filtered?: boolean;
-  order_filters?: OrderFilters;
+const props = defineProps<{
+  salesOrders?: Order[];
+  isOrderFiltered?: boolean;
+  initialFilters?: OrderFilters;
 }>();
 
+const { patchQuery } = useRouteQueryPatch();
+
 const order_filters = reactive<OrderFilters>({
-  status: initial_filters?.value?.status || "all",
-  customer: initial_filters?.value?.customer || "",
-  product: initial_filters?.value?.product || "",
+  status: props.initialFilters?.status || "all",
+  customer: props.initialFilters?.customer || "",
+  product: props.initialFilters?.product || "",
 });
 
 watch(
-  () => initial_filters?.value,
+  () => props.initialFilters,
   (newVal) => {
     if (!newVal) return;
     order_filters.status = newVal.status || "all";
@@ -30,15 +32,13 @@ watch(
   { deep: true, immediate: true }
 );
 
-const filterOrdersEvent = usePageEvent<MerchantConsoleLiveEvents, "console.filter_orders">("console.filter_orders");
-
 watch(
   order_filters,
   useDebounce((filters: OrderFilters) => {
-    filterOrdersEvent.call({
-      status: filters.status || undefined,
-      customer_query: filters.customer || undefined,
-      product_query: filters.product || undefined,
+    patchQuery({
+      order_status: filters.status === "all" ? null : filters.status,
+      order_customer: filters.customer || null,
+      order_product: filters.product || null,
     });
   }, 300),
   { deep: true },
@@ -50,23 +50,7 @@ const clearOrderFilters = () => {
   order_filters.product = "";
 };
 
-const visible_orders = computed(() => {
-  let list = sales_orders?.value || [];
-  if (order_filters.status !== "all") {
-    list = list.filter(o => o.lifecycle_status === order_filters.status);
-  }
-  if (order_filters.customer) {
-    const q = order_filters.customer.toLowerCase();
-    list = list.filter(o => o.customer_name?.toLowerCase().includes(q));
-  }
-  if (order_filters.product) {
-    const q = order_filters.product.toLowerCase();
-    list = list.filter(o => o.product?.name.toLowerCase().includes(q));
-  }
-  return list;
-});
-
-const order_status_options: Array<{ label: string; value: OrderStatusFilter }> = [
+const order_status_options: Array<{ label: string; value: Order["lifecycle_status"] | "all" }> = [
   { label: "All", value: "all" },
   { label: "New", value: "new" },
   { label: "Processing", value: "processing" },
@@ -80,7 +64,7 @@ const order_status_options: Array<{ label: string; value: OrderStatusFilter }> =
       <div class="flex items-center gap-3">
         <h2 class="text-lg font-semibold text-zinc-900">Orders</h2>
         <span class="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-zinc-700">
-          {{ visible_orders.length }} orders
+          {{ salesOrders?.length || 0 }} orders
         </span>
       </div>
 
@@ -110,17 +94,17 @@ const order_status_options: Array<{ label: string; value: OrderStatusFilter }> =
           placeholder="Filter by product"
           class="h-9 w-40 rounded-md border border-zinc-300 px-3 text-sm font-normal text-zinc-950"
         />
-        <Button variant="secondary" size="sm" :disabled="!is_order_filtered?.value" @click="clearOrderFilters">
+        <Button variant="secondary" size="sm" :disabled="!isOrderFiltered" @click="clearOrderFilters">
           Reset
         </Button>
       </div>
     </div>
 
-    <div v-if="visible_orders.length === 0" class="py-12 text-center text-sm text-zinc-500">
+    <div v-if="!salesOrders?.length" class="py-12 text-center text-sm text-zinc-500">
       No orders match your current filters.
     </div>
     <div v-else class="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
-      <MerchantOrderItem v-for="order in visible_orders" :key="order.id" :order="order" />
+      <MerchantOrderItem v-for="order in salesOrders || []" :key="order.id" :order="order" />
     </div>
   </section>
 </template>

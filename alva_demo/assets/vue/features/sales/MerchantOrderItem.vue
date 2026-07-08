@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { usePageEvent } from "alva";
-import type { AlvaEvents } from "../../js/alva/events";
-import type { Order } from "../../js/alva/types";
-import { getStatusColor } from "../../shared/utils/ui";
+import { computed, ref } from "vue";
+import { ashCall } from "../../../js/alva/client";
+import type { Order } from "../../../js/alva/types";
 import OrderStatusBadge from "../../shared/ui/badge/OrderStatusBadge.vue";
 import Button from "../../shared/ui/button/Button.vue";
 
@@ -11,14 +9,14 @@ const props = defineProps<{
   order: Order;
 }>();
 
-const beginProcessingEvent = usePageEvent<AlvaEvents, "sales.begin_processing">("sales.begin_processing");
-const fulfillEvent = usePageEvent<AlvaEvents, "sales.fulfill">("sales.fulfill");
+const pendingAction = ref<"begin_processing" | "fulfill" | null>(null);
+const operationError = ref<string | null>(null);
 
-const isLoading = computed(() => beginProcessingEvent.isLoading.value || fulfillEvent.isLoading.value);
+const isLoading = computed(() => pendingAction.value !== null);
 
 const orderActionLabel = computed(() => {
-  if (beginProcessingEvent.isLoading.value) return "Processing...";
-  if (fulfillEvent.isLoading.value) return "Fulfilling...";
+  if (pendingAction.value === "begin_processing") return "Processing...";
+  if (pendingAction.value === "fulfill") return "Fulfilling...";
   if (props.order.lifecycle_status === "new") return "Begin Processing";
   if (props.order.lifecycle_status === "processing") return "Fulfill Order";
   return "Completed";
@@ -33,10 +31,30 @@ const hasOrderAction = computed(() => {
 const runOrderAction = async () => {
   if (isLoading.value) return;
 
-  if (props.order.lifecycle_status === "new") {
-    await beginProcessingEvent.call({ id: props.order.id });
-  } else if (props.order.lifecycle_status === "processing") {
-    await fulfillEvent.call({ id: props.order.id });
+  operationError.value = null;
+
+  try {
+    if (props.order.lifecycle_status === "new") {
+      pendingAction.value = "begin_processing";
+
+      const result = await ashCall("sales.begin_processing", { id: props.order.id });
+
+      if (!result.ok) {
+        operationError.value = result.error?.message || "Failed to begin processing order.";
+      }
+    } else if (props.order.lifecycle_status === "processing") {
+      pendingAction.value = "fulfill";
+
+      const result = await ashCall("sales.fulfill", { id: props.order.id });
+
+      if (!result.ok) {
+        operationError.value = result.error?.message || "Failed to fulfill order.";
+      }
+    }
+  } catch (error: any) {
+    operationError.value = error.message || "Failed to update order.";
+  } finally {
+    pendingAction.value = null;
   }
 };
 
@@ -53,11 +71,6 @@ const formatDateTime = (isoString: string) => {
   }).format(new Date(isoString));
 };
 
-const operationError = computed(() => {
-  if (beginProcessingEvent.error.value) return beginProcessingEvent.error.value.message;
-  if (fulfillEvent.error.value) return fulfillEvent.error.value.message;
-  return null;
-});
 </script>
 
 <template>

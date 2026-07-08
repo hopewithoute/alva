@@ -1,42 +1,37 @@
 <script setup lang="ts">
-import { ref, nextTick, computed } from "vue";
-import { usePageEvent, usePageState } from "alva";
-import type { CustomerStorefrontLiveEvents } from "../../../js/alva/CustomerStorefrontLive.events";
+import { ref, nextTick, computed, watch } from "vue";
 import type { SupportMessage } from "../../../js/alva/types";
 import { ashCall } from "../../../js/alva/client";
 import Button from "../../shared/ui/button/Button.vue";
+import { useRouteQueryPatch } from "../../shared/useRouteQueryPatch";
 
-const emit = defineEmits<{
-  (e: "join-chat"): void;
+const props = defineProps<{
+  connectedCustomerName?: string | null;
+  activeConversationId?: string | null;
+  supportMessages?: SupportMessage[];
 }>();
-
-const { connected_customer_name, active_conversation_id, support_messages } = usePageState<{
-  connected_customer_name: string | null;
-  active_conversation_id: string | null;
-  support_messages: SupportMessage[];
-}>();
-
-const joinChatEvent = usePageEvent<CustomerStorefrontLiveEvents, "support.join_chat">("support.join_chat");
-const resetChatEvent = usePageEvent<CustomerStorefrontLiveEvents, "support.reset_chat">("support.reset_chat");
 
 const newMessageText = ref("");
 const isSendingMessage = ref(false);
+const isJoiningChat = ref(false);
+const joinChatError = ref<string | null>(null);
 const sendMessageError = ref<string | null>(null);
 const chatMessagesEl = ref<HTMLElement | null>(null);
+const { patchQuery } = useRouteQueryPatch();
 
 const isChatConnected = computed(() => {
-  return Boolean(active_conversation_id?.value && connected_customer_name?.value);
+  return Boolean(props.activeConversationId && props.connectedCustomerName);
 });
 
 const chatStatus = computed(() => {
-  if (!connected_customer_name?.value) {
+  if (!props.connectedCustomerName) {
     return "Enter your customer name to unlock orders and support chat.";
   }
-  if (joinChatEvent.isLoading.value) {
+  if (isJoiningChat.value) {
     return "Connecting your support conversation...";
   }
   if (isChatConnected.value) {
-    return `Connected as ${connected_customer_name.value}.`;
+    return `Connected as ${props.connectedCustomerName}.`;
   }
   return "Connect once, then keep chatting with merchant support here.";
 });
@@ -49,19 +44,45 @@ const scrollChatToBottom = async () => {
 };
 
 const joinChat = async () => {
-  if (!connected_customer_name?.value || joinChatEvent.isLoading.value) return;
-  if (isChatConnected.value) {
-    await scrollChatToBottom();
-    return;
+  if (!props.connectedCustomerName || isJoiningChat.value) {
+    return props.activeConversationId || null;
   }
 
-  const result = await joinChatEvent.call({
-    customer_name: connected_customer_name.value,
-  });
-
-  if (result && result.ok) {
-    emit("join-chat");
+  if (isChatConnected.value) {
     await scrollChatToBottom();
+    return props.activeConversationId || null;
+  }
+
+  isJoiningChat.value = true;
+  joinChatError.value = null;
+
+  try {
+    const result = await ashCall("support.create", {
+      customer_name: props.connectedCustomerName,
+    });
+
+    if (!result.ok) {
+      joinChatError.value = result.error?.message || "Failed to create support conversation.";
+      return null;
+    }
+
+    const conversationId = result.data?.id || null;
+
+    patchQuery(
+      {
+        customer_name: props.connectedCustomerName,
+        conversation_id: conversationId,
+      },
+      { replace: false },
+    );
+
+    await scrollChatToBottom();
+    return conversationId;
+  } catch (error: any) {
+    joinChatError.value = error.message || "Failed to create support conversation.";
+    return null;
+  } finally {
+    isJoiningChat.value = false;
   }
 };
 
@@ -69,11 +90,13 @@ const sendMessage = async () => {
   const text = newMessageText.value.trim();
   if (!text || isSendingMessage.value) return;
 
+  let conversationId = props.activeConversationId || null;
+
   if (!isChatConnected.value) {
-    await joinChat();
+    conversationId = await joinChat();
   }
 
-  if (!active_conversation_id?.value) return;
+  if (!conversationId) return;
 
   newMessageText.value = "";
   isSendingMessage.value = true;
@@ -83,7 +106,7 @@ const sendMessage = async () => {
     const result = await ashCall("support.send_message", {
       text: text,
       sender: "shopper",
-      conversation_id: active_conversation_id.value,
+      conversation_id: conversationId,
     });
 
     if (!result.ok) {
@@ -100,23 +123,9 @@ const sendMessage = async () => {
   }
 };
 
-const resetChatState = async () => {
-  if (resetChatEvent.isLoading.value) return;
-  newMessageText.value = "";
-  isSendingMessage.value = false;
-  sendMessageError.value = null;
-  await resetChatEvent.call({});
-};
-
-watch(support_messages, async () => {
+watch(() => props.supportMessages, async () => {
   await scrollChatToBottom();
 }, { deep: true });
-
-watch(() => props.customerName, (next, prev) => {
-  if (props.connectedCustomerName && next !== props.connectedCustomerName) {
-    void resetChatState();
-  }
-});
 </script>
 
 <template>
@@ -134,8 +143,8 @@ watch(() => props.customerName, (next, prev) => {
     </div>
 
     <div class="flex-1 overflow-y-auto bg-zinc-50/40">
-      <div v-if="joinChatEvent.error.value || sendMessageError" class="m-5 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-        {{ joinChatEvent.error.value?.message || sendMessageError }}
+      <div v-if="joinChatError || sendMessageError" class="m-5 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        {{ joinChatError || sendMessageError }}
       </div>
       <div v-if="!isChatConnected" class="flex h-[360px] flex-col items-center justify-center p-8 text-center text-sm text-zinc-500">
         <div class="mb-4 rounded-full bg-zinc-100 p-3">
@@ -145,25 +154,25 @@ watch(() => props.customerName, (next, prev) => {
         </div>
         <p>{{ chatStatus }}</p>
         <Button
-          v-if="connected_customer_name"
+          v-if="connectedCustomerName"
           variant="secondary"
           size="sm"
           class="mt-4"
           @click="joinChat"
-          :disabled="joinChatEvent.isLoading.value"
+          :disabled="isJoiningChat"
         >
-          {{ joinChatEvent.isLoading.value ? "Connecting..." : "Start Chat" }}
+          {{ isJoiningChat ? "Connecting..." : "Start Chat" }}
         </Button>
       </div>
 
       <div v-else ref="chatMessagesEl" class="h-[360px] space-y-4 overflow-y-auto p-4">
-        <div v-if="!support_messages?.length" class="flex h-full flex-col items-center justify-center text-sm text-zinc-500">
+        <div v-if="!supportMessages?.length" class="flex h-full flex-col items-center justify-center text-sm text-zinc-500">
           <p>You're connected!</p>
           <p class="mt-1">Send a message to start the conversation.</p>
         </div>
         
         <div
-          v-for="msg in support_messages"
+          v-for="msg in supportMessages"
           :key="msg.id"
           class="flex"
           :class="msg.sender === 'shopper' ? 'justify-end' : 'justify-start'"
@@ -176,7 +185,7 @@ watch(() => props.customerName, (next, prev) => {
                 : 'bg-white border border-zinc-200 text-zinc-900 shadow-sm rounded-bl-sm'
             "
           >
-            {{ message.text }}
+            {{ msg.text }}
           </div>
         </div>
       </div>
@@ -189,13 +198,13 @@ watch(() => props.customerName, (next, prev) => {
           type="text"
           placeholder="Type a message..."
           class="flex-1 rounded-md border border-zinc-300 px-3 text-sm font-normal text-zinc-950 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-500"
-          :disabled="!customerName"
+          :disabled="!connectedCustomerName"
           @keyup.enter="sendMessage"
         />
         <Button
           variant="primary"
           @click="sendMessage"
-          :disabled="!newMessageText.trim() || isSendingMessage || !customerName"
+          :disabled="!newMessageText.trim() || isSendingMessage || !connectedCustomerName"
         >
           {{ isSendingMessage ? "Sending..." : "Send" }}
         </Button>

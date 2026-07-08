@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { providePageState } from "../../../../js/alva/usePageState";
-import { useAlvaStream } from "../../../../js/alva/useAlvaStream";
+import { useAlvaStream } from "alva";
 import type { Order, Product, Conversation, SupportMessage } from "../../../js/alva/types";
+import type { AlvaSubscriptions } from "../../../js/alva/subscriptions";
 import MerchantOrdersTab from "../sales/MerchantOrdersTab.vue";
 import MerchantInventoryTab from "../catalog/MerchantInventoryTab.vue";
 import MerchantSupportTab from "../support/MerchantSupportTab.vue";
@@ -30,34 +30,36 @@ const props = defineProps<{
   conversation_filters?: ConversationFilters;
 }>();
 
-providePageState(props);
-
-useAlvaStream("products", {
+useAlvaStream<AlvaSubscriptions>("products", () => ({
   sort: "stock",
   query: props.inventory_filters?.query || "",
-  max_stock: props.inventory_filters?.low_stock_only ? 25 : null
+  max_stock: props.inventory_filters?.low_stock ? 25 : null
+}));
+
+useAlvaStream<AlvaSubscriptions>("sales_orders", () => {
+  let salesOrderStatus: string | null = props.order_filters?.status || null;
+
+  if (!["new", "processing", "fulfilled"].includes(salesOrderStatus || "")) {
+    salesOrderStatus = null;
+  }
+
+  return {
+    sort: "-created_at",
+    status: salesOrderStatus,
+    customer_query: props.order_filters?.customer || "",
+    product_query: props.order_filters?.product || ""
+  };
 });
 
-let salesOrderStatus: string | null = props.order_filters?.status || null;
-if (!["new", "processing", "fulfilled"].includes(salesOrderStatus || "")) {
-  salesOrderStatus = null;
-}
-useAlvaStream("sales_orders", {
-  sort: "-created_at",
-  status: salesOrderStatus,
-  customer_query: props.order_filters?.customer_query || "",
-  product_query: props.order_filters?.product_query || ""
-});
-
-useAlvaStream("conversations", {
+useAlvaStream<AlvaSubscriptions>("conversations", () => ({
   sort: "-last_message_at",
-  customer_query: props.conversation_filters?.customer_query || "",
-  needs_merchant_reply: props.conversation_filters?.waiting_on_merchant_only ? true : null
-});
+  customer_query: props.conversation_filters?.customer || "",
+  needs_merchant_reply: props.conversation_filters?.waiting ? true : null
+}));
 
-useAlvaStream("support_messages", {
+useAlvaStream<AlvaSubscriptions>("support_messages", () => ({
   conversation_id: props.active_conversation_id || ""
-});
+}));
 
 const active_tab = ref<MerchantConsoleTab>("orders");
 
@@ -105,7 +107,9 @@ const active_tab_description = computed(() => {
             Operate orders, inventory, and support from one queue.
           </h1>
           <p class="max-w-3xl text-sm text-zinc-500">
-            This showcase keeps the merchant side operational: new orders, low stock, and customer replies stay visible while filters stay on the same collection-backed surface.
+            This showcase keeps the merchant side operational: new orders, low
+            stock, and customer replies stay visible while filters stay on the
+            same subscription-backed surface.
           </p>
         </div>
 
@@ -159,17 +163,28 @@ const active_tab_description = computed(() => {
 
     <!-- Features Content -->
     <MerchantOrdersTab
-      v-if="active_tab === 'orders'"
+      v-show="active_tab === 'orders'"
+      :sales-orders="props.sales_orders || []"
+      :is-order-filtered="props.is_order_filtered ?? false"
+      :initial-filters="props.order_filters"
       data-testid="merchant-console-panel-orders"
     />
 
     <MerchantInventoryTab
-      v-else-if="active_tab === 'inventory'"
+      v-show="active_tab === 'inventory'"
+      :products="props.products || []"
+      :is-inventory-filtered="props.is_inventory_filtered ?? false"
+      :initial-filters="props.inventory_filters"
       data-testid="merchant-console-panel-inventory"
     />
 
     <MerchantSupportTab
-      v-else-if="active_tab === 'support'"
+      v-show="active_tab === 'support'"
+      :conversations="props.conversations || []"
+      :active-conversation-id="props.active_conversation_id"
+      :support-messages="props.support_messages || []"
+      :is-conversation-filtered="props.is_conversation_filtered ?? false"
+      :initial-filters="props.conversation_filters"
       data-testid="merchant-console-panel-support"
     />
 

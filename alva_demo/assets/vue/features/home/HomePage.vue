@@ -13,8 +13,8 @@ import ShowcaseStatus from "../../shared/layout/ShowcaseStatus.vue";
       <p class="max-w-2xl text-base text-zinc-600">
         Start from either side of the sample: the Customer Storefront for shopper activity, or the
         Merchant Console for operational work. The header navigation also links to three isolated
-        realtime demos if you want to study streams, signals, or route-owned collection reloads in
-        smaller slices.
+        realtime demos if you want to study eager streams, signal callbacks, or
+        subscription-backed load-more flows in smaller slices.
       </p>
       <div class="flex items-center gap-4">
         <Link

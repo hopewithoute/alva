@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { usePageEvent, ashUpload } from "alva";
-import type { AlvaEvents } from "../../js/alva/events";
-import type { Product } from "../../js/alva/types";
+import { useAlvaUpload } from "alva";
+import { ashCall } from "../../../js/alva/client";
+import type { Product } from "../../../js/alva/types";
 import Button from "../../shared/ui/button/Button.vue";
 
 const props = defineProps<{
@@ -10,34 +10,63 @@ const props = defineProps<{
 }>();
 
 const stockInput = ref(props.product.stock);
-
-const adjustStockEvent = usePageEvent<AlvaEvents, "catalog.adjust_stock">("catalog.adjust_stock");
-const isAdjusting = computed(() => adjustStockEvent.isLoading.value);
-const adjustmentError = computed(() => adjustStockEvent.error.value?.message || null);
+const isAdjusting = ref(false);
+const adjustmentError = ref<string | null>(null);
 
 const adjustStock = async () => {
   if (stockInput.value < 0 || isAdjusting.value) return;
-  await adjustStockEvent.call({ id: props.product.id, stock: stockInput.value });
+
+  isAdjusting.value = true;
+  adjustmentError.value = null;
+
+  try {
+    const result = await ashCall("catalog.adjust_stock", {
+      id: props.product.id,
+      stock: stockInput.value
+    });
+
+    if (!result.ok) {
+      adjustmentError.value = result.error?.message || "Failed to update stock.";
+    }
+  } catch (error: any) {
+    adjustmentError.value = error.message || "Failed to update stock.";
+  } finally {
+    isAdjusting.value = false;
+  }
 };
 
-const mediaUpload = ashUpload("media", { maxFiles: 1 });
-const uploadMediaEvent = usePageEvent<AlvaEvents, "catalog.upload_media">("catalog.upload_media");
-const isUploading = computed(() => uploadMediaEvent.isLoading.value || mediaUpload.progress.value > 0);
-const uploadError = computed(() => uploadMediaEvent.error.value?.message || null);
+const mediaUpload = useAlvaUpload("media", { maxFiles: 1 });
+const isSavingUpload = ref(false);
+const uploadError = ref<string | null>(null);
+const isUploading = computed(() => isSavingUpload.value || mediaUpload.progress.value > 0);
 
 const triggerMediaUpload = async () => {
   if (isUploading.value) return;
-  
+  uploadError.value = null;
+
   const upload_request = mediaUpload.dispatch(async ({ primaryReference }) => {
-    return await uploadMediaEvent.call({
+    isSavingUpload.value = true;
+
+    const result = await ashCall("catalog.upload_media", {
       id: props.product.id,
       media: primaryReference,
     });
+
+    if (!result.ok) {
+      uploadError.value = result.error?.message || "Failed to upload media.";
+    }
+
+    isSavingUpload.value = false;
+    return result;
   });
-  
+
   mediaUpload.showFilePicker();
-  
-  await upload_request;
+
+  try {
+    await upload_request;
+  } finally {
+    isSavingUpload.value = false;
+  }
 };
 
 const getProductStockTone = () => {

@@ -4,15 +4,9 @@
 import type * as Types from "./types";
 
 export type AlvaSubscriptions = {
-  "support_messages": {
-    kind: "stream";
-    input: { conversation_id?: string | null; };
-    item: Types.SupportMessage;
-  };
-
   "sales_orders": {
     kind: "stream";
-    input: { status?: string | null; sort?: string | null; customer_query?: string | null; require_customer?: boolean | null; product_query?: string | null; };
+    input: { status?: string | null; sort?: string | null; require_customer?: boolean | null; customer_query?: string | null; product_query?: string | null; };
     item: Types.Order;
   };
 
@@ -26,6 +20,12 @@ export type AlvaSubscriptions = {
     kind: "stream";
     input: { sort?: string | null; needs_merchant_reply?: boolean | null; customer_query?: string | null; };
     item: Types.Conversation;
+  };
+
+  "support_messages": {
+    kind: "stream";
+    input: { conversation_id?: string | null; };
+    item: Types.SupportMessage;
   };
 
   "feed_entries": {
