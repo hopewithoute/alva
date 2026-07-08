@@ -2,19 +2,25 @@ defmodule Alva.SerializerTest do
   use ExUnit.Case, async: true
 
   alias Alva.Serializer
+
   defmodule TestStruct do
     defstruct [:a, :b, :__meta__, :__metadata__]
   end
 
   defmodule TestDomain do
     use Ash.Domain, validate_config_inclusion?: false
+
     resources do
       resource MockResource
     end
   end
 
   defmodule MockResource do
-    use Ash.Resource, domain: TestDomain, data_layer: Ash.DataLayer.Ets, validate_domain_inclusion?: false
+    use Ash.Resource,
+      domain: TestDomain,
+      data_layer: Ash.DataLayer.Ets,
+      validate_domain_inclusion?: false
+
     attributes do
       uuid_primary_key :id
       attribute :name, :string, public?: true
@@ -43,7 +49,10 @@ defmodule Alva.SerializerTest do
       %{a: 1, __metadata__: %{cursor: "123"}},
       %{a: 2}
     ]
-    assert Serializer.serialize(list, expose_metadata: [:cursor]) == {[%{a: 1}, %{a: 2}], %{cursor: "123"}}
+
+    assert Serializer.serialize(list, expose_metadata: [:cursor]) ==
+             {[%{a: 1}, %{a: 2}], %{cursor: "123"}}
+
     assert Serializer.serialize([], expose_metadata: [:cursor]) == {[], %{}}
   end
 
@@ -59,16 +68,17 @@ defmodule Alva.SerializerTest do
     assert Serializer.strip_metadata(record) == %{id: "1"}
 
     list = [%MockResource{id: "1", name: "Test"}, %MockResource{id: "2", name: %Ash.NotLoaded{}}]
+
     assert Serializer.strip_metadata(list) == [
-      %{id: "1", name: "Test"},
-      %{id: "2"}
-    ]
+             %{id: "1", name: "Test"},
+             %{id: "2"}
+           ]
   end
 
   test "strip_metadata datetime formats" do
     dt = ~U[2021-01-01 12:00:00Z]
     assert Serializer.strip_metadata(dt) == "2021-01-01T12:00:00Z"
-    
+
     ndt = ~N[2021-01-01 12:00:00]
     assert Serializer.strip_metadata(ndt) == "2021-01-01T12:00:00"
 

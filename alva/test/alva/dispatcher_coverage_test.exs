@@ -4,38 +4,46 @@ defmodule Alva.DispatcherCoverageTest do
   import ExUnit.CaptureLog
 
   defmodule FakeErrorResource do
-    use Ash.Resource, domain: nil, data_layer: Ash.DataLayer.Ets, extensions: [Alva.Resource], validate_domain_inclusion?: false
-    
+    use Ash.Resource,
+      domain: nil,
+      data_layer: Ash.DataLayer.Ets,
+      extensions: [Alva.Resource],
+      validate_domain_inclusion?: false
+
     live_vue do
-      event :test_unknown, name: "unknown.action", action: :read
-      event :test_update, name: "error.update", action: :update_error
-      event :test_destroy, name: "error.destroy", action: :destroy_error
-      event :test_read_lookup, name: "error.read_lookup", action: :read, lookup: :id
-      event :test_read, name: "error.read", action: :read
-      event :test_dry, name: "error.dry", action: :create, validate_only: true
+      event(:test_unknown, name: "unknown.action", action: :read)
+      event(:test_update, name: "error.update", action: :update_error)
+      event(:test_destroy, name: "error.destroy", action: :destroy_error)
+      event(:test_read_lookup, name: "error.read_lookup", action: :read, lookup: :id)
+      event(:test_read, name: "error.read", action: :read)
+      event(:test_dry, name: "error.dry", action: :create, validate_only: true)
     end
 
     actions do
       defaults [:read, :destroy, :create]
+
       update :update_error do
         require_atomic? false
       end
+
       destroy :destroy_error do
         require_atomic? false
       end
     end
-    
+
     attributes do
       uuid_primary_key :id
     end
-    
+
     changes do
-      change fn changeset, _ -> Ash.Changeset.add_error(changeset, "forced error") end, on: [:update, :destroy, :create]
+      change fn changeset, _ -> Ash.Changeset.add_error(changeset, "forced error") end,
+        on: [:update, :destroy, :create]
     end
   end
 
   defmodule ErrorDomain do
     use Ash.Domain, extensions: [Alva.Domain], validate_config_inclusion?: false
+
     resources do
       resource FakeErrorResource
     end
@@ -50,13 +58,16 @@ defmodule Alva.DispatcherCoverageTest do
     on_exit(fn ->
       Application.put_env(:alva, :ash_domains, old_domains)
     end)
+
     :ok
   end
 
   test "unknown event logs warning and returns error" do
-    log = capture_log(fn ->
-      assert %{ok: false, error: %{type: "unknown"}} = Dispatcher.dispatch("some.unknown", %{})
-    end)
+    log =
+      capture_log(fn ->
+        assert %{ok: false, error: %{type: "unknown"}} = Dispatcher.dispatch("some.unknown", %{})
+      end)
+
     assert log =~ "Unknown event some.unknown"
   end
 
@@ -84,10 +95,10 @@ defmodule Alva.DispatcherCoverageTest do
   test "read lookup with error" do
     assert %{ok: false} = Dispatcher.dispatch("error.read_lookup", %{"id" => "bad_uuid"})
   end
-  
+
   test "read with error" do
     # Just sending sort param with invalid syntax to trigger error in Ash.read
-    assert %{ok: false} = Dispatcher.dispatch("error.read", %{"sort" => "invalid_sort_syntax_here"})
+    assert %{ok: false} =
+             Dispatcher.dispatch("error.read", %{"sort" => "invalid_sort_syntax_here"})
   end
-
 end

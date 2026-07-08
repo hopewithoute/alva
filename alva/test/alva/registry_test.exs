@@ -4,33 +4,41 @@ defmodule Alva.RegistryTest do
   alias Alva.Registry
 
   defmodule TestResource do
-    use Ash.Resource, domain: nil, extensions: [Alva.Resource], data_layer: Ash.DataLayer.Ets, validate_domain_inclusion?: false
-    
+    use Ash.Resource,
+      domain: nil,
+      extensions: [Alva.Resource],
+      data_layer: Ash.DataLayer.Ets,
+      validate_domain_inclusion?: false
+
     live_vue do
-      event :test_event, name: "my_event", action: :read
-      subscription :test_sub, name: "my_sub_name", on: :read, resolve: :read, kind: :stream
+      event(:test_event, name: "my_event", action: :read)
+      subscription(:test_sub, name: "my_sub_name", on: :read, resolve: :read, kind: :stream)
     end
-    
+
     actions do
       defaults [:read]
     end
-    
+
     attributes do
       uuid_primary_key :id
     end
   end
 
   defmodule TestResourceDup do
-    use Ash.Resource, domain: nil, extensions: [Alva.Resource], data_layer: Ash.DataLayer.Ets, validate_domain_inclusion?: false
-    
+    use Ash.Resource,
+      domain: nil,
+      extensions: [Alva.Resource],
+      data_layer: Ash.DataLayer.Ets,
+      validate_domain_inclusion?: false
+
     live_vue do
-      event :test_event_dup, name: "my_event", action: :read
+      event(:test_event_dup, name: "my_event", action: :read)
     end
-    
+
     actions do
       defaults [:read]
     end
-    
+
     attributes do
       uuid_primary_key :id
     end
@@ -38,6 +46,7 @@ defmodule Alva.RegistryTest do
 
   defmodule TestDomain do
     use Ash.Domain, extensions: [Alva.Domain], validate_config_inclusion?: false
+
     resources do
       resource Alva.RegistryTest.TestResource
     end
@@ -45,6 +54,7 @@ defmodule Alva.RegistryTest do
 
   defmodule TestDomainDup do
     use Ash.Domain, extensions: [Alva.Domain], validate_config_inclusion?: false
+
     resources do
       resource Alva.RegistryTest.TestResourceDup
     end
@@ -60,6 +70,7 @@ defmodule Alva.RegistryTest do
     on_exit(fn ->
       Application.put_env(:alva, :ash_domains, old_domains)
     end)
+
     :ok
   end
 
@@ -72,6 +83,7 @@ defmodule Alva.RegistryTest do
   test "verify_host_app_command_uniqueness! throws error when called on compilation" do
     # During compilation of TestDomainDup, current entries has duplicates with TestDomain
     current_entries = Registry.alva_event_map(TestDomainDup)
+
     assert_raise Spark.Error.DslError, ~r/Duplicate application event name/, fn ->
       Registry.verify_host_app_command_uniqueness!(TestDomainDup, current_entries)
     end
@@ -87,6 +99,7 @@ defmodule Alva.RegistryTest do
     defmodule EmptyDomain do
       use Ash.Domain, validate_config_inclusion?: false
     end
+
     assert Registry.alva_event_map(EmptyDomain) == %{}
     assert Registry.alva_event_key_map(EmptyDomain) == %{}
     assert Registry.alva_subscription_map(EmptyDomain) == %{}
@@ -96,10 +109,10 @@ defmodule Alva.RegistryTest do
   test "events and subscriptions for resource" do
     events = Registry.events(TestResource)
     assert length(events) == 1
-    
+
     subs = Registry.subscriptions(TestResource)
     assert length(subs) == 1
-    
+
     assert Registry.public_fields(TestResource) == [:id]
   end
 end

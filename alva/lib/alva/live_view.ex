@@ -367,15 +367,36 @@ defmodule Alva.LiveView do
     Enum.reduce(active_subscriptions, %{streams: [], signals: []}, fn {name,
                                                                        {resource, subscription}},
                                                                       acc ->
-      reduce_matching_operations(acc, name, resource, subscription, notification_resource, occurrence_keys)
+      reduce_matching_operations(
+        acc,
+        name,
+        resource,
+        subscription,
+        notification_resource,
+        occurrence_keys
+      )
     end)
   end
 
-  defp reduce_matching_operations(acc, _name, resource, _subscription, notification_resource, _occurrence_keys)
+  defp reduce_matching_operations(
+         acc,
+         _name,
+         resource,
+         _subscription,
+         notification_resource,
+         _occurrence_keys
+       )
        when resource != notification_resource,
        do: acc
 
-  defp reduce_matching_operations(acc, _name, _resource, %{kind: :stream} = subscription, _notification_resource, occurrence_keys) do
+  defp reduce_matching_operations(
+         acc,
+         _name,
+         _resource,
+         %{kind: :stream} = subscription,
+         _notification_resource,
+         occurrence_keys
+       ) do
     stream_name = subscription_stream_name(subscription)
 
     ops =
@@ -386,7 +407,14 @@ defmodule Alva.LiveView do
     %{acc | streams: ops ++ acc.streams}
   end
 
-  defp reduce_matching_operations(acc, name, _resource, %{kind: :signal} = subscription, _notification_resource, occurrence_keys) do
+  defp reduce_matching_operations(
+         acc,
+         name,
+         _resource,
+         %{kind: :signal} = subscription,
+         _notification_resource,
+         occurrence_keys
+       ) do
     if MapSet.member?(occurrence_keys, subscription.on) do
       %{acc | signals: [{name, subscription} | acc.signals]}
     else
@@ -394,7 +422,16 @@ defmodule Alva.LiveView do
     end
   end
 
-  defp reduce_matching_operations(acc, _name, _resource, _subscription, _notification_resource, _occurrence_keys), do: acc
+  defp reduce_matching_operations(
+         acc,
+         _name,
+         _resource,
+         _subscription,
+         _notification_resource,
+         _occurrence_keys
+       ) do
+    acc
+  end
 
   defp handle_activate_subscription(params, sock, otp_app) do
     case resolve_and_authorize_subscription(params, sock, otp_app) do

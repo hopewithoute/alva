@@ -97,8 +97,6 @@ defmodule Alva.Dispatcher do
     end
   end
 
-
-
   defp execute_action(:destroy, resource, _action, event_def, params, ash_opts, _event_name) do
     with {:ok, record} <- fetch_record(resource, event_def, params, ash_opts),
          changeset <- Ash.Changeset.for_destroy(record, event_def.action, %{}, ash_opts) do
@@ -193,9 +191,7 @@ defmodule Alva.Dispatcher do
           dispatch_success(record, event_def, page)
 
         [] ->
-          handle_error(
-            Ash.Error.Query.NotFound.exception(resource: resource, primary_key: %{})
-          )
+          handle_error(Ash.Error.Query.NotFound.exception(resource: resource, primary_key: %{}))
       end
     else
       if page do
@@ -445,7 +441,6 @@ defmodule Alva.Dispatcher do
 
   defp extract_and_remove_permissions(other), do: {%{}, other}
 
-
   defp extract_permissions_from_map(map) when is_map(map) do
     {perms, rest} =
       Map.split_with(map, fn {k, _v} ->
@@ -456,7 +451,6 @@ defmodule Alva.Dispatcher do
   end
 
   defp extract_permissions_from_map(other), do: {%{}, other}
-
 
   defp handle_error(error) do
     %{ok: false, error: Alva.Error.format(error)}

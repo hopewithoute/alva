@@ -165,13 +165,16 @@ defmodule Alva.DispatcherTest do
 
         change(fn changeset, _context ->
           files = Ash.Changeset.get_argument(changeset, :files)
+
           if is_list(files) and length(files) > 0 do
             file = hd(files)
+
             filename =
               case file do
                 %Ash.Type.File{source: source} -> Map.get(source, :filename, "unknown")
                 _ -> Map.get(file, :filename, "unknown")
               end
+
             Ash.Changeset.change_attribute(changeset, :name, filename)
           else
             changeset
