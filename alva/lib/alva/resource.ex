@@ -11,30 +11,6 @@ defmodule Alva.Resource.Event do
   ]
 end
 
-defmodule Alva.Resource.StreamOperation do
-  defstruct [:on, :op, :__spark_metadata__]
-end
-
-defmodule Alva.Resource.CollectionSource do
-  defstruct [:event, :mode, :__spark_metadata__]
-end
-
-defmodule Alva.Resource.CollectionOperation do
-  defstruct [:on, :op, :at, :limit, :update_only, :__spark_metadata__]
-end
-
-defmodule Alva.Resource.Stream do
-  defstruct [:name, :operations, :__spark_metadata__]
-end
-
-defmodule Alva.Resource.Collection do
-  defstruct [:name, :source, :operations, :__spark_metadata__]
-end
-
-defmodule Alva.Resource.Signal do
-  defstruct [:key, :name, :on, :expose_metadata, :__spark_metadata__]
-end
-
 defmodule Alva.Resource.SubscriptionSource do
   defstruct [:event, :__spark_metadata__]
 end
@@ -64,40 +40,7 @@ defmodule Alva.Resource do
   Spark DSL Extension for LiveVue configuration in Ash Resources.
   """
 
-  @stream_operation_schema [
-    on: [
-      type: {:or, [:atom, :string]},
-      required: true,
-      doc:
-        "The legacy Ash PubSub occurrence key captured only so Alva can raise a migration error."
-    ]
-  ]
-
-  @insert %Spark.Dsl.Entity{
-    name: :insert,
-    describe: "Legacy stream insert shim kept only so Alva can raise a migration error.",
-    target: Alva.Resource.StreamOperation,
-    schema:
-      Keyword.put(@stream_operation_schema, :op, type: {:one_of, [:insert]}, default: :insert)
-  }
-
-  @update %Spark.Dsl.Entity{
-    name: :update,
-    describe: "Legacy stream update shim kept only so Alva can raise a migration error.",
-    target: Alva.Resource.StreamOperation,
-    schema:
-      Keyword.put(@stream_operation_schema, :op, type: {:one_of, [:update]}, default: :update)
-  }
-
-  @delete %Spark.Dsl.Entity{
-    name: :delete,
-    describe: "Legacy stream delete shim kept only so Alva can raise a migration error.",
-    target: Alva.Resource.StreamOperation,
-    schema:
-      Keyword.put(@stream_operation_schema, :op, type: {:one_of, [:delete]}, default: :delete)
-  }
-
-  @collection_operation_schema [
+  @subscription_operation_schema [
     on: [
       type: {:or, [:atom, :string]},
       required: true,
@@ -119,143 +62,6 @@ defmodule Alva.Resource do
       doc: "Optional update_only flag passed to Phoenix.LiveView.stream_insert/4."
     ]
   ]
-
-  @collection_insert %Spark.Dsl.Entity{
-    name: :insert,
-    describe: "Insert or update a record in this collection when a published event occurs.",
-    target: Alva.Resource.CollectionOperation,
-    schema:
-      Keyword.put(@collection_operation_schema, :op,
-        type: {:one_of, [:insert]},
-        default: :insert
-      )
-  }
-
-  @collection_update %Spark.Dsl.Entity{
-    name: :update,
-    describe: "Update a record in this collection when a published event occurs.",
-    target: Alva.Resource.CollectionOperation,
-    schema:
-      Keyword.put(@collection_operation_schema, :op,
-        type: {:one_of, [:update]},
-        default: :update
-      )
-  }
-
-  @collection_delete %Spark.Dsl.Entity{
-    name: :delete,
-    describe: "Delete a record from this collection when a published event occurs.",
-    target: Alva.Resource.CollectionOperation,
-    schema:
-      Keyword.put(@collection_operation_schema, :op,
-        type: {:one_of, [:delete]},
-        default: :delete
-      )
-  }
-
-  @collection_source %Spark.Dsl.Entity{
-    name: :source,
-    describe: "The command event used to load or reset this collection.",
-    target: Alva.Resource.CollectionSource,
-    schema: [
-      event: [
-        type: {:or, [:atom, :string]},
-        required: true,
-        doc: "The Alva event declaration key that returns this collection's records."
-      ],
-      mode: [
-        type: {:one_of, [:reset]},
-        required: false,
-        default: :reset,
-        doc: "How the source result is applied to the collection."
-      ]
-    ]
-  }
-
-  @stream %Spark.Dsl.Entity{
-    name: :stream,
-    describe: "Legacy Alva stream declaration kept only to raise a compile-time migration error.",
-    examples: [
-      "Legacy `stream` declarations are rejected. Replace them with `collection` declarations or raw Phoenix PubSub outside Alva."
-    ],
-    target: Alva.Resource.Stream,
-    args: [:name],
-    entities: [
-      operations: [@insert, @update, @delete]
-    ],
-    schema: [
-      name: [
-        type: :atom,
-        required: true,
-        doc: "The legacy stream declaration key, kept only so Alva can raise a migration error."
-      ]
-    ]
-  }
-
-  @collection %Spark.Dsl.Entity{
-    name: :collection,
-    describe: "A server-owned reactive list mapped to Phoenix LiveView streams.",
-    examples: [
-      """
-      collection :students do
-        source event: :students_list, mode: :reset
-        insert on: :create
-        update on: :rename
-        delete on: :destroy
-      end
-      """
-    ],
-    target: Alva.Resource.Collection,
-    args: [:name],
-    entities: [
-      source: [@collection_source],
-      operations: [@collection_insert, @collection_update, @collection_delete]
-    ],
-    schema: [
-      name: [
-        type: :atom,
-        required: true,
-        doc: "The application-wide collection name used for page activation."
-      ]
-    ]
-  }
-
-  @signal %Spark.Dsl.Entity{
-    name: :signal,
-    describe: "A semantic non-collection callback mapped to an Ash PubSub published event.",
-    examples: [
-      """
-      signal :students_import_completed,
-        name: "students.import_completed",
-        on: :import_completed
-      """
-    ],
-    target: Alva.Resource.Signal,
-    args: [:key],
-    schema: [
-      key: [
-        type: :atom,
-        required: true,
-        doc: "The application-wide signal declaration key used by LiveView activation."
-      ],
-      name: [
-        type: :string,
-        required: true,
-        doc: "The application-wide client-facing signal event name delivered to Vue."
-      ],
-      on: [
-        type: {:or, [:atom, :string]},
-        required: true,
-        doc: "The Ash PubSub occurrence key that triggers this signal."
-      ],
-      expose_metadata: [
-        type: {:list, :atom},
-        required: false,
-        default: [],
-        doc: "List of __metadata__ keys to expose in the signal payload meta object."
-      ]
-    ]
-  }
 
   @event %Spark.Dsl.Entity{
     name: :event,
@@ -330,7 +136,10 @@ defmodule Alva.Resource do
     describe: "Insert or update a record in this stream when a published event occurs.",
     target: Alva.Resource.SubscriptionOperation,
     schema:
-      Keyword.put(@collection_operation_schema, :op, type: {:one_of, [:insert]}, default: :insert)
+      Keyword.put(@subscription_operation_schema, :op,
+        type: {:one_of, [:insert]},
+        default: :insert
+      )
   }
 
   @subscription_update %Spark.Dsl.Entity{
@@ -338,7 +147,10 @@ defmodule Alva.Resource do
     describe: "Update a record in this stream when a published event occurs.",
     target: Alva.Resource.SubscriptionOperation,
     schema:
-      Keyword.put(@collection_operation_schema, :op, type: {:one_of, [:update]}, default: :update)
+      Keyword.put(@subscription_operation_schema, :op,
+        type: {:one_of, [:update]},
+        default: :update
+      )
   }
 
   @subscription_delete %Spark.Dsl.Entity{
@@ -346,7 +158,10 @@ defmodule Alva.Resource do
     describe: "Delete a record from this stream when a published event occurs.",
     target: Alva.Resource.SubscriptionOperation,
     schema:
-      Keyword.put(@collection_operation_schema, :op, type: {:one_of, [:delete]}, default: :delete)
+      Keyword.put(@subscription_operation_schema, :op,
+        type: {:one_of, [:delete]},
+        default: :delete
+      )
   }
 
   @subscription %Spark.Dsl.Entity{
@@ -409,7 +224,7 @@ defmodule Alva.Resource do
   @live_vue %Spark.Dsl.Section{
     name: :live_vue,
     describe: "Configure how this resource is exposed to LiveVue",
-    entities: [@event, @collection, @stream, @signal, @subscription],
+    entities: [@event, @subscription],
     schema: []
   }
 
@@ -425,7 +240,8 @@ defmodule Alva.Resource do
     if Enum.all?(scope, fn {k, v} -> is_atom(k) and validate_scope_entry(v) end) do
       {:ok, scope}
     else
-      {:error, "Scope must be a valid schema map, e.g. %{id: :uuid, params: %{type: :map, required?: true}}"}
+      {:error,
+       "Scope must be a valid schema map, e.g. %{id: :uuid, params: %{type: :map, required?: true}}"}
     end
   end
 

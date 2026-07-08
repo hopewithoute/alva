@@ -8,8 +8,6 @@ defmodule Alva.Registry do
             domains: [],
             event_map: %{},
             subscription_map: %{},
-            collection_map: %{},
-            signal_map: %{},
             file_upload_arguments: []
 
   @registry_cache_key {__MODULE__, :registry}
@@ -120,33 +118,6 @@ defmodule Alva.Registry do
     )
   end
 
-  def verify_host_app_collection_uniqueness!(current_domain, current_collection_map) do
-    verify_host_app_uniqueness!(
-      current_domain,
-      current_collection_map,
-      &alva_collection_map/1,
-      "application collection key"
-    )
-  end
-
-  def verify_host_app_signal_key_uniqueness!(current_domain, current_signal_map) do
-    verify_host_app_uniqueness!(
-      current_domain,
-      current_signal_map,
-      &alva_signal_map/1,
-      "application signal key"
-    )
-  end
-
-  def verify_host_app_signal_name_uniqueness!(current_domain, current_signal_name_map) do
-    verify_host_app_uniqueness!(
-      current_domain,
-      current_signal_name_map,
-      &signal_name_map/1,
-      "application signal exposed name"
-    )
-  end
-
   defp verify_host_app_uniqueness!(current_domain, current_entries, fetcher, identity_label) do
     with true <- Code.ensure_loaded?(Mix.Project),
          otp_app when is_atom(otp_app) <- Mix.Project.config()[:app],
@@ -173,11 +144,7 @@ defmodule Alva.Registry do
       otp_app: otp_app,
       domains: domains,
       event_map: build_unique_map!(domains, &alva_event_map/1, "event name"),
-      subscription_map:
-        build_unique_map!(domains, &alva_subscription_map/1, "subscription key"),
-      collection_map:
-        build_unique_map!(domains, &alva_collection_map/1, "collection name"),
-      signal_map: build_unique_map!(domains, &alva_signal_map/1, "signal key"),
+      subscription_map: build_unique_map!(domains, &alva_subscription_map/1, "subscription key"),
       file_upload_arguments: build_file_upload_arguments(domains)
     }
   end
@@ -258,18 +225,6 @@ defmodule Alva.Registry do
     ArgumentError -> nil
   end
 
-  defp signal_name_map(domain) do
-    domain
-    |> Ash.Domain.Info.resources()
-    |> Enum.reduce(%{}, fn resource, acc ->
-      resource
-      |> signals()
-      |> Enum.reduce(acc, fn signal, map ->
-        Map.put(map, signal.name, {resource, signal})
-      end)
-    end)
-  end
-
   # ==========================================
   # DOMAIN LEVEL INTROSPECTION
   # ==========================================
@@ -282,16 +237,8 @@ defmodule Alva.Registry do
     SparkAdapter.get_persisted(domain, :alva_event_key_map, %{})
   end
 
-  def alva_collection_map(domain) do
-    SparkAdapter.get_persisted(domain, :alva_collection_map, %{})
-  end
-
   def alva_subscription_map(domain) do
     SparkAdapter.get_persisted(domain, :alva_subscription_map, %{})
-  end
-
-  def alva_signal_map(domain) do
-    SparkAdapter.get_persisted(domain, :alva_signal_map, %{})
   end
 
   def file_upload_arguments(domain) do
@@ -323,17 +270,6 @@ defmodule Alva.Registry do
     |> Enum.filter(&match?(%Alva.Resource.Event{}, &1))
   end
 
-  def collections(resource) do
-    SparkAdapter.get_entities(resource, [:live_vue])
-    |> Enum.filter(&match?(%Alva.Resource.Collection{}, &1))
-    |> Enum.map(&normalize_collection/1)
-  end
-
-  def signals(resource) do
-    SparkAdapter.get_entities(resource, [:live_vue])
-    |> Enum.filter(&match?(%Alva.Resource.Signal{}, &1))
-  end
-
   def subscriptions(resource) do
     SparkAdapter.get_entities(resource, [:live_vue])
     |> Enum.filter(&match?(%Alva.Resource.Subscription{}, &1))
@@ -347,10 +283,6 @@ defmodule Alva.Registry do
     aggs = Ash.Resource.Info.public_aggregates(resource) |> Enum.map(& &1.name)
 
     attrs ++ calcs ++ rels ++ aggs
-  end
-
-  defp normalize_collection(%Alva.Resource.Collection{source: source} = collection) do
-    %{collection | source: unwrap_source(source)}
   end
 
   defp normalize_subscription(%Alva.Resource.Subscription{source: source} = sub) do
