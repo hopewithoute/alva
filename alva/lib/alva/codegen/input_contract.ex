@@ -6,9 +6,7 @@ defmodule Alva.Codegen.InputContract do
   alias Alva.Codegen.TypeMapper
 
   def generate_input_shape(resource, event_def, action, indent \\ "") do
-    if action.type not in [:read, :create, :update, :action] do
-      "any"
-    else
+    if action.type in [:read, :create, :update, :action] do
       policy_fields = resource_policy_fields(resource)
 
       args_ts = generate_arguments_ts(Map.get(action, :arguments, []), indent)
@@ -34,6 +32,8 @@ defmodule Alva.Codegen.InputContract do
       else
         "{\n#{all_fields}\n#{indent}}"
       end
+    else
+      "any"
     end
   end
 

@@ -50,7 +50,7 @@ defmodule Alva.Codegen.TypeMapper do
         map_embedded_resource(type, constraints)
 
       enum_type?(type) ->
-        type.values() |> Enum.map(fn v -> "\"#{v}\"" end) |> Enum.join(" | ")
+        type.values() |> Enum.map_join(" | ", fn v -> "\"#{v}\"" end)
 
       Keyword.has_key?(constraints || [], :types) ->
         types = Keyword.get(constraints, :types, [])
@@ -66,8 +66,7 @@ defmodule Alva.Codegen.TypeMapper do
 
       Keyword.has_key?(constraints || [], :one_of) ->
         Keyword.get(constraints, :one_of)
-        |> Enum.map(fn v -> "\"#{v}\"" end)
-        |> Enum.join(" | ")
+        |> Enum.map_join(" | ", fn v -> "\"#{v}\"" end)
 
       true ->
         "any"

@@ -80,15 +80,14 @@ defmodule Alva.Error do
   end
 
   defp validation_fields(errors) do
-    Enum.reduce(errors, %{}, fn
-      %{field: field} = sub_error, acc when not is_nil(field) ->
+    Enum.reduce(errors, %{}, fn %{field: field} = sub_error, acc ->
+      if not is_nil(field) do
         field_key = validation_field_key(sub_error, field)
         message = validation_message(sub_error, field)
-
         Map.update(acc, field_key, [message], &[message | &1])
-
-      _, acc ->
+      else
         acc
+      end
     end)
   end
 
@@ -130,9 +129,6 @@ defmodule Alva.Error do
   end
 
   defp forbidden_message(error) do
-    case String.trim(Exception.message(error)) do
-      "" -> "Forbidden"
-      message -> message
-    end
+    String.trim(Exception.message(error))
   end
 end
