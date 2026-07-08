@@ -14,6 +14,10 @@ jobs:
     env:
       MIX_ENV: test
 
+    defaults:
+      run:
+        working-directory: ./alva
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -28,9 +32,9 @@ jobs:
       uses: actions/cache@v3
       with:
         path: |
-          deps
-          _build
-        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          alva/deps
+          alva/_build
+        key: ${{ runner.os }}-mix-${{ hashFiles('alva/**/mix.lock') }}
         restore-keys: |
           ${{ runner.os }}-mix-
 
