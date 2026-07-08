@@ -1,2 +1,0 @@
-cfd34de docs: Mark issue 02 as done
-8b909b6 feat: Seed Product Catalog Through Alva
