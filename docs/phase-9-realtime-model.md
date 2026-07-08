@@ -1,4 +1,11 @@
-# Alva Realtime Model (Phase 9)
+# Alva Realtime Model (Phase 9 Legacy Runtime Reference)
+
+> Legacy page-owned runtime reference.
+> Start with [ADR 0009](./adr/0009-alva-v2-stream-boundary-and-api.md) and
+> [docs/alva-demo-api-surface.md](./alva-demo-api-surface.md) for the supported
+> V2 bridge-first teaching path. This document is kept for compatibility and
+> migration work around older `collections:`, `signals:`, `route_subscriptions:`,
+> `page_events:`, and `page_state:` seams.
 
 ## Overview
 

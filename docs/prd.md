@@ -1,4 +1,13 @@
-# PRD v0.1 — Alva (Ash Live Vue Adapter)
+# Historical PRD v0.1 — Alva (Ash Live Vue Adapter)
+
+> Historical product draft.
+> This document predates the bridge-first V2 reset and still discusses older
+> surfaces such as `ashQuery` and `ash.on`.
+> For the supported current path, start with
+> [docs/alva-demo-api-surface.md](./alva-demo-api-surface.md) and
+> [ADR 0009](./adr/0009-alva-v2-stream-boundary-and-api.md).
+> Treat the API examples below as archived design history, not current surface
+> guidance.
 
 ## 1. Ringkasan
 

@@ -1,9 +1,13 @@
-# Alva API Surface Analysis
+# Alva API Surface Analysis (Historical Snapshot)
 
 ## Purpose
 
 This document maps the actual Alva API surface in the current repository so we
 can write a complete guide from repo truth instead of from older design notes.
+
+It is now best treated as a historical analysis and compatibility reference.
+For the primary V2 user-facing path, start with
+`docs/alva-demo-api-surface.md` and ADR 0009 instead of this document.
 
 It focuses on four questions:
 
