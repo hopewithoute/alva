@@ -23,8 +23,8 @@ defmodule Mix.Tasks.Alva.Codegen do
     else
       File.mkdir_p!(output_dir)
 
-      events_map = Alva.App.Info.event_map(app)
-      subscription_map = Alva.App.Info.registry(app).subscription_map
+      events_map = Alva.Registry.event_map(app)
+      subscription_map = Alva.Registry.registry(app).subscription_map
 
       resources =
         events_map

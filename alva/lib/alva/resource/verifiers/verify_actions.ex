@@ -124,7 +124,7 @@ defmodule Alva.Resource.Verifiers.VerifyActions do
   end
 
   defp public_fields_count(dsl_state) do
-    Alva.Resource.Info.public_fields(dsl_state) |> length()
+    Alva.Registry.public_fields(dsl_state) |> length()
   end
 
   defp pubsub_occurrence_keys(resource) do

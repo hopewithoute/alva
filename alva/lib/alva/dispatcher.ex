@@ -361,7 +361,7 @@ defmodule Alva.Dispatcher do
   defp find_event(opts, event_name) do
     case Keyword.get(opts, :otp_app) do
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
-        Alva.App.Info.fetch_event(otp_app, event_name)
+        Alva.Registry.fetch_event(otp_app, event_name)
 
       _ ->
         find_event_in_domains(Keyword.get(opts, :domains, []), event_name)
@@ -370,7 +370,7 @@ defmodule Alva.Dispatcher do
 
   defp find_event_in_domains(domains, event_name) do
     Enum.find_value(domains, :error, fn domain ->
-      map = Alva.Domain.Info.alva_event_map(domain)
+      map = Alva.Registry.alva_event_map(domain)
 
       case Map.fetch(map, event_name) do
         {:ok, {resource, event}} -> {:ok, resource, event}
@@ -466,7 +466,7 @@ defmodule Alva.Dispatcher do
         opts
 
       _ ->
-        case Alva.App.Info.otp_app(socket) do
+        case Alva.Registry.otp_app(socket) do
           otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
             Keyword.put(opts, :otp_app, otp_app)
 

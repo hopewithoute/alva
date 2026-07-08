@@ -115,6 +115,6 @@ defmodule Alva.Serializer do
   end
 
   defp public_fields(resource) do
-    Alva.Resource.Info.public_fields(resource)
+    Alva.Registry.public_fields(resource)
   end
 end

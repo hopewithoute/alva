@@ -52,8 +52,8 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEventsTest do
     end
     """)
 
-    map = Alva.Domain.Info.alva_event_map(TestDomain.Success)
-    key_map = Alva.Domain.Info.alva_event_key_map(TestDomain.Success)
+    map = Alva.Registry.alva_event_map(TestDomain.Success)
+    key_map = Alva.Registry.alva_event_key_map(TestDomain.Success)
     assert map["a.read"] |> elem(0) == TestResource.A
     assert map["b.read"] |> elem(0) == TestResource.B
     assert key_map[:a_read] |> elem(0) == TestResource.A
@@ -101,9 +101,9 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEventsTest do
     end
     """)
 
-    event_map = Alva.Domain.Info.alva_event_map(TestDomain.Realtime)
-    collection_map = Alva.Domain.Info.alva_collection_map(TestDomain.Realtime)
-    signal_map = Alva.Domain.Info.alva_signal_map(TestDomain.Realtime)
+    event_map = Alva.Registry.alva_event_map(TestDomain.Realtime)
+    collection_map = Alva.Registry.alva_collection_map(TestDomain.Realtime)
+    signal_map = Alva.Registry.alva_signal_map(TestDomain.Realtime)
 
     assert event_map["realtime.read"] |> elem(0) == TestResource.Realtime
     assert collection_map[:students] |> elem(0) == TestResource.Realtime
@@ -145,7 +145,7 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEventsTest do
     end
     """)
 
-    collection_map = Alva.Domain.Info.alva_collection_map(TestDomain.CollectionRealtime)
+    collection_map = Alva.Registry.alva_collection_map(TestDomain.CollectionRealtime)
 
     assert collection_map[:students] |> elem(0) == TestResource.CollectionRealtime
     assert %Alva.Resource.Collection{} = collection_map[:students] |> elem(1)

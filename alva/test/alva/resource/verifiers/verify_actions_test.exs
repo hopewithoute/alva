@@ -81,7 +81,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
                ]
              }
            ] =
-             Alva.Resource.Info.collections(TestResource.RealtimeValid)
+             Alva.Registry.collections(TestResource.RealtimeValid)
 
     assert [
              %Alva.Resource.Signal{
@@ -89,7 +89,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
                name: "students.import_completed"
              }
            ] =
-             Alva.Resource.Info.signals(TestResource.RealtimeValid)
+             Alva.Registry.signals(TestResource.RealtimeValid)
   end
 
   test "compiles successfully with collection source and operation projections" do
@@ -138,7 +138,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
                  %Alva.Resource.CollectionOperation{op: :insert, on: :create}
                ]
              }
-           ] = Alva.Resource.Info.collections(TestResource.CollectionValid)
+           ] = Alva.Registry.collections(TestResource.CollectionValid)
   end
 
   test "emits a warning when collection has only a source" do

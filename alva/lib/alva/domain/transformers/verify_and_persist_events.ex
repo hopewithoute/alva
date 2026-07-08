@@ -11,10 +11,10 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEvents do
     module = Spark.Dsl.Extension.get_persisted(dsl_state, :module)
 
     event_map =
-      persist_projection_map(resources, module, :event, &Alva.Resource.Info.events/1)
+      persist_projection_map(resources, module, :event, &Alva.Registry.events/1)
 
     event_key_map =
-      persist_projection_map(resources, module, :event, &Alva.Resource.Info.events/1,
+      persist_projection_map(resources, module, :event, &Alva.Registry.events/1,
         identity_fun: & &1.key,
         identity_label: :key
       )
@@ -24,22 +24,22 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEvents do
         resources,
         module,
         :subscription,
-        &Alva.Resource.Info.subscriptions/1,
+        &Alva.Registry.subscriptions/1,
         identity_fun: & &1.key,
         identity_label: :key
       )
 
     collection_map =
-      persist_projection_map(resources, module, :collection, &Alva.Resource.Info.collections/1)
+      persist_projection_map(resources, module, :collection, &Alva.Registry.collections/1)
 
     signal_map =
-      persist_projection_map(resources, module, :signal, &Alva.Resource.Info.signals/1,
+      persist_projection_map(resources, module, :signal, &Alva.Registry.signals/1,
         identity_fun: & &1.key,
         identity_label: :key
       )
 
     signal_name_map =
-      persist_projection_map(resources, module, :signal, &Alva.Resource.Info.signals/1,
+      persist_projection_map(resources, module, :signal, &Alva.Registry.signals/1,
         identity_fun: & &1.name,
         identity_label: "exposed name"
       )
@@ -52,11 +52,11 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEvents do
       |> Spark.Dsl.Transformer.persist(:alva_collection_map, collection_map)
       |> Spark.Dsl.Transformer.persist(:alva_signal_map, signal_map)
 
-    Alva.App.Info.verify_host_app_command_uniqueness!(module, event_map)
-    Alva.App.Info.verify_host_app_subscription_uniqueness!(module, subscription_map)
-    Alva.App.Info.verify_host_app_collection_uniqueness!(module, collection_map)
-    Alva.App.Info.verify_host_app_signal_key_uniqueness!(module, signal_map)
-    Alva.App.Info.verify_host_app_signal_name_uniqueness!(module, signal_name_map)
+    Alva.Registry.verify_host_app_command_uniqueness!(module, event_map)
+    Alva.Registry.verify_host_app_subscription_uniqueness!(module, subscription_map)
+    Alva.Registry.verify_host_app_collection_uniqueness!(module, collection_map)
+    Alva.Registry.verify_host_app_signal_key_uniqueness!(module, signal_map)
+    Alva.Registry.verify_host_app_signal_name_uniqueness!(module, signal_name_map)
 
     {:ok, dsl_state}
   end

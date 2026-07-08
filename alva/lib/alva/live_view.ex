@@ -187,7 +187,7 @@ defmodule Alva.LiveView do
       Phoenix.LiveView.put_private(socket, :alva_options, subscriptions: normalized.subscriptions)
 
     otp_app = host_app_otp_app!(socket)
-    registry = Alva.App.Info.registry(otp_app)
+    registry = Alva.Registry.registry(otp_app)
 
     page_event_callbacks = page_event_callbacks!(normalized.page_events)
     ensure_page_events_do_not_shadow_dispatcher_events!(page_event_callbacks, registry)
@@ -226,7 +226,7 @@ defmodule Alva.LiveView do
     Enum.reduce(subscriptions, socket, fn
       {key, opts}, acc_sock ->
         if Keyword.get(opts, :activate) == :mount do
-          case Alva.App.Info.fetch_subscription_by_key(otp_app, key) do
+          case Alva.Registry.fetch_subscription_by_key(otp_app, key) do
             {:ok, resource, subscription} ->
               case apply(resource, subscription.resolve, [%{}, acc_sock]) do
                 {:ok, resolution} ->
@@ -251,7 +251,7 @@ defmodule Alva.LiveView do
   defp configure_file_uploads_from_commands(socket, commands, otp_app) do
     upload_arg_names =
       Enum.flat_map(commands || [], fn command_name ->
-        case Alva.App.Info.fetch_event(otp_app, to_string(command_name)) do
+        case Alva.Registry.fetch_event(otp_app, to_string(command_name)) do
           {:ok, resource, event_def} ->
             action = Ash.Resource.Info.action(resource, event_def.action)
 
@@ -478,7 +478,7 @@ defmodule Alva.LiveView do
 
   defp ensure_page_events_do_not_shadow_dispatcher_events!(
          page_event_callbacks,
-         %Alva.App.Info.Registry{} = registry
+         %Alva.Registry{} = registry
        ) do
     Enum.each(Map.keys(page_event_callbacks), fn event_name ->
       if Map.has_key?(registry.event_map, event_name) do
@@ -500,7 +500,7 @@ defmodule Alva.LiveView do
   end
 
   defp host_app_otp_app!(socket) do
-    case Alva.App.Info.otp_app(socket) do
+    case Alva.Registry.otp_app(socket) do
       otp_app when is_atom(otp_app) and not is_nil(otp_app) ->
         otp_app
 
@@ -1251,7 +1251,7 @@ defmodule Alva.LiveView do
       socket
       |> active_subscription_keys()
       |> Enum.flat_map(fn sub_key ->
-        case Alva.App.Info.fetch_subscription_by_key(otp_app, sub_key) do
+        case Alva.Registry.fetch_subscription_by_key(otp_app, sub_key) do
           {:ok, resource, subscription} -> [{sub_key, {resource, subscription}}]
           :error -> []
         end
@@ -1425,7 +1425,7 @@ defmodule Alva.LiveView do
     input = params["input"] || %{}
 
     with {:ok, resource, subscription} <-
-           Alva.App.Info.fetch_subscription(otp_app, subscription_name),
+           Alva.Registry.fetch_subscription(otp_app, subscription_name),
          :ok <- check_subscription_allowlist(sock, subscription.key),
          :ok <- check_subscription_authorization(sock, resource, subscription),
          {:ok, resolution} <- apply(resource, subscription.resolve, [input, sock]) do
@@ -1442,7 +1442,7 @@ defmodule Alva.LiveView do
     input = params["input"] || %{}
 
     with {:ok, resource, subscription} <-
-           Alva.App.Info.fetch_subscription(otp_app, subscription_name),
+           Alva.Registry.fetch_subscription(otp_app, subscription_name),
          :ok <- check_subscription_allowlist(sock, subscription.key),
          {:ok, resolution} <- apply(resource, subscription.resolve, [input, sock]) do
       sock =
@@ -1531,7 +1531,7 @@ defmodule Alva.LiveView do
 
   defp subscription_stream_name(%{key: key}), do: key
 
-  defp projection_cache(%Alva.App.Info.Registry{} = registry) do
+  defp projection_cache(%Alva.Registry{} = registry) do
     %{
       event_map: registry.event_map,
       collection_projections: Map.to_list(registry.collection_map),
@@ -1545,7 +1545,7 @@ defmodule Alva.LiveView do
   defp find_resource_event_declaration!(resource, key) do
     event_projection =
       resource
-      |> Alva.Resource.Info.events()
+      |> Alva.Registry.events()
       |> Enum.find(fn event -> event.key == key or event.name == key end)
 
     case event_projection do

@@ -740,14 +740,14 @@ defmodule Alva.DispatcherTest do
     end
 
     test "expose_metadata DSL field is parsed correctly" do
-      events = Alva.Resource.Info.events(MetadataResource)
+      events = Alva.Registry.events(MetadataResource)
       event = Enum.find(events, &(&1.name == "meta.get"))
 
       assert event.expose_metadata == [:sync_token]
     end
 
     test "expose_metadata defaults to empty list" do
-      events = Alva.Resource.Info.events(MetadataResource)
+      events = Alva.Registry.events(MetadataResource)
       event = Enum.find(events, &(&1.name == "meta.none"))
 
       assert event.expose_metadata == []

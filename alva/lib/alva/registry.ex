@@ -1,21 +1,34 @@
-defmodule Alva.App.Info do
+defmodule Alva.Registry do
   @moduledoc """
   Host-app registry boundary for Alva runtime and code generation.
+  Consolidates introspection across the App, Domain, and Resource levels.
   """
 
-  defmodule Registry do
-    @moduledoc false
-
-    defstruct otp_app: nil,
-              domains: [],
-              event_map: %{},
-              subscription_map: %{},
-              collection_map: %{},
-              signal_map: %{},
-              file_upload_arguments: []
-  end
+  defstruct otp_app: nil,
+            domains: [],
+            event_map: %{},
+            subscription_map: %{},
+            collection_map: %{},
+            signal_map: %{},
+            file_upload_arguments: []
 
   @registry_cache_key {__MODULE__, :registry}
+
+  # --- INTERNAL SPARK ADAPTER ---
+  defmodule SparkAdapter do
+    @moduledoc false
+    def get_persisted(module, key, default) do
+      Spark.Dsl.Extension.get_persisted(module, key, default)
+    end
+
+    def get_entities(module, path) do
+      Spark.Dsl.Extension.get_entities(module, path)
+    end
+  end
+
+  # ==========================================
+  # APP LEVEL INTROSPECTION
+  # ==========================================
 
   def registry(otp_app) when is_atom(otp_app) and not is_nil(otp_app) do
     if cache_registry?() do
@@ -93,7 +106,7 @@ defmodule Alva.App.Info do
     verify_host_app_uniqueness!(
       current_domain,
       current_event_map,
-      &Alva.Domain.Info.alva_event_map/1,
+      &alva_event_map/1,
       "application event name"
     )
   end
@@ -102,7 +115,7 @@ defmodule Alva.App.Info do
     verify_host_app_uniqueness!(
       current_domain,
       current_subscription_map,
-      &Alva.Domain.Info.alva_subscription_map/1,
+      &alva_subscription_map/1,
       "application subscription key"
     )
   end
@@ -111,7 +124,7 @@ defmodule Alva.App.Info do
     verify_host_app_uniqueness!(
       current_domain,
       current_collection_map,
-      &Alva.Domain.Info.alva_collection_map/1,
+      &alva_collection_map/1,
       "application collection key"
     )
   end
@@ -120,7 +133,7 @@ defmodule Alva.App.Info do
     verify_host_app_uniqueness!(
       current_domain,
       current_signal_map,
-      &Alva.Domain.Info.alva_signal_map/1,
+      &alva_signal_map/1,
       "application signal key"
     )
   end
@@ -156,15 +169,15 @@ defmodule Alva.App.Info do
   defp build_registry(otp_app) do
     domains = Ash.Info.domains(otp_app)
 
-    %Registry{
+    %__MODULE__{
       otp_app: otp_app,
       domains: domains,
-      event_map: build_unique_map!(domains, &Alva.Domain.Info.alva_event_map/1, "event name"),
+      event_map: build_unique_map!(domains, &alva_event_map/1, "event name"),
       subscription_map:
-        build_unique_map!(domains, &Alva.Domain.Info.alva_subscription_map/1, "subscription key"),
+        build_unique_map!(domains, &alva_subscription_map/1, "subscription key"),
       collection_map:
-        build_unique_map!(domains, &Alva.Domain.Info.alva_collection_map/1, "collection name"),
-      signal_map: build_unique_map!(domains, &Alva.Domain.Info.alva_signal_map/1, "signal key"),
+        build_unique_map!(domains, &alva_collection_map/1, "collection name"),
+      signal_map: build_unique_map!(domains, &alva_signal_map/1, "signal key"),
       file_upload_arguments: build_file_upload_arguments(domains)
     }
   end
@@ -188,7 +201,7 @@ defmodule Alva.App.Info do
 
   defp build_file_upload_arguments(domains) do
     domains
-    |> Enum.flat_map(&Alva.Domain.Info.file_upload_arguments/1)
+    |> Enum.flat_map(&file_upload_arguments/1)
     |> Enum.uniq_by(& &1.name)
   end
 
@@ -250,10 +263,101 @@ defmodule Alva.App.Info do
     |> Ash.Domain.Info.resources()
     |> Enum.reduce(%{}, fn resource, acc ->
       resource
-      |> Alva.Resource.Info.signals()
+      |> signals()
       |> Enum.reduce(acc, fn signal, map ->
         Map.put(map, signal.name, {resource, signal})
       end)
     end)
   end
+
+  # ==========================================
+  # DOMAIN LEVEL INTROSPECTION
+  # ==========================================
+
+  def alva_event_map(domain) do
+    SparkAdapter.get_persisted(domain, :alva_event_map, %{})
+  end
+
+  def alva_event_key_map(domain) do
+    SparkAdapter.get_persisted(domain, :alva_event_key_map, %{})
+  end
+
+  def alva_collection_map(domain) do
+    SparkAdapter.get_persisted(domain, :alva_collection_map, %{})
+  end
+
+  def alva_subscription_map(domain) do
+    SparkAdapter.get_persisted(domain, :alva_subscription_map, %{})
+  end
+
+  def alva_signal_map(domain) do
+    SparkAdapter.get_persisted(domain, :alva_signal_map, %{})
+  end
+
+  def file_upload_arguments(domain) do
+    domain
+    |> alva_event_map()
+    |> Enum.flat_map(fn {_event_name, {resource, event_def}} ->
+      action = Ash.Resource.Info.action(resource, event_def.action)
+
+      if action do
+        Enum.filter(action.arguments, fn arg ->
+          case arg.type do
+            Ash.Type.File -> true
+            {:array, Ash.Type.File} -> true
+            _ -> false
+          end
+        end)
+      else
+        []
+      end
+    end)
+  end
+
+  # ==========================================
+  # RESOURCE LEVEL INTROSPECTION
+  # ==========================================
+
+  def events(resource) do
+    SparkAdapter.get_entities(resource, [:live_vue])
+    |> Enum.filter(&match?(%Alva.Resource.Event{}, &1))
+  end
+
+  def collections(resource) do
+    SparkAdapter.get_entities(resource, [:live_vue])
+    |> Enum.filter(&match?(%Alva.Resource.Collection{}, &1))
+    |> Enum.map(&normalize_collection/1)
+  end
+
+  def signals(resource) do
+    SparkAdapter.get_entities(resource, [:live_vue])
+    |> Enum.filter(&match?(%Alva.Resource.Signal{}, &1))
+  end
+
+  def subscriptions(resource) do
+    SparkAdapter.get_entities(resource, [:live_vue])
+    |> Enum.filter(&match?(%Alva.Resource.Subscription{}, &1))
+    |> Enum.map(&normalize_subscription/1)
+  end
+
+  def public_fields(resource) do
+    attrs = Ash.Resource.Info.public_attributes(resource) |> Enum.map(& &1.name)
+    calcs = Ash.Resource.Info.public_calculations(resource) |> Enum.map(& &1.name)
+    rels = Ash.Resource.Info.public_relationships(resource) |> Enum.map(& &1.name)
+    aggs = Ash.Resource.Info.public_aggregates(resource) |> Enum.map(& &1.name)
+
+    attrs ++ calcs ++ rels ++ aggs
+  end
+
+  defp normalize_collection(%Alva.Resource.Collection{source: source} = collection) do
+    %{collection | source: unwrap_source(source)}
+  end
+
+  defp normalize_subscription(%Alva.Resource.Subscription{source: source} = sub) do
+    %{sub | source: unwrap_source(source)}
+  end
+
+  defp unwrap_source([source]), do: source
+  defp unwrap_source([]), do: nil
+  defp unwrap_source(source), do: source
 end
