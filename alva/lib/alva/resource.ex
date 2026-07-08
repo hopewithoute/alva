@@ -44,7 +44,19 @@ defmodule Alva.Resource.SubscriptionOperation do
 end
 
 defmodule Alva.Resource.Subscription do
-  defstruct [:key, :name, :kind, :source, :scope, :resolve, :authorize_with, :on, :operations, :__spark_metadata__]
+  defstruct [
+    :key,
+    :name,
+    :kind,
+    :source,
+    :scope,
+    :resolve,
+    :authorize_with,
+    :on,
+    :operations,
+    :expose_metadata,
+    :__spark_metadata__
+  ]
 end
 
 defmodule Alva.Resource do
@@ -317,21 +329,24 @@ defmodule Alva.Resource do
     name: :insert,
     describe: "Insert or update a record in this stream when a published event occurs.",
     target: Alva.Resource.SubscriptionOperation,
-    schema: Keyword.put(@collection_operation_schema, :op, type: {:one_of, [:insert]}, default: :insert)
+    schema:
+      Keyword.put(@collection_operation_schema, :op, type: {:one_of, [:insert]}, default: :insert)
   }
 
   @subscription_update %Spark.Dsl.Entity{
     name: :update,
     describe: "Update a record in this stream when a published event occurs.",
     target: Alva.Resource.SubscriptionOperation,
-    schema: Keyword.put(@collection_operation_schema, :op, type: {:one_of, [:update]}, default: :update)
+    schema:
+      Keyword.put(@collection_operation_schema, :op, type: {:one_of, [:update]}, default: :update)
   }
 
   @subscription_delete %Spark.Dsl.Entity{
     name: :delete,
     describe: "Delete a record from this stream when a published event occurs.",
     target: Alva.Resource.SubscriptionOperation,
-    schema: Keyword.put(@collection_operation_schema, :op, type: {:one_of, [:delete]}, default: :delete)
+    schema:
+      Keyword.put(@collection_operation_schema, :op, type: {:one_of, [:delete]}, default: :delete)
   }
 
   @subscription %Spark.Dsl.Entity{
@@ -357,13 +372,15 @@ defmodule Alva.Resource do
       kind: [
         type: {:one_of, [:stream, :signal]},
         required: true,
-        doc: "Whether this capability acts as a reactive list (stream) or a one-off notification (signal)."
+        doc:
+          "Whether this capability acts as a reactive list (stream) or a one-off notification (signal)."
       ],
       scope: [
         type: :any,
         required: false,
         default: %{},
-        doc: "The expected input parameter types for scope resolution (e.g. %{conversation_id: :uuid})."
+        doc:
+          "The public input schema accepted before resolver/default merging. Plain entries like %{conversation_id: :uuid} are optional and nullable by default; use maps or keywords such as %{conversation_id: %{type: :uuid, required?: true, allow_nil?: false}} to tighten the contract."
       ],
       resolve: [
         type: :atom,
@@ -379,10 +396,15 @@ defmodule Alva.Resource do
         type: {:or, [:atom, :string]},
         required: false,
         doc: "For kind: :signal, the Ash PubSub occurrence key that triggers this signal."
+      ],
+      expose_metadata: [
+        type: {:list, :atom},
+        required: false,
+        default: [],
+        doc: "List of __metadata__ keys to expose in the signal payload meta object."
       ]
     ]
   }
-
 
   @live_vue %Spark.Dsl.Section{
     name: :live_vue,

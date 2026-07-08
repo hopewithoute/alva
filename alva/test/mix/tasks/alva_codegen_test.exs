@@ -1,6 +1,9 @@
 defmodule Mix.Tasks.Alva.CodegenTest do
   use ExUnit.Case
 
+  defmodule Endpoint do
+  end
+
   setup do
     # Create a temporary directory for output
     tmp_dir = "test/tmp/alva_codegen"
@@ -21,10 +24,21 @@ defmodule Mix.Tasks.Alva.CodegenTest do
   defmodule Resource do
     use Ash.Resource,
       domain: Mix.Tasks.Alva.CodegenTest.Domain,
-      extensions: [Alva.Resource]
+      data_layer: Ash.DataLayer.Ets,
+      extensions: [Alva.Resource],
+      notifiers: [Ash.Notifier.PubSub]
+
+    ets do
+      private?(true)
+    end
 
     resource do
       require_primary_key?(false)
+    end
+
+    attributes do
+      uuid_primary_key(:id)
+      attribute(:name, :string, public?: true)
     end
 
     actions do
@@ -36,15 +50,54 @@ defmodule Mix.Tasks.Alva.CodegenTest do
       end
     end
 
+    pub_sub do
+      module(Mix.Tasks.Alva.CodegenTest.Endpoint)
+      prefix("codegen_resource")
+      publish(:create, ["created"])
+    end
+
     live_vue do
       event(:test_create, name: "test.create", action: :create)
       event(:test_read, name: "test.read", action: :read)
       event(:test_upload, name: "test.upload", action: :upload)
+
+      subscription :test_stream do
+        name("test_stream")
+        kind(:stream)
+        source(event: :test_read)
+        scope(%{
+          id: %{type: :uuid, required?: true, allow_nil?: false},
+          page: :map,
+          cursor: %{type: :string, required?: false, allow_nil?: false},
+          customer_query: %{type: :string, required?: false, allow_nil?: true}
+        })
+        insert(on: :create)
+        resolve(:resolve_test_stream_scope)
+      end
+
+      subscription :test_signal do
+        name("test_signal")
+        kind(:signal)
+        on(:create)
+        scope(%{
+          audience: %{type: :string, required?: true, allow_nil?: false},
+          tenant_id: %{type: :uuid, required?: false, allow_nil?: true}
+        })
+        resolve(:resolve_test_signal_scope)
+      end
+    end
+
+    def resolve_test_stream_scope(_input, _socket) do
+      {:ok, %{topics: ["codegen_resource:created"], items: []}}
+    end
+
+    def resolve_test_signal_scope(_input, _socket) do
+      {:ok, %{topics: ["codegen_resource:created"]}}
     end
   end
 
   defmodule Domain do
-    use Ash.Domain, extensions: [Alva.Domain]
+    use Ash.Domain, validate_config_inclusion?: false, extensions: [Alva.Domain]
 
     resources do
       resource(Resource)
@@ -56,11 +109,13 @@ defmodule Mix.Tasks.Alva.CodegenTest do
 
     events_path = Path.join(tmp_dir, "events.ts")
     client_path = Path.join(tmp_dir, "client.ts")
-
     types_path = Path.join(tmp_dir, "types.ts")
+    subscriptions_path = Path.join(tmp_dir, "subscriptions.ts")
+
     assert File.exists?(events_path)
     assert File.exists?(client_path)
     assert File.exists?(types_path)
+    assert File.exists?(subscriptions_path)
 
     events_content = File.read!(events_path)
     # Verify the structure rather than exact string formatting
@@ -88,5 +143,20 @@ defmodule Mix.Tasks.Alva.CodegenTest do
     assert String.contains?(client_content, "return base_api.call;")
     assert String.contains?(client_content, ~s(prop === "on"))
     assert String.contains?(client_content, "return base_api.on;")
+    assert String.contains?(client_content, "export const ashCall = createAlvaApi().call;")
+
+    subscriptions_content = File.read!(subscriptions_path)
+    assert String.contains?(subscriptions_content, ~s("test_stream"))
+    assert String.contains?(subscriptions_content, ~s(kind: "stream"))
+    assert String.contains?(subscriptions_content, ~s(id: string;))
+    assert String.contains?(subscriptions_content, ~s(page?: Record<string, any> | null;))
+    assert String.contains?(subscriptions_content, ~s(cursor?: string;))
+    assert String.contains?(subscriptions_content, ~s(customer_query?: string | null;))
+    assert String.contains?(subscriptions_content, ~s(item: Types.Resource;))
+    assert String.contains?(subscriptions_content, ~s("test_signal"))
+    assert String.contains?(subscriptions_content, ~s(kind: "signal"))
+    assert String.contains?(subscriptions_content, ~s(audience: string;))
+    assert String.contains?(subscriptions_content, ~s(tenant_id?: string | null;))
+    assert String.contains?(subscriptions_content, ~s(payload: Types.Resource;))
   end
 end

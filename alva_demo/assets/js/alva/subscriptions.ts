@@ -6,8 +6,44 @@ import type * as Types from "./types";
 export type AlvaSubscriptions = {
   "support_messages": {
     kind: "stream";
-    input: { conversation_id: string; };
+    input: { conversation_id?: string | null; };
     item: Types.SupportMessage;
+  };
+
+  "sales_orders": {
+    kind: "stream";
+    input: { status?: string | null; sort?: string | null; customer_query?: string | null; require_customer?: boolean | null; product_query?: string | null; };
+    item: Types.Order;
+  };
+
+  "products": {
+    kind: "stream";
+    input: { sort?: string | null; query?: string | null; max_stock?: number | null; };
+    item: Types.Product;
+  };
+
+  "conversations": {
+    kind: "stream";
+    input: { sort?: string | null; needs_merchant_reply?: boolean | null; customer_query?: string | null; };
+    item: Types.Conversation;
+  };
+
+  "feed_entries": {
+    kind: "stream";
+    input: { sort?: string | null; page?: Record<string, any> | null; };
+    item: Types.FeedEntry;
+  };
+
+  "chat_messages": {
+    kind: "stream";
+    input: Record<string, never>;
+    item: Types.ChatMessage;
+  };
+
+  "demo_notifications_sent": {
+    kind: "signal";
+    input: Record<string, never>;
+    payload: Types.Notification;
   };
 
 };
