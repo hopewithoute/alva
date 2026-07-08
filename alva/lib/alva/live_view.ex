@@ -59,61 +59,69 @@ defmodule Alva.LiveView do
   end
 
   defp eager_activate_mount_subscriptions(socket, subscriptions, otp_app) do
-    Enum.reduce(subscriptions, socket, fn
-      {key, opts}, acc_sock ->
-        if Keyword.get(opts, :activate) == :mount do
-          case Alva.Registry.fetch_subscription_by_key(otp_app, key) do
-            {:ok, resource, subscription} ->
-              case apply(resource, subscription.resolve, [%{}, acc_sock]) do
-                {:ok, resolution} ->
-                  apply_subscription_resolution(acc_sock, subscription, resolution)
+    Enum.reduce(subscriptions, socket, fn sub, acc_sock ->
+      try_activate_mount_subscription(sub, acc_sock, otp_app)
+    end)
+  end
 
-                _ ->
-                  acc_sock
-              end
+  defp try_activate_mount_subscription({key, opts}, acc_sock, otp_app) do
+    if Keyword.get(opts, :activate) == :mount do
+      resolve_and_apply_mount_subscription(otp_app, key, acc_sock)
+    else
+      acc_sock
+    end
+  end
 
-            _ ->
-              acc_sock
-          end
-        else
-          acc_sock
+  defp try_activate_mount_subscription(_, acc_sock, _otp_app), do: acc_sock
+
+  defp resolve_and_apply_mount_subscription(otp_app, key, acc_sock) do
+    case Alva.Registry.fetch_subscription_by_key(otp_app, key) do
+      {:ok, resource, subscription} ->
+        case apply(resource, subscription.resolve, [%{}, acc_sock]) do
+          {:ok, resolution} -> apply_subscription_resolution(acc_sock, subscription, resolution)
+          _ -> acc_sock
         end
 
-      _, acc_sock ->
+      _ ->
         acc_sock
-    end)
+    end
   end
 
   defp configure_file_uploads_from_commands(socket, commands, otp_app) do
     upload_arg_names =
       Enum.flat_map(commands || [], fn command_name ->
-        case Alva.Registry.fetch_event(otp_app, to_string(command_name)) do
-          {:ok, resource, event_def} ->
-            action = Ash.Resource.Info.action(resource, event_def.action)
-
-            if action do
-              action.arguments
-              |> Enum.filter(fn arg ->
-                case arg.type do
-                  Ash.Type.File -> true
-                  {:array, Ash.Type.File} -> true
-                  _ -> false
-                end
-              end)
-              |> Enum.map(& &1.name)
-            else
-              []
-            end
-
-          _ ->
-            []
-        end
+        fetch_upload_args_for_command(command_name, otp_app)
       end)
       |> Enum.uniq()
 
     Enum.reduce(upload_arg_names, socket, fn arg_name, acc_socket ->
       Phoenix.LiveView.allow_upload(acc_socket, arg_name, accept: :any, auto_upload: true)
     end)
+  end
+
+  defp fetch_upload_args_for_command(command_name, otp_app) do
+    case Alva.Registry.fetch_event(otp_app, to_string(command_name)) do
+      {:ok, resource, event_def} ->
+        case Ash.Resource.Info.action(resource, event_def.action) do
+          nil -> []
+          action -> extract_file_args(action.arguments)
+        end
+
+      _ ->
+        []
+    end
+  end
+
+  defp extract_file_args(arguments) do
+    arguments
+    |> Enum.filter(fn arg ->
+      case arg.type do
+        Ash.Type.File -> true
+        {:array, Ash.Type.File} -> true
+        _ -> false
+      end
+    end)
+    |> Enum.map(& &1.name)
   end
 
   defp attach_alva_hooks(socket, otp_app) do
@@ -141,16 +149,17 @@ defmodule Alva.LiveView do
 
         true ->
           res = Alva.Dispatcher.dispatch(event_name, params, otp_app: otp_app, socket: sock)
-
-          case res do
-            %{ok: false, error: %{type: "unknown"}} ->
-              {:cont, sock}
-
-            _ ->
-              {:halt, res, sock}
-          end
+          handle_dispatch_result(res, sock)
       end
     end)
+  end
+
+  defp handle_dispatch_result(%{ok: false, error: %{type: "unknown"}}, sock) do
+    {:cont, sock}
+  end
+
+  defp handle_dispatch_result(res, sock) do
+    {:halt, res, sock}
   end
 
   defp attach_info_hook(socket) do
@@ -358,33 +367,34 @@ defmodule Alva.LiveView do
     Enum.reduce(active_subscriptions, %{streams: [], signals: []}, fn {name,
                                                                        {resource, subscription}},
                                                                       acc ->
-      if resource == notification_resource do
-        case subscription.kind do
-          :stream ->
-            stream_name = subscription_stream_name(subscription)
-
-            ops =
-              subscription.operations
-              |> Enum.filter(&MapSet.member?(occurrence_keys, &1.on))
-              |> Enum.map(&{stream_name, &1})
-
-            %{acc | streams: ops ++ acc.streams}
-
-          :signal ->
-            if MapSet.member?(occurrence_keys, subscription.on) do
-              %{acc | signals: [{name, subscription} | acc.signals]}
-            else
-              acc
-            end
-
-          _ ->
-            acc
-        end
-      else
-        acc
-      end
+      reduce_matching_operations(acc, name, resource, subscription, notification_resource, occurrence_keys)
     end)
   end
+
+  defp reduce_matching_operations(acc, _name, resource, _subscription, notification_resource, _occurrence_keys)
+       when resource != notification_resource,
+       do: acc
+
+  defp reduce_matching_operations(acc, _name, _resource, %{kind: :stream} = subscription, _notification_resource, occurrence_keys) do
+    stream_name = subscription_stream_name(subscription)
+
+    ops =
+      subscription.operations
+      |> Enum.filter(&MapSet.member?(occurrence_keys, &1.on))
+      |> Enum.map(&{stream_name, &1})
+
+    %{acc | streams: ops ++ acc.streams}
+  end
+
+  defp reduce_matching_operations(acc, name, _resource, %{kind: :signal} = subscription, _notification_resource, occurrence_keys) do
+    if MapSet.member?(occurrence_keys, subscription.on) do
+      %{acc | signals: [{name, subscription} | acc.signals]}
+    else
+      acc
+    end
+  end
+
+  defp reduce_matching_operations(acc, _name, _resource, _subscription, _notification_resource, _occurrence_keys), do: acc
 
   defp handle_activate_subscription(params, sock, otp_app) do
     case resolve_and_authorize_subscription(params, sock, otp_app) do
@@ -426,10 +436,7 @@ defmodule Alva.LiveView do
         sock =
           if subscription.kind == :stream do
             stream_name = subscription_stream_name(subscription)
-
-            Enum.reduce(resolution.items || [], sock, fn item, acc_sock ->
-              Phoenix.LiveView.stream_insert(acc_sock, stream_name, item)
-            end)
+            stream_insert_all(sock, resolution.items, stream_name)
           else
             sock
           end
@@ -440,6 +447,12 @@ defmodule Alva.LiveView do
       {:error, reason} ->
         {:halt, %{ok: false, error: reason}, sock}
     end
+  end
+
+  defp stream_insert_all(sock, items, stream_name) do
+    Enum.reduce(items || [], sock, fn item, acc_sock ->
+      Phoenix.LiveView.stream_insert(acc_sock, stream_name, item)
+    end)
   end
 
   defp resolve_and_authorize_subscription(params, sock, otp_app) do
@@ -468,19 +481,23 @@ defmodule Alva.LiveView do
          :ok <- check_subscription_allowlist(sock, subscription.key),
          {:ok, resolution} <- apply(resource, subscription.resolve, [input, sock]) do
       sock =
-        if Phoenix.LiveView.connected?(sock) do
-          Enum.reduce(resolution.topics || [], sock, fn topic, acc_sock ->
-            unsubscribe_dynamic_topic(acc_sock, topic)
-          end)
-        else
-          sock
-        end
+        unsubscribe_all_dynamic_topics(sock, resolution.topics)
         |> deactivate_subscription_key(subscription.key)
 
       {:halt, %{ok: true}, sock}
     else
       _ ->
         {:halt, %{ok: false}, sock}
+    end
+  end
+
+  defp unsubscribe_all_dynamic_topics(sock, topics) do
+    if Phoenix.LiveView.connected?(sock) do
+      Enum.reduce(topics || [], sock, fn topic, acc_sock ->
+        unsubscribe_dynamic_topic(acc_sock, topic)
+      end)
+    else
+      sock
     end
   end
 
@@ -606,8 +623,12 @@ defmodule Alva.LiveView do
     raise_compile_error!(caller, @err_streams_removed)
   end
 
-  defp validate_public_activation_key!(key, caller) when key in [:collections, :signals, :route_subscriptions, :page_events, :page_state] do
-    raise_compile_error!(caller, "Alva declarative page activation no longer accepts `#{key}:`. For the supported V2 path, use `subscriptions:` and `commands:`.")
+  defp validate_public_activation_key!(key, caller)
+       when key in [:collections, :signals, :route_subscriptions, :page_events, :page_state] do
+    raise_compile_error!(
+      caller,
+      "Alva declarative page activation no longer accepts `#{key}:`. For the supported V2 path, use `subscriptions:` and `commands:`."
+    )
   end
 
   defp validate_public_activation_key!(key, caller) do
@@ -795,16 +816,6 @@ defmodule Alva.LiveView do
       otp_app: nil,
       domains: [],
       event_map: %{},
-      collection_projections: [],
-      signal_projections: [],
-      collection_specs: %{},
-      collection_subscription_topics: %{},
-      route_subscriptions: MapSet.new(),
-      route_params: %{},
-      route_change_collections: %{},
-      collections: MapSet.new(),
-      collection_source_inputs: %{},
-      signals: MapSet.new(),
       active_subscription_refs: %{}
     })
   end

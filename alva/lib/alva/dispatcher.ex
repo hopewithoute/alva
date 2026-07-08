@@ -91,21 +91,13 @@ defmodule Alva.Dispatcher do
 
     with {:ok, record} <- fetch_record(resource, event_def, params, ash_opts),
          changeset <- Ash.Changeset.for_update(record, event_def.action, update_params, ash_opts) do
-      if event_def.validate_only do
-        handle_dry_run(changeset, event_def)
-      else
-        case Ash.update(changeset, ash_opts) do
-          {:ok, updated_record} ->
-            dispatch_success(updated_record, event_def)
-
-          {:error, error} ->
-            handle_error(error)
-        end
-      end
+      apply_update_changeset(changeset, event_def, ash_opts)
     else
       {:error, error} -> handle_error(error)
     end
   end
+
+
 
   defp execute_action(:destroy, resource, _action, event_def, params, ash_opts, _event_name) do
     with {:ok, record} <- fetch_record(resource, event_def, params, ash_opts),
@@ -113,9 +105,6 @@ defmodule Alva.Dispatcher do
       case Ash.destroy(changeset, Keyword.merge([return_destroyed?: true], ash_opts)) do
         {:ok, destroyed_record} ->
           dispatch_success(destroyed_record, event_def)
-
-        :ok ->
-          dispatch_success(record, event_def)
 
         {:error, error} ->
           handle_error(error)
@@ -137,12 +126,18 @@ defmodule Alva.Dispatcher do
     end
   end
 
-  defp execute_action(type, _resource, _action, _event_def, _params, _ash_opts, event_name) do
-    Logger.warning(
-      "Alva Dispatcher: Action type #{type} not supported yet for event #{event_name}"
-    )
+  defp apply_update_changeset(changeset, event_def, ash_opts) do
+    if event_def.validate_only do
+      handle_dry_run(changeset, event_def)
+    else
+      case Ash.update(changeset, ash_opts) do
+        {:ok, updated_record} ->
+          dispatch_success(updated_record, event_def)
 
-    %{ok: false, error: %{type: "unsupported", message: "Action type not supported yet"}}
+        {:error, error} ->
+          handle_error(error)
+      end
+    end
   end
 
   defp handle_read_with_lookup(resource, event_def, params, ash_opts) do
@@ -175,86 +170,89 @@ defmodule Alva.Dispatcher do
   end
 
   defp handle_read(resource, action, event_def, params, ash_opts) do
-    page_opts = get_indifferent(params, "page", :page)
-    sort_opts = get_indifferent(params, "sort", :sort)
     action_params = Map.drop(params, ["page", :page, "sort", :sort])
-
-    read_opts =
-      if is_map(page_opts) do
-        valid_keys = ~w(limit offset after before count filter)
-
-        page_opts =
-          page_opts
-          |> Enum.filter(fn {k, _v} -> to_string(k) in valid_keys end)
-          |> Enum.map(fn {k, v} -> {String.to_existing_atom(to_string(k)), v} end)
-          |> Keyword.new()
-
-        [page: page_opts]
-      else
-        if action.pagination do
-          Logger.warning(
-            "Alva Dispatcher: Action #{action.name} on #{inspect(resource)} is paginated but no page options were provided. Enforcing default limit: 50."
-          )
-
-          [page: [limit: 50]]
-        else
-          unless action.get? do
-            Logger.warning(
-              "Alva Dispatcher: Action #{action.name} on #{inspect(resource)} returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads."
-            )
-          end
-
-          []
-        end
-      end
-
-    read_opts = Keyword.merge(read_opts, ash_opts)
-    query = Ash.Query.for_read(resource, event_def.action, action_params, ash_opts)
-
-    query =
-      if sort_opts do
-        case Ash.Sort.parse_input(resource, sort_opts) do
-          {:ok, valid_sort} -> Ash.Query.sort(query, valid_sort)
-          _ -> query
-        end
-      else
-        query
-      end
+    read_opts = build_read_opts(params, action, resource, ash_opts)
+    query = build_read_query(resource, event_def.action, action_params, params, ash_opts)
 
     case Ash.read(query, read_opts) do
-      {:ok, %{results: records} = page}
-      when is_struct(page, Ash.Page.Offset) or is_struct(page, Ash.Page.Keyset) ->
-        if action.get? do
-          case records do
-            [record | _] ->
-              dispatch_success(record, event_def, page)
-
-            [] ->
-              handle_error(
-                Ash.Error.Query.NotFound.exception(resource: resource, primary_key: %{})
-              )
-          end
-        else
-          dispatch_success(records, event_def, page)
-        end
+      {:ok, page} when is_struct(page, Ash.Page.Offset) or is_struct(page, Ash.Page.Keyset) ->
+        handle_read_result(page.results, action, event_def, resource, page)
 
       {:ok, records} ->
-        if action.get? do
-          case records do
-            [record | _] ->
-              dispatch_success(record, event_def)
-
-            [] ->
-              handle_error(
-                Ash.Error.Query.NotFound.exception(resource: resource, primary_key: %{})
-              )
-          end
-        else
-          dispatch_success(records, event_def)
-        end
+        handle_read_result(records, action, event_def, resource, nil)
 
       {:error, error} ->
         handle_error(error)
+    end
+  end
+
+  defp handle_read_result(records, action, event_def, resource, page) do
+    if action.get? do
+      case records do
+        [record | _] ->
+          dispatch_success(record, event_def, page)
+
+        [] ->
+          handle_error(
+            Ash.Error.Query.NotFound.exception(resource: resource, primary_key: %{})
+          )
+      end
+    else
+      if page do
+        dispatch_success(records, event_def, page)
+      else
+        dispatch_success(records, event_def)
+      end
+    end
+  end
+
+  defp build_read_opts(params, action, resource, ash_opts) do
+    page_opts = get_indifferent(params, "page", :page)
+    read_opts = resolve_page_opts(page_opts, action, resource)
+    Keyword.merge(read_opts, ash_opts)
+  end
+
+  defp resolve_page_opts(page_opts, _action, _resource) when is_map(page_opts) do
+    valid_keys = ~w(limit offset after before count filter)
+
+    mapped =
+      page_opts
+      |> Enum.filter(fn {k, _v} -> to_string(k) in valid_keys end)
+      |> Enum.map(fn {k, v} -> {String.to_existing_atom(to_string(k)), v} end)
+      |> Keyword.new()
+
+    [page: mapped]
+  end
+
+  defp resolve_page_opts(_page_opts, action, resource) do
+    if action.pagination do
+      Logger.warning(
+        "Alva Dispatcher: Action #{action.name} on #{inspect(resource)} is paginated but no page options were provided. Enforcing default limit: 50."
+      )
+
+      [page: [limit: 50]]
+    else
+      unless action.get? do
+        Logger.warning(
+          "Alva Dispatcher: Action #{action.name} on #{inspect(resource)} returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads."
+        )
+      end
+
+      []
+    end
+  end
+
+  defp build_read_query(resource, action_name, action_params, params, ash_opts) do
+    sort_opts = get_indifferent(params, "sort", :sort)
+    query = Ash.Query.for_read(resource, action_name, action_params, ash_opts)
+
+    if sort_opts do
+      case Ash.Sort.parse_input(resource, sort_opts) do
+        {:ok, valid_sort} -> Ash.Query.sort(query, valid_sort)
+        _ -> query
+      end
+    else
+      query
     end
   end
 
@@ -277,25 +275,30 @@ defmodule Alva.Dispatcher do
       upload_config = Map.get(uploads, upload_name)
       entries = if upload_config, do: Map.get(upload_config, :entries, []), else: []
 
-      if upload_config && length(entries) > 0 do
-        {consumed_files, cleanup_paths} =
-          consumer.consume_uploaded_entries(socket, upload_name, fn %{path: path}, entry ->
-            {:ok, persist_uploaded_entry(path, entry)}
-          end)
-          |> Enum.unzip()
-
-        value =
-          if arg.type == {:array, Ash.Type.File} do
-            consumed_files
-          else
-            List.first(consumed_files)
-          end
-
+      if upload_config && entries != [] do
+        {value, cleanup_paths} = consume_upload(consumer, socket, upload_name, arg.type)
         {Map.put(acc_params, to_string(upload_name), value), acc_cleanup_paths ++ cleanup_paths}
       else
         {acc_params, acc_cleanup_paths}
       end
     end)
+  end
+
+  defp consume_upload(consumer, socket, upload_name, arg_type) do
+    {consumed_files, cleanup_paths} =
+      consumer.consume_uploaded_entries(socket, upload_name, fn %{path: path}, entry ->
+        {:ok, persist_uploaded_entry(path, entry)}
+      end)
+      |> Enum.unzip()
+
+    value =
+      if arg_type == {:array, Ash.Type.File} do
+        consumed_files
+      else
+        List.first(consumed_files)
+      end
+
+    {value, cleanup_paths}
   end
 
   defp persist_uploaded_entry(path, entry) do
@@ -442,6 +445,7 @@ defmodule Alva.Dispatcher do
 
   defp extract_and_remove_permissions(other), do: {%{}, other}
 
+
   defp extract_permissions_from_map(map) when is_map(map) do
     {perms, rest} =
       Map.split_with(map, fn {k, _v} ->
@@ -452,6 +456,7 @@ defmodule Alva.Dispatcher do
   end
 
   defp extract_permissions_from_map(other), do: {%{}, other}
+
 
   defp handle_error(error) do
     %{ok: false, error: Alva.Error.format(error)}
