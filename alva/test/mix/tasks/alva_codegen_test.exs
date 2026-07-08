@@ -65,12 +65,14 @@ defmodule Mix.Tasks.Alva.CodegenTest do
         name("test_stream")
         kind(:stream)
         source(event: :test_read)
+
         scope(%{
           id: %{type: :uuid, required?: true, allow_nil?: false},
           page: :map,
           cursor: %{type: :string, required?: false, allow_nil?: false},
           customer_query: %{type: :string, required?: false, allow_nil?: true}
         })
+
         insert(on: :create)
         resolve(:resolve_test_stream_scope)
       end
@@ -79,10 +81,12 @@ defmodule Mix.Tasks.Alva.CodegenTest do
         name("test_signal")
         kind(:signal)
         on(:create)
+
         scope(%{
           audience: %{type: :string, required?: true, allow_nil?: false},
           tenant_id: %{type: :uuid, required?: false, allow_nil?: true}
         })
+
         resolve(:resolve_test_signal_scope)
       end
     end
@@ -141,8 +145,8 @@ defmodule Mix.Tasks.Alva.CodegenTest do
 
     assert String.contains?(client_content, ~s(prop === "call"))
     assert String.contains?(client_content, "return base_api.call;")
-    assert String.contains?(client_content, ~s(prop === "on"))
-    assert String.contains?(client_content, "return base_api.on;")
+    refute String.contains?(client_content, ~s(prop === "on"))
+    refute String.contains?(client_content, "return base_api.on;")
     assert String.contains?(client_content, "export const ashCall = createAlvaApi().call;")
 
     subscriptions_content = File.read!(subscriptions_path)

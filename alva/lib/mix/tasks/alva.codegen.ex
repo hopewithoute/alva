@@ -140,7 +140,9 @@ defmodule Mix.Tasks.Alva.Codegen do
   end
 
   defp generate_subscription_input_shape(nil), do: "Record<string, never>"
-  defp generate_subscription_input_shape(scope) when scope in [%{}, []], do: "Record<string, never>"
+
+  defp generate_subscription_input_shape(scope) when scope in [%{}, []],
+    do: "Record<string, never>"
 
   defp generate_subscription_input_shape(scope) when is_map(scope) do
     fields =
@@ -212,10 +214,6 @@ defmodule Mix.Tasks.Alva.Codegen do
           get(target, prop: string) {
             if (path.length === 0 && prop === "call") {
               return base_api.call;
-            }
-
-            if (path.length === 0 && prop === "on") {
-              return base_api.on;
             }
 
             return create_deep_proxy([...path, prop]);

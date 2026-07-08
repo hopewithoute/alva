@@ -98,48 +98,22 @@ defmodule Alva.Codegen.DtoGenerator do
 
   defp generate_interface(resource) do
     name = interface_name(resource)
-
-    # Optionality logic: if there are field policies, they might be redacted
-    field_policies =
-      if Code.ensure_loaded?(Ash.Policy.Info) and
-           function_exported?(Ash.Policy.Info, :field_policies, 1) do
-        apply(Ash.Policy.Info, :field_policies, [resource]) || []
-      else
-        []
-      end
-
-    policy_fields =
-      field_policies
-      |> Enum.flat_map(fn policy -> policy.fields end)
-      |> Enum.uniq()
-
-    attrs = Ash.Resource.Info.public_attributes(resource)
-    calcs = Ash.Resource.Info.public_calculations(resource)
-    aggs = Ash.Resource.Info.public_aggregates(resource)
-    rels = Ash.Resource.Info.public_relationships(resource)
+    policy_fields = resource_policy_fields(resource)
+    {fields, rels} = public_fields_and_relationships(resource)
 
     fields_ts =
-      (attrs ++ calcs ++ aggs)
-      |> Enum.map(fn field ->
+      Enum.map(fields, fn field ->
         optional? = is_optional?(field, policy_fields)
         ts_type = TypeMapper.map_type(field.type, Map.get(field, :constraints, []))
         format_field(field.name, ts_type, optional?)
       end)
 
     rels_ts =
-      rels
-      |> Enum.map(fn rel ->
+      Enum.map(rels, fn rel ->
         # Relationships might not always be loaded
-        optional? = true
         dest_name = interface_name(rel.destination)
-
-        ts_type =
-          case rel.cardinality do
-            :many -> "#{dest_name}[]"
-            :one -> dest_name
-          end
-
-        format_field(rel.name, ts_type, optional?)
+        ts_type = if rel.cardinality == :many, do: "#{dest_name}[]", else: dest_name
+        format_field(rel.name, ts_type, true)
       end)
 
     all_fields = Enum.join(fields_ts ++ rels_ts, "\n")
@@ -161,15 +135,10 @@ defmodule Alva.Codegen.DtoGenerator do
   defp generate_filter_interface(resource) do
     name = interface_name(resource)
     filter_name = "#{name}Filter"
-
-    attrs = Ash.Resource.Info.public_attributes(resource)
-    calcs = Ash.Resource.Info.public_calculations(resource)
-    aggs = Ash.Resource.Info.public_aggregates(resource)
-    rels = Ash.Resource.Info.public_relationships(resource)
+    {fields, rels} = public_fields_and_relationships(resource)
 
     fields_ts =
-      (attrs ++ calcs ++ aggs)
-      |> Enum.map(fn field ->
+      Enum.map(fields, fn field ->
         ts_type = TypeMapper.map_type(field.type, Map.get(field, :constraints, []))
 
         filter_op_type =
@@ -184,8 +153,7 @@ defmodule Alva.Codegen.DtoGenerator do
       end)
 
     rels_ts =
-      rels
-      |> Enum.map(fn rel ->
+      Enum.map(rels, fn rel ->
         dest_name = interface_name(rel.destination)
         dest_filter = "#{dest_name}Filter"
         "  #{rel.name}?: #{dest_filter} | null;"
@@ -201,5 +169,27 @@ defmodule Alva.Codegen.DtoGenerator do
     #{all_fields}
     }
     """
+  end
+
+  defp resource_policy_fields(resource) do
+    if Code.ensure_loaded?(Ash.Policy.Info) and
+         function_exported?(Ash.Policy.Info, :field_policies, 1) do
+      (apply(Ash.Policy.Info, :field_policies, [resource]) || [])
+      |> Enum.flat_map(& &1.fields)
+      |> Enum.uniq()
+    else
+      []
+    end
+  end
+
+  defp public_fields_and_relationships(resource) do
+    fields =
+      Ash.Resource.Info.public_attributes(resource) ++
+        Ash.Resource.Info.public_calculations(resource) ++
+        Ash.Resource.Info.public_aggregates(resource)
+
+    rels = Ash.Resource.Info.public_relationships(resource)
+
+    {fields, rels}
   end
 end

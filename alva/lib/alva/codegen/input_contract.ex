@@ -6,80 +6,26 @@ defmodule Alva.Codegen.InputContract do
   alias Alva.Codegen.TypeMapper
 
   def generate_input_shape(resource, event_def, action, indent \\ "") do
-    is_read = action.type == :read
-    enable_filter? = Map.get(event_def, :enable_filter, false)
-
-    if not is_read and action.type not in [:create, :update, :action] do
+    if action.type not in [:read, :create, :update, :action] do
       "any"
     else
-      arguments = Map.get(action, :arguments, [])
-      accept = Map.get(action, :accept, [])
-      require_attributes = Map.get(action, :require_attributes, [])
-      allow_nil_input = Map.get(action, :allow_nil_input, [])
+      policy_fields = resource_policy_fields(resource)
 
-      field_policies =
-        if Code.ensure_loaded?(Ash.Policy.Info) and
-             function_exported?(Ash.Policy.Info, :field_policies, 1) do
-          apply(Ash.Policy.Info, :field_policies, [resource]) || []
-        else
-          []
-        end
-
-      policy_fields =
-        field_policies
-        |> Enum.flat_map(fn policy -> policy.fields end)
-        |> Enum.uniq()
-
-      args_ts =
-        arguments
-        |> Enum.map(fn arg ->
-          optional? = arg_optional?(arg)
-          ts_type = input_ts_type(arg.type, Map.get(arg, :constraints, []))
-          format_field(arg.name, ts_type, optional?, indent)
-        end)
+      args_ts = generate_arguments_ts(Map.get(action, :arguments, []), indent)
 
       attrs_ts =
-        accept
-        |> Enum.map(fn attr_name ->
-          attr = Ash.Resource.Info.attribute(resource, attr_name)
+        generate_attributes_ts(
+          resource,
+          action.type,
+          Map.get(action, :accept, []),
+          Map.get(action, :require_attributes, []),
+          policy_fields,
+          Map.get(action, :allow_nil_input, []),
+          indent
+        )
 
-          if attr do
-            optional? =
-              attr_optional?(
-                attr,
-                action.type,
-                require_attributes,
-                policy_fields,
-                allow_nil_input
-              )
-
-            ts_type = input_ts_type(attr.type, Map.get(attr, :constraints, []))
-            format_field(attr.name, ts_type, optional?, indent)
-          else
-            nil
-          end
-        end)
-        |> Enum.reject(&is_nil/1)
-
-      pks_ts =
-        if action.type in [:update, :destroy] do
-          Ash.Resource.Info.primary_key(resource)
-          |> Enum.map(fn pk ->
-            attr = Ash.Resource.Info.attribute(resource, pk)
-            ts_type = TypeMapper.map_type(attr.type, Map.get(attr, :constraints, []))
-            format_field(attr.name, ts_type, false, indent)
-          end)
-        else
-          []
-        end
-
-      filter_ts =
-        if enable_filter? do
-          resource_name = resource |> Module.split() |> List.last()
-          ["#{indent}  filter?: Types.#{resource_name}Filter;"]
-        else
-          []
-        end
+      pks_ts = generate_primary_keys_ts(resource, action.type, indent)
+      filter_ts = generate_filter_ts(resource, Map.get(event_def, :enable_filter, false), indent)
 
       all_fields = (args_ts ++ pks_ts ++ attrs_ts ++ filter_ts) |> Enum.uniq() |> Enum.join("\n")
 
@@ -88,6 +34,73 @@ defmodule Alva.Codegen.InputContract do
       else
         "{\n#{all_fields}\n#{indent}}"
       end
+    end
+  end
+
+  defp resource_policy_fields(resource) do
+    if Code.ensure_loaded?(Ash.Policy.Info) and
+         function_exported?(Ash.Policy.Info, :field_policies, 1) do
+      (apply(Ash.Policy.Info, :field_policies, [resource]) || [])
+      |> Enum.flat_map(& &1.fields)
+      |> Enum.uniq()
+    else
+      []
+    end
+  end
+
+  defp generate_arguments_ts(arguments, indent) do
+    Enum.map(arguments, fn arg ->
+      optional? = arg_optional?(arg)
+      ts_type = input_ts_type(arg.type, Map.get(arg, :constraints, []))
+      format_field(arg.name, ts_type, optional?, indent)
+    end)
+  end
+
+  defp generate_attributes_ts(
+         resource,
+         action_type,
+         accept,
+         require_attributes,
+         policy_fields,
+         allow_nil_input,
+         indent
+       ) do
+    accept
+    |> Enum.map(fn attr_name ->
+      attr = Ash.Resource.Info.attribute(resource, attr_name)
+
+      if attr do
+        optional? =
+          attr_optional?(attr, action_type, require_attributes, policy_fields, allow_nil_input)
+
+        ts_type = input_ts_type(attr.type, Map.get(attr, :constraints, []))
+        format_field(attr.name, ts_type, optional?, indent)
+      else
+        nil
+      end
+    end)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp generate_primary_keys_ts(resource, action_type, indent) do
+    if action_type in [:update, :destroy] do
+      Ash.Resource.Info.primary_key(resource)
+      |> Enum.map(fn pk ->
+        attr = Ash.Resource.Info.attribute(resource, pk)
+        ts_type = TypeMapper.map_type(attr.type, Map.get(attr, :constraints, []))
+        format_field(attr.name, ts_type, false, indent)
+      end)
+    else
+      []
+    end
+  end
+
+  defp generate_filter_ts(resource, enable_filter?, indent) do
+    if enable_filter? do
+      resource_name = resource |> Module.split() |> List.last()
+      ["#{indent}  filter?: Types.#{resource_name}Filter;"]
+    else
+      []
     end
   end
 

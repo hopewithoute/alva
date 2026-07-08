@@ -11,16 +11,16 @@ defmodule Mix.Tasks.Compile.AlvaPageEvents do
   def run(_args) do
     # Ensure the code path is loaded so we can check modules
     Code.prepend_path(Mix.Project.compile_path())
-    
+
     Mix.Project.compile_path()
     |> Path.join("*.beam")
     |> Path.wildcard()
     |> Enum.each(fn beam_path ->
-      module_name = 
+      module_name =
         beam_path
         |> Path.basename(".beam")
         |> String.to_atom()
-        
+
       # Try to load the module first so function_exported? works
       case Code.ensure_loaded(module_name) do
         {:module, ^module_name} ->
@@ -28,11 +28,14 @@ defmodule Mix.Tasks.Compile.AlvaPageEvents do
             page_events = apply(module_name, :__alva_page_events__, [])
             Alva.Codegen.PageEventsGenerator.generate!(module_name, page_events)
           end
+
         {:error, reason} ->
-          Mix.shell().error("Failed to load module #{module_name} for page events generation: #{inspect(reason)}")
+          Mix.shell().error(
+            "Failed to load module #{module_name} for page events generation: #{inspect(reason)}"
+          )
       end
     end)
-    
+
     {:ok, []}
   end
 end
