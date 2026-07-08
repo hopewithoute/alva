@@ -22,7 +22,9 @@ defmodule Alva.MixProject do
   defp deps do
     [
       {:ash, "~> 3.0"},
-      {:phoenix_live_view, "~> 1.0"}
+      {:phoenix_live_view, "~> 1.0"},
+      {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
+      {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false}
     ]
   end
 end

@@ -1,0 +1,379 @@
+From 06adc16015651fd1eb022dff3186870508e09c5a Mon Sep 17 00:00:00 2001
+From: hopewithoute <anggi.wibiyanto@gmail.com>
+Date: Wed, 8 Jul 2026 17:44:13 +0700
+Subject: [PATCH] Extract Alva.Serializer for unified payload formatting
+
+---
+ alva/lib/alva/dispatcher.ex        | 109 +-------------------------
+ alva/lib/alva/live_view.ex         |   8 +-
+ alva/lib/alva/serializer.ex        | 120 +++++++++++++++++++++++++++++
+ alva/test/alva/dispatcher_test.exs |  16 ++--
+ 4 files changed, 133 insertions(+), 120 deletions(-)
+ create mode 100644 alva/lib/alva/serializer.ex
+
+diff --git a/alva/lib/alva/dispatcher.ex b/alva/lib/alva/dispatcher.ex
+index 2f53e13..3ddfeda 100644
+--- a/alva/lib/alva/dispatcher.ex
++++ b/alva/lib/alva/dispatcher.ex
+@@ -349,7 +349,7 @@ defmodule Alva.Dispatcher do
+   end
+ 
+   defp dispatch_success(record_or_list, event_def, page \\ nil) do
+-    {stripped, exposed_meta} = strip_and_extract_metadata(record_or_list, event_def)
++    {stripped, exposed_meta} = Alva.Serializer.serialize(record_or_list, expose_metadata: event_def.expose_metadata)
+ 
+     if page do
+       handle_success(stripped, exposed_meta, page)
+@@ -379,114 +379,7 @@ defmodule Alva.Dispatcher do
+     end)
+   end
+ 
+-  def strip_and_extract_metadata(record, event_def) when is_map(record) do
+-    expose_keys = event_def.expose_metadata
+-    exposed_meta = extract_exposed_metadata(record, expose_keys)
+-    {strip_metadata(record), exposed_meta}
+-  end
+-
+-  # For lists, extract metadata from the first record only.
+-  # All records in a query share the same execution metadata.
+-  def strip_and_extract_metadata(list, event_def) when is_list(list) do
+-    expose_keys = event_def.expose_metadata
+-
+-    exposed_meta =
+-      case list do
+-        [first | _] -> extract_exposed_metadata(first, expose_keys)
+-        [] -> %{}
+-      end
+-
+-    {strip_metadata(list), exposed_meta}
+-  end
+-
+-  # Non-map/list results (strings, etc.) — no metadata to extract
+-  def strip_and_extract_metadata(result, _event_def) do
+-    {strip_metadata(result), %{}}
+-  end
+-
+-  defp extract_exposed_metadata(_record, []), do: %{}
+-
+-  defp extract_exposed_metadata(%{__metadata__: metadata}, keys) when is_map(metadata) do
+-    metadata
+-    |> Map.take(keys)
+-    |> Enum.into(%{})
+-  end
+-
+-  defp extract_exposed_metadata(_, _), do: %{}
+-
+-  def strip_metadata(%DateTime{} = datetime), do: DateTime.to_iso8601(datetime)
+-  def strip_metadata(%NaiveDateTime{} = datetime), do: NaiveDateTime.to_iso8601(datetime)
+-  def strip_metadata(%Date{} = date), do: Date.to_iso8601(date)
+-  def strip_metadata(%Time{} = time), do: Time.to_iso8601(time)
+-
+-  def strip_metadata(%module{} = record) do
+-    if Ash.Resource.Info.resource?(module) do
+-      strip_metadata_with_fields(record, public_fields(module))
+-    else
+-      record
+-      |> Map.from_struct()
+-      |> drop_metadata()
+-      |> Map.new(fn {k, v} -> {k, strip_metadata(v)} end)
+-    end
+-  end
+-
+-  defp strip_metadata_with_fields(record, fields) do
+-    fields
+-    |> Map.new(fn field ->
+-      case Map.get(record, field) do
+-        %{__struct__: Ash.NotLoaded} -> {field, :skip}
+-        %{__struct__: Ash.ForbiddenField} -> {field, :skip}
+-        val -> {field, strip_metadata(val)}
+-      end
+-    end)
+-    |> Map.reject(fn {_k, v} -> v == :skip end)
+-  end
+-
+-  def strip_metadata([first | _] = list) when is_map(first) do
+-    case Map.get(first, :__struct__) do
+-      module when not is_nil(module) ->
+-        if Ash.Resource.Info.resource?(module) do
+-          fields = public_fields(module)
+-          Enum.map(list, &strip_metadata_with_fields(&1, fields))
+-        else
+-          Enum.map(list, &strip_metadata/1)
+-        end
+-
+-      _ ->
+-        Enum.map(list, &strip_metadata/1)
+-    end
+-  end
+-
+-  def strip_metadata(list) when is_list(list) do
+-    Enum.map(list, &strip_metadata/1)
+-  end
+ 
+-  def strip_metadata(%{} = map) when not is_struct(map) do
+-    map
+-    |> drop_metadata()
+-    |> Enum.map(fn {k, v} -> {k, strip_metadata(v)} end)
+-    |> Enum.into(%{})
+-  end
+-
+-  def strip_metadata(atom) when is_atom(atom) and atom not in [nil, true, false] do
+-    Atom.to_string(atom)
+-  end
+-
+-  def strip_metadata(tuple) when is_tuple(tuple) do
+-    tuple
+-    |> Tuple.to_list()
+-    |> strip_metadata()
+-  end
+-
+-  def strip_metadata(other), do: other
+-
+-  defp drop_metadata(map) do
+-    Map.drop(map, [:__meta__, :__metadata__])
+-  end
+-
+-  defp public_fields(resource) do
+-    Alva.Resource.Info.public_fields(resource)
+-  end
+ 
+ 
+ 
+diff --git a/alva/lib/alva/live_view.ex b/alva/lib/alva/live_view.ex
+index eeaecd2..a2f501b 100644
+--- a/alva/lib/alva/live_view.ex
++++ b/alva/lib/alva/live_view.ex
+@@ -1175,7 +1175,7 @@ defmodule Alva.LiveView do
+   end
+ 
+   defp signal_payload(data, signal) do
+-    {payload, meta} = Alva.Dispatcher.strip_and_extract_metadata(data, signal)
++    {payload, meta} = Alva.Serializer.serialize(data, expose_metadata: signal.expose_metadata)
+ 
+     if map_size(meta) == 0 do
+       normalize_signal_payload(payload)
+@@ -1198,20 +1198,20 @@ defmodule Alva.LiveView do
+   end
+ 
+   defp apply_collection_operation(socket, name, %{op: :delete}, data) do
+-    Phoenix.LiveView.stream_delete(socket, name, Alva.Dispatcher.strip_metadata(data))
++    Phoenix.LiveView.stream_delete(socket, name, Alva.Serializer.strip_metadata(data))
+   end
+ 
+   defp apply_collection_operation(socket, name, %{op: :update} = operation, data) do
+     Phoenix.LiveView.stream_insert(
+       socket,
+       name,
+-      Alva.Dispatcher.strip_metadata(data),
++      Alva.Serializer.strip_metadata(data),
+       collection_operation_opts(operation, update_only: true)
+     )
+   end
+ 
+   defp apply_collection_operation(socket, name, %{op: :insert} = operation, data) do
+-    item = Alva.Dispatcher.strip_metadata(data)
++    item = Alva.Serializer.strip_metadata(data)
+ 
+     if pending_collection_insert?(socket, name, item) do
+       socket
+diff --git a/alva/lib/alva/serializer.ex b/alva/lib/alva/serializer.ex
+new file mode 100644
+index 0000000..f8341fa
+--- /dev/null
++++ b/alva/lib/alva/serializer.ex
+@@ -0,0 +1,120 @@
++defmodule Alva.Serializer do
++  @moduledoc """
++  Translates Ash records into JSON-friendly payloads, extracting explicitly exposed metadata
++  and stripping internal fields.
++  """
++
++  @doc """
++  Serializes a record or list of records. 
++
++  Options:
++  - `:expose_metadata` (list of atoms) - Keys to extract from `__metadata__` and return alongside the payload.
++  """
++  def serialize(record, opts \\ [])
++
++  def serialize(record, opts) when is_map(record) and not is_struct(record, Ash.Notifier.Notification) do
++    expose_keys = Keyword.get(opts, :expose_metadata, [])
++    exposed_meta = extract_exposed_metadata(record, expose_keys)
++    {strip_metadata(record), exposed_meta}
++  end
++
++  def serialize(list, opts) when is_list(list) do
++    expose_keys = Keyword.get(opts, :expose_metadata, [])
++
++    exposed_meta =
++      case list do
++        [first | _] -> extract_exposed_metadata(first, expose_keys)
++        [] -> %{}
++      end
++
++    {strip_metadata(list), exposed_meta}
++  end
++
++  def serialize(result, _opts) do
++    {strip_metadata(result), %{}}
++  end
++
++  defp extract_exposed_metadata(_record, []), do: %{}
++
++  defp extract_exposed_metadata(%{__metadata__: metadata}, keys) when is_map(metadata) do
++    metadata
++    |> Map.take(keys)
++    |> Enum.into(%{})
++  end
++
++  defp extract_exposed_metadata(_, _), do: %{}
++
++  def strip_metadata(%DateTime{} = datetime), do: DateTime.to_iso8601(datetime)
++  def strip_metadata(%NaiveDateTime{} = datetime), do: NaiveDateTime.to_iso8601(datetime)
++  def strip_metadata(%Date{} = date), do: Date.to_iso8601(date)
++  def strip_metadata(%Time{} = time), do: Time.to_iso8601(time)
++
++  def strip_metadata(%module{} = record) do
++    if Ash.Resource.Info.resource?(module) do
++      strip_metadata_with_fields(record, public_fields(module))
++    else
++      record
++      |> Map.from_struct()
++      |> drop_metadata()
++      |> Map.new(fn {k, v} -> {k, strip_metadata(v)} end)
++    end
++  end
++
++  def strip_metadata([first | _] = list) when is_map(first) do
++    case Map.get(first, :__struct__) do
++      module when not is_nil(module) ->
++        if Ash.Resource.Info.resource?(module) do
++          fields = public_fields(module)
++          Enum.map(list, &strip_metadata_with_fields(&1, fields))
++        else
++          Enum.map(list, &strip_metadata/1)
++        end
++
++      _ ->
++        Enum.map(list, &strip_metadata/1)
++    end
++  end
++
++  def strip_metadata(list) when is_list(list) do
++    Enum.map(list, &strip_metadata/1)
++  end
++
++  def strip_metadata(%{} = map) when not is_struct(map) do
++    map
++    |> drop_metadata()
++    |> Enum.map(fn {k, v} -> {k, strip_metadata(v)} end)
++    |> Enum.into(%{})
++  end
++
++  def strip_metadata(atom) when is_atom(atom) and atom not in [nil, true, false] do
++    Atom.to_string(atom)
++  end
++
++  def strip_metadata(tuple) when is_tuple(tuple) do
++    tuple
++    |> Tuple.to_list()
++    |> strip_metadata()
++  end
++
++  def strip_metadata(other), do: other
++
++  defp strip_metadata_with_fields(record, fields) do
++    fields
++    |> Map.new(fn field ->
++      case Map.get(record, field) do
++        %{__struct__: Ash.NotLoaded} -> {field, :skip}
++        %{__struct__: Ash.ForbiddenField} -> {field, :skip}
++        val -> {field, strip_metadata(val)}
++      end
++    end)
++    |> Map.reject(fn {_k, v} -> v == :skip end)
++  end
++
++  defp drop_metadata(map) do
++    Map.drop(map, [:__meta__, :__metadata__])
++  end
++
++  defp public_fields(resource) do
++    Alva.Resource.Info.public_fields(resource)
++  end
++end
+diff --git a/alva/test/alva/dispatcher_test.exs b/alva/test/alva/dispatcher_test.exs
+index b9aee19..bb000a8 100644
+--- a/alva/test/alva/dispatcher_test.exs
++++ b/alva/test/alva/dispatcher_test.exs
+@@ -711,7 +711,7 @@ defmodule Alva.DispatcherTest do
+       event_def = %Alva.Resource.Event{expose_metadata: [:sync_token]}
+ 
+       {stripped, exposed_meta} =
+-        Alva.Dispatcher.strip_and_extract_metadata(record_with_meta, event_def)
++        Alva.Serializer.serialize(record_with_meta, expose_metadata: event_def.expose_metadata)
+ 
+       assert stripped == %{id: record.id, name: "Test"}
+       assert exposed_meta == %{sync_token: "tok_abc123"}
+@@ -732,7 +732,7 @@ defmodule Alva.DispatcherTest do
+       event_def = %Alva.Resource.Event{expose_metadata: [:sync_token]}
+ 
+       {_stripped, exposed_meta} =
+-        Alva.Dispatcher.strip_and_extract_metadata(record_with_meta, event_def)
++        Alva.Serializer.serialize(record_with_meta, expose_metadata: event_def.expose_metadata)
+ 
+       assert exposed_meta == %{sync_token: "tok_abc123"}
+       refute Map.has_key?(exposed_meta, :internal_secret)
+@@ -753,7 +753,7 @@ defmodule Alva.DispatcherTest do
+       assert event.expose_metadata == []
+     end
+ 
+-    test "strip_and_extract_metadata extracts specified keys" do
++    test "serialize extracts specified keys" do
+       record = %MetadataResource{
+         id: "test-id",
+         name: "Test",
+@@ -762,13 +762,13 @@ defmodule Alva.DispatcherTest do
+ 
+       event_def = %Alva.Resource.Event{expose_metadata: [:sync_token]}
+ 
+-      {stripped, exposed_meta} = Alva.Dispatcher.strip_and_extract_metadata(record, event_def)
++      {stripped, exposed_meta} = Alva.Serializer.serialize(record, expose_metadata: event_def.expose_metadata)
+ 
+       assert stripped == %{id: "test-id", name: "Test"}
+       assert exposed_meta == %{sync_token: "tok_123"}
+     end
+ 
+-    test "strip_and_extract_metadata returns empty meta when no keys exposed" do
++    test "serialize returns empty meta when no keys exposed" do
+       record = %MetadataResource{
+         id: "test-id",
+         name: "Test",
+@@ -777,13 +777,13 @@ defmodule Alva.DispatcherTest do
+ 
+       event_def = %Alva.Resource.Event{expose_metadata: []}
+ 
+-      {stripped, exposed_meta} = Alva.Dispatcher.strip_and_extract_metadata(record, event_def)
++      {stripped, exposed_meta} = Alva.Serializer.serialize(record, expose_metadata: event_def.expose_metadata)
+ 
+       assert stripped == %{id: "test-id", name: "Test"}
+       assert exposed_meta == %{}
+     end
+ 
+-    test "strip_and_extract_metadata handles list of records" do
++    test "serialize handles list of records" do
+       records = [
+         %MetadataResource{id: "1", name: "A", __metadata__: %{sync_token: "tok_1"}},
+         %MetadataResource{id: "2", name: "B", __metadata__: %{sync_token: "tok_2"}}
+@@ -791,7 +791,7 @@ defmodule Alva.DispatcherTest do
+ 
+       event_def = %Alva.Resource.Event{expose_metadata: [:sync_token]}
+ 
+-      {stripped, exposed_meta} = Alva.Dispatcher.strip_and_extract_metadata(records, event_def)
++      {stripped, exposed_meta} = Alva.Serializer.serialize(records, expose_metadata: event_def.expose_metadata)
+ 
+       assert length(stripped) == 2
+       assert exposed_meta == %{sync_token: "tok_1"}
+-- 
+2.43.0
+

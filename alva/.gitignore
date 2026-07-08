@@ -22,3 +22,9 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 alva-*.tar
 
+# Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
