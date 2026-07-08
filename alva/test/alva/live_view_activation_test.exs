@@ -141,12 +141,30 @@ defmodule Alva.LiveViewActivationTest do
                  end
   end
 
-  test "fails to compile when top-level subscriptions are declared" do
+  test "compiles successfully when top-level subscriptions are declared" do
+    assert_compile("""
+    defmodule TestLiveViewActivation.SubscriptionsLive do
+      use Phoenix.LiveView
+
+      use Alva.LiveView,
+        subscriptions: [
+          :sales_orders,
+          sales_orders_updated: [activate: :mount]
+        ]
+
+      def render(assigns) do
+        ~H"<div />"
+      end
+    end
+    """)
+  end
+
+  test "fails to compile when top-level subscriptions use browser-facing string names" do
     assert_raise CompileError,
-                 ~r/no longer accepts top-level `subscriptions:`/,
+                 ~r/`subscriptions:` entries must use declaration key atoms/,
                  fn ->
                    compile_module("""
-                   defmodule TestLiveViewActivation.SubscriptionsLive do
+                   defmodule TestLiveViewActivation.InvalidSubscriptionsLive do
                      use Phoenix.LiveView
 
                      use Alva.LiveView,

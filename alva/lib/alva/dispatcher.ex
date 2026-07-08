@@ -31,7 +31,7 @@ defmodule Alva.Dispatcher do
         action_name = event_def.action
         action = Ash.Resource.Info.action(resource, action_name)
         params = Map.drop(params, ["meta", :meta])
-        
+
         # Unwrap form params if it matches the event name (standard LiveVue form submission)
         params =
           case Map.fetch(params, event_name) do
@@ -49,175 +49,7 @@ defmodule Alva.Dispatcher do
           end
 
         try do
-          case action.type do
-            :read ->
-              if event_def.lookup do
-                lookup_field = event_def.lookup
-                lookup_key = to_string(lookup_field)
-                lookup_value = Map.get(params, lookup_key)
-                action_params = Map.delete(params, lookup_key)
-
-                if is_nil(lookup_value) do
-                  handle_error(not_found_error(resource, lookup_field, lookup_value))
-                else
-                  require Ash.Query
-                  require Ash.Expr
-
-                  query =
-                    Ash.Query.for_read(resource, action_name, action_params, ash_opts)
-                    |> Ash.Query.filter(^Ash.Expr.ref(lookup_field) == ^lookup_value)
-
-                  case Ash.read_one(query, ash_opts) do
-                    {:ok, record} when not is_nil(record) ->
-                      dispatch_success(record, event_def)
-
-                    {:ok, nil} ->
-                      handle_error(not_found_error(resource, lookup_field, lookup_value))
-
-                    {:error, error} ->
-                      handle_error(error)
-                  end
-                end
-              else
-                page_opts = get_indifferent(params, "page", :page)
-                sort_opts = get_indifferent(params, "sort", :sort)
-                action_params = Map.drop(params, ["page", :page, "sort", :sort])
-
-                read_opts =
-                  if is_map(page_opts) do
-                    valid_keys = ~w(limit offset after before count filter)
-
-                    page_opts =
-                      page_opts
-                      |> Enum.filter(fn {k, _v} -> to_string(k) in valid_keys end)
-                      |> Enum.map(fn {k, v} -> {String.to_existing_atom(to_string(k)), v} end)
-                      |> Keyword.new()
-
-                    [page: page_opts]
-                  else
-                    []
-                  end
-
-                read_opts = Keyword.merge(read_opts, ash_opts)
-                query = Ash.Query.for_read(resource, action_name, action_params, ash_opts)
-
-                query =
-                  if sort_opts do
-                    case Ash.Sort.parse_input(resource, sort_opts) do
-                      {:ok, valid_sort} -> Ash.Query.sort(query, valid_sort)
-                      _ -> query
-                    end
-                  else
-                    query
-                  end
-
-                case Ash.read(query, read_opts) do
-                  {:ok, %{results: records} = page}
-                  when is_struct(page, Ash.Page.Offset) or is_struct(page, Ash.Page.Keyset) ->
-                    if action.get? do
-                      case records do
-                        [record | _] -> 
-                          dispatch_success(record, event_def, page)
-                        [] -> 
-                          handle_error(Ash.Error.Query.NotFound.exception(resource: resource, primary_key: %{}))
-                      end
-                    else
-                      dispatch_success(records, event_def, page)
-                    end
-
-                  {:ok, records} ->
-                    if action.get? do
-                      case records do
-                        [record | _] -> 
-                          dispatch_success(record, event_def)
-                        [] -> 
-                          handle_error(Ash.Error.Query.NotFound.exception(resource: resource, primary_key: %{}))
-                      end
-                    else
-                      dispatch_success(records, event_def)
-                    end
-
-                  {:error, error} ->
-                    handle_error(error)
-                end
-              end
-
-            :create ->
-              changeset = Ash.Changeset.for_create(resource, action_name, params, ash_opts)
-
-              if event_def.validate_only do
-                handle_dry_run(changeset, event_def)
-              else
-                case Ash.create(changeset, ash_opts) do
-                  {:ok, record} ->
-                    dispatch_success(record, event_def)
-
-                  {:error, error} ->
-                    handle_error(error)
-                end
-              end
-
-            :update ->
-              lookup_field = event_def.lookup || :id
-              lookup_key = to_string(lookup_field)
-              update_params = Map.delete(params, lookup_key)
-
-              with {:ok, record} <- fetch_record(resource, event_def, params, ash_opts),
-                   changeset <-
-                     Ash.Changeset.for_update(record, action_name, update_params, ash_opts) do
-                if event_def.validate_only do
-                  handle_dry_run(changeset, event_def)
-                else
-                  case Ash.update(changeset, ash_opts) do
-                    {:ok, updated_record} ->
-                      dispatch_success(updated_record, event_def)
-
-                    {:error, error} ->
-                      handle_error(error)
-                  end
-                end
-              else
-                {:error, error} -> handle_error(error)
-              end
-
-            :destroy ->
-              with {:ok, record} <- fetch_record(resource, event_def, params, ash_opts),
-                   changeset <- Ash.Changeset.for_destroy(record, action_name, %{}, ash_opts) do
-                case Ash.destroy(changeset, Keyword.merge([return_destroyed?: true], ash_opts)) do
-                  {:ok, destroyed_record} ->
-                    dispatch_success(destroyed_record, event_def)
-
-                  :ok ->
-                    dispatch_success(record, event_def)
-
-                  {:error, error} ->
-                    handle_error(error)
-                end
-              else
-                {:error, error} -> handle_error(error)
-              end
-
-            :action ->
-              input = Ash.ActionInput.for_action(resource, action_name, params)
-
-              case Ash.run_action(input, ash_opts) do
-                {:ok, result} ->
-                  dispatch_success(result, event_def)
-
-                {:error, error} ->
-                  handle_error(error)
-              end
-
-            _ ->
-              Logger.warning(
-                "Alva Dispatcher: Action type #{action.type} not supported yet for event #{event_name}"
-              )
-
-              %{
-                ok: false,
-                error: %{type: "unsupported", message: "Action type not supported yet"}
-              }
-          end
+          execute_action(action.type, resource, action, event_def, params, ash_opts, event_name)
         after
           cleanup_persisted_uploads(persisted_upload_paths)
         end
@@ -225,6 +57,204 @@ defmodule Alva.Dispatcher do
       :error ->
         Logger.warning("Alva Dispatcher: Unknown event #{event_name}")
         %{ok: false, error: %{type: "unknown", message: "Unknown event: #{event_name}"}}
+    end
+  end
+
+  defp execute_action(:read, resource, action, event_def, params, ash_opts, _event_name) do
+    if event_def.lookup do
+      handle_read_with_lookup(resource, event_def, params, ash_opts)
+    else
+      handle_read(resource, action, event_def, params, ash_opts)
+    end
+  end
+
+  defp execute_action(:create, resource, _action, event_def, params, ash_opts, _event_name) do
+    changeset = Ash.Changeset.for_create(resource, event_def.action, params, ash_opts)
+
+    if event_def.validate_only do
+      handle_dry_run(changeset, event_def)
+    else
+      case Ash.create(changeset, ash_opts) do
+        {:ok, record} ->
+          dispatch_success(record, event_def)
+
+        {:error, error} ->
+          handle_error(error)
+      end
+    end
+  end
+
+  defp execute_action(:update, resource, _action, event_def, params, ash_opts, _event_name) do
+    lookup_field = event_def.lookup || :id
+    lookup_key = to_string(lookup_field)
+    update_params = Map.delete(params, lookup_key)
+
+    with {:ok, record} <- fetch_record(resource, event_def, params, ash_opts),
+         changeset <- Ash.Changeset.for_update(record, event_def.action, update_params, ash_opts) do
+      if event_def.validate_only do
+        handle_dry_run(changeset, event_def)
+      else
+        case Ash.update(changeset, ash_opts) do
+          {:ok, updated_record} ->
+            dispatch_success(updated_record, event_def)
+
+          {:error, error} ->
+            handle_error(error)
+        end
+      end
+    else
+      {:error, error} -> handle_error(error)
+    end
+  end
+
+  defp execute_action(:destroy, resource, _action, event_def, params, ash_opts, _event_name) do
+    with {:ok, record} <- fetch_record(resource, event_def, params, ash_opts),
+         changeset <- Ash.Changeset.for_destroy(record, event_def.action, %{}, ash_opts) do
+      case Ash.destroy(changeset, Keyword.merge([return_destroyed?: true], ash_opts)) do
+        {:ok, destroyed_record} ->
+          dispatch_success(destroyed_record, event_def)
+
+        :ok ->
+          dispatch_success(record, event_def)
+
+        {:error, error} ->
+          handle_error(error)
+      end
+    else
+      {:error, error} -> handle_error(error)
+    end
+  end
+
+  defp execute_action(:action, resource, _action, event_def, params, ash_opts, _event_name) do
+    input = Ash.ActionInput.for_action(resource, event_def.action, params)
+
+    case Ash.run_action(input, ash_opts) do
+      {:ok, result} ->
+        dispatch_success(result, event_def)
+
+      {:error, error} ->
+        handle_error(error)
+    end
+  end
+
+  defp execute_action(type, _resource, _action, _event_def, _params, _ash_opts, event_name) do
+    Logger.warning(
+      "Alva Dispatcher: Action type #{type} not supported yet for event #{event_name}"
+    )
+
+    %{ok: false, error: %{type: "unsupported", message: "Action type not supported yet"}}
+  end
+
+  defp handle_read_with_lookup(resource, event_def, params, ash_opts) do
+    lookup_field = event_def.lookup
+    lookup_key = to_string(lookup_field)
+    lookup_value = Map.get(params, lookup_key)
+    action_params = Map.delete(params, lookup_key)
+
+    if is_nil(lookup_value) do
+      handle_error(not_found_error(resource, lookup_field, lookup_value))
+    else
+      require Ash.Query
+      require Ash.Expr
+
+      query =
+        Ash.Query.for_read(resource, event_def.action, action_params, ash_opts)
+        |> Ash.Query.filter(^Ash.Expr.ref(lookup_field) == ^lookup_value)
+
+      case Ash.read_one(query, ash_opts) do
+        {:ok, record} when not is_nil(record) ->
+          dispatch_success(record, event_def)
+
+        {:ok, nil} ->
+          handle_error(not_found_error(resource, lookup_field, lookup_value))
+
+        {:error, error} ->
+          handle_error(error)
+      end
+    end
+  end
+
+  defp handle_read(resource, action, event_def, params, ash_opts) do
+    page_opts = get_indifferent(params, "page", :page)
+    sort_opts = get_indifferent(params, "sort", :sort)
+    action_params = Map.drop(params, ["page", :page, "sort", :sort])
+
+    read_opts =
+      if is_map(page_opts) do
+        valid_keys = ~w(limit offset after before count filter)
+
+        page_opts =
+          page_opts
+          |> Enum.filter(fn {k, _v} -> to_string(k) in valid_keys end)
+          |> Enum.map(fn {k, v} -> {String.to_existing_atom(to_string(k)), v} end)
+          |> Keyword.new()
+
+        [page: page_opts]
+      else
+        if action.pagination do
+          Logger.warning(
+            "Alva Dispatcher: Action #{action.name} on #{inspect(resource)} is paginated but no page options were provided. Enforcing default limit: 50."
+          )
+
+          [page: [limit: 50]]
+        else
+          unless action.get? do
+            Logger.warning(
+              "Alva Dispatcher: Action #{action.name} on #{inspect(resource)} returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads."
+            )
+          end
+
+          []
+        end
+      end
+
+    read_opts = Keyword.merge(read_opts, ash_opts)
+    query = Ash.Query.for_read(resource, event_def.action, action_params, ash_opts)
+
+    query =
+      if sort_opts do
+        case Ash.Sort.parse_input(resource, sort_opts) do
+          {:ok, valid_sort} -> Ash.Query.sort(query, valid_sort)
+          _ -> query
+        end
+      else
+        query
+      end
+
+    case Ash.read(query, read_opts) do
+      {:ok, %{results: records} = page}
+      when is_struct(page, Ash.Page.Offset) or is_struct(page, Ash.Page.Keyset) ->
+        if action.get? do
+          case records do
+            [record | _] ->
+              dispatch_success(record, event_def, page)
+
+            [] ->
+              handle_error(
+                Ash.Error.Query.NotFound.exception(resource: resource, primary_key: %{})
+              )
+          end
+        else
+          dispatch_success(records, event_def, page)
+        end
+
+      {:ok, records} ->
+        if action.get? do
+          case records do
+            [record | _] ->
+              dispatch_success(record, event_def)
+
+            [] ->
+              handle_error(
+                Ash.Error.Query.NotFound.exception(resource: resource, primary_key: %{})
+              )
+          end
+        else
+          dispatch_success(records, event_def)
+        end
+
+      {:error, error} ->
+        handle_error(error)
     end
   end
 
@@ -391,21 +421,39 @@ defmodule Alva.Dispatcher do
 
   def strip_metadata(%module{} = record) do
     if Ash.Resource.Info.resource?(module) do
-      fields = public_fields(module)
-
-      record
-      |> Map.take(fields)
-      |> Enum.reject(fn {_k, v} ->
-        match?(%Ash.NotLoaded{}, v) or match?(%Ash.ForbiddenField{}, v)
-      end)
-      |> Enum.map(fn {k, v} -> {k, strip_metadata(v)} end)
-      |> Enum.into(%{})
+      strip_metadata_with_fields(record, public_fields(module))
     else
       record
       |> Map.from_struct()
       |> drop_metadata()
-      |> Enum.map(fn {k, v} -> {k, strip_metadata(v)} end)
-      |> Enum.into(%{})
+      |> Map.new(fn {k, v} -> {k, strip_metadata(v)} end)
+    end
+  end
+
+  defp strip_metadata_with_fields(record, fields) do
+    fields
+    |> Map.new(fn field ->
+      case Map.get(record, field) do
+        %{__struct__: Ash.NotLoaded} -> {field, :skip}
+        %{__struct__: Ash.ForbiddenField} -> {field, :skip}
+        val -> {field, strip_metadata(val)}
+      end
+    end)
+    |> Map.reject(fn {_k, v} -> v == :skip end)
+  end
+
+  def strip_metadata([first | _] = list) when is_map(first) do
+    case Map.get(first, :__struct__) do
+      module when not is_nil(module) ->
+        if Ash.Resource.Info.resource?(module) do
+          fields = public_fields(module)
+          Enum.map(list, &strip_metadata_with_fields(&1, fields))
+        else
+          Enum.map(list, &strip_metadata/1)
+        end
+
+      _ ->
+        Enum.map(list, &strip_metadata/1)
     end
   end
 
@@ -439,6 +487,8 @@ defmodule Alva.Dispatcher do
   defp public_fields(resource) do
     Alva.Resource.Info.public_fields(resource)
   end
+
+
 
   defp not_found_error(resource, lookup_field, lookup_value) do
     Ash.Error.Query.NotFound.exception(

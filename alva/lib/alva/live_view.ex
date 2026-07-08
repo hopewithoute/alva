@@ -8,16 +8,22 @@ defmodule Alva.LiveView do
     :collections,
     :signals,
     :route_subscriptions,
+    :subscriptions,
     :page_events,
     :page_state,
     :commands
   ]
   @public_collection_option_keys [:source_input, :reload_on]
+  @public_subscription_option_keys [:activate]
   @upload_change_event "alva.validate_upload"
   @upload_submit_event "alva.save_upload"
+  @err_domains_removed "Alva declarative page activation no longer accepts `domains:`. Prefer `subscriptions:` for the supported V2 path; projection lookup now resolves through the consuming host app registry."
+  @err_streams_removed "Alva declarative page activation no longer accepts top-level `streams:`. For the supported V2 path, expose typed `subscription` capabilities and activate them with `subscriptions:`."
 
-  @err_opts_expected "use Alva.LiveView expects keyword options. Use keyword-form declarative activation with :collections, :signals, :route_subscriptions, :page_events, :page_state, and :commands."
-  defp err_unsupported_key(key), do: "Alva declarative page activation only accepts :collections, :signals, :route_subscriptions, :page_events, :page_state, and :commands. Unsupported key: #{inspect(key)}"
+  @err_opts_expected "use Alva.LiveView expects keyword options. Prefer keyword-form `use Alva.LiveView, subscriptions: [...]` for the supported V2 path; legacy :collections, :signals, :route_subscriptions, :page_events, and :page_state remain compatibility surfaces."
+  defp err_unsupported_key(key),
+    do:
+      "Alva declarative page activation only accepts :subscriptions and :commands on the supported V2 path, plus legacy compatibility keys :collections, :signals, :route_subscriptions, :page_events, and :page_state. Unsupported key: #{inspect(key)}"
 
   defmacro __using__(opts) do
     validate_use_opts!(opts, __CALLER__)
@@ -174,78 +180,81 @@ defmodule Alva.LiveView do
   end
 
   def on_mount(config, params, _session, socket) do
-    %{
-      collections: collections,
-      signals: signals,
-      route_subscriptions: route_subscriptions,
-      page_events: page_events,
-      page_state: page_state,
-      subscriptions: subscriptions
-    } = normalize_mount_config(config)
+    normalized = normalize_mount_config(config)
 
     # Make subscriptions available in socket.private for allowlist checking
-    socket = Phoenix.LiveView.put_private(socket, :alva_options, [subscriptions: subscriptions])
+    socket =
+      Phoenix.LiveView.put_private(socket, :alva_options, subscriptions: normalized.subscriptions)
 
     otp_app = host_app_otp_app!(socket)
     registry = Alva.App.Info.registry(otp_app)
-    route_params = normalize_route_params(params)
-    collection_specs = collection_activation_specs(collections)
-    route_change_collections = route_change_collection_specs(collections)
-    route_subscription_callbacks = callback_route_subscriptions?(route_subscriptions)
-    page_event_callbacks = page_event_callbacks!(page_events)
-    page_state_callback = normalize_page_state_callback!(page_state)
 
+    page_event_callbacks = page_event_callbacks!(normalized.page_events)
     ensure_page_events_do_not_shadow_dispatcher_events!(page_event_callbacks, registry)
 
-    socket =
-      update_alva(socket, fn state ->
-        state
-        |> Map.merge(projection_cache(registry))
-        |> Map.merge(%{
-          otp_app: otp_app,
-          domains: registry.domains,
-          collection_specs: collection_specs,
-          route_params: route_params,
-          route_change_collections: route_change_collections
-        })
-      end)
+    socket
+    |> setup_initial_alva_state(normalized, params, otp_app, registry)
+    |> eager_activate_mount_subscriptions(normalized.subscriptions, otp_app)
+    |> configure_file_uploads_from_commands(config[:commands], otp_app)
+    |> attach_alva_hooks(normalized, page_event_callbacks, otp_app)
+    |> activate_initial_collections(normalized.collections)
+    |> activate_initial_signals(normalized.signals)
+    |> sync_projection_route_topics(normalized.route_subscriptions)
+    |> sync_page_state(normalize_page_state_callback!(normalized.page_state))
+    |> then(&{:cont, &1})
+  end
 
-    # Eagerly activate subscriptions with activate: :mount
-    socket =
-      if Phoenix.LiveView.connected?(socket) do
-        Enum.reduce(subscriptions, socket, fn
-          {key, opts}, acc_sock ->
-            if Keyword.get(opts, :activate) == :mount do
-              case Alva.App.Info.fetch_subscription_by_key(otp_app, key) do
-                {:ok, resource, subscription} ->
-                  case apply(resource, subscription.resolve, [%{}, acc_sock]) do
-                    {:ok, resolution} ->
-                      apply_subscription_resolution(acc_sock, subscription, resolution)
+  defp setup_initial_alva_state(socket, normalized, params, otp_app, registry) do
+    route_params = normalize_route_params(params)
+    collection_specs = collection_activation_specs(normalized.collections)
+    route_change_collections = route_change_collection_specs(normalized.collections)
 
-                    _ ->
-                      acc_sock
-                  end
+    update_alva(socket, fn state ->
+      state
+      |> Map.merge(projection_cache(registry))
+      |> Map.merge(%{
+        otp_app: otp_app,
+        domains: registry.domains,
+        collection_specs: collection_specs,
+        route_params: route_params,
+        route_change_collections: route_change_collections
+      })
+    end)
+  end
+
+  defp eager_activate_mount_subscriptions(socket, subscriptions, otp_app) do
+    Enum.reduce(subscriptions, socket, fn
+      {key, opts}, acc_sock ->
+        if Keyword.get(opts, :activate) == :mount do
+          case Alva.App.Info.fetch_subscription_by_key(otp_app, key) do
+            {:ok, resource, subscription} ->
+              case apply(resource, subscription.resolve, [%{}, acc_sock]) do
+                {:ok, resolution} ->
+                  apply_subscription_resolution(acc_sock, subscription, resolution)
 
                 _ ->
                   acc_sock
               end
-            else
+
+            _ ->
               acc_sock
-            end
+          end
+        else
+          acc_sock
+        end
 
-          _, acc_sock ->
-            acc_sock
-        end)
-      else
-        socket
-      end
+      _, acc_sock ->
+        acc_sock
+    end)
+  end
 
-    # Configure file uploads based on explicit commands
+  defp configure_file_uploads_from_commands(socket, commands, otp_app) do
     upload_arg_names =
-      Enum.flat_map(config[:commands] || [], fn command_name ->
+      Enum.flat_map(commands || [], fn command_name ->
         case Alva.App.Info.fetch_event(otp_app, to_string(command_name)) do
           {:ok, resource, event_def} ->
             action = Ash.Resource.Info.action(resource, event_def.action)
+
             if action do
               action.arguments
               |> Enum.filter(fn arg ->
@@ -259,110 +268,118 @@ defmodule Alva.LiveView do
             else
               []
             end
-          _ -> []
+
+          _ ->
+            []
         end
       end)
       |> Enum.uniq()
 
-    socket =
-      Enum.reduce(upload_arg_names, socket, fn arg_name, acc_socket ->
-        Phoenix.LiveView.allow_upload(acc_socket, arg_name, accept: :any, auto_upload: true)
-      end)
+    Enum.reduce(upload_arg_names, socket, fn arg_name, acc_socket ->
+      Phoenix.LiveView.allow_upload(acc_socket, arg_name, accept: :any, auto_upload: true)
+    end)
+  end
 
-    # Attach handle_event hook
-    socket =
-      Phoenix.LiveView.attach_hook(socket, :alva_handle_event, :handle_event, fn event_name,
-                                                                                 params,
-                                                                                 sock ->
-        cond do
-          upload_lifecycle_event?(event_name) ->
-            {:halt, sock}
+  defp attach_alva_hooks(socket, normalized, page_event_callbacks, otp_app) do
+    socket
+    |> attach_event_hook(page_event_callbacks, otp_app)
+    |> attach_info_hook()
+    |> attach_params_hook(normalized)
+  end
 
-          event_name == "alva:activate_subscription" ->
-            handle_activate_subscription(params, sock, otp_app)
-
-          event_name == "alva:load_more_subscription" ->
-            handle_load_more_subscription(params, sock, otp_app)
-
-          event_name == "alva:deactivate_subscription" ->
-            handle_deactivate_subscription(params, sock, otp_app)
-
-          Map.has_key?(page_event_callbacks, event_name) ->
-            handle_page_event(page_event_callbacks, event_name, params, sock)
-
-          true ->
-            res = Alva.Dispatcher.dispatch(event_name, params, otp_app: otp_app, socket: sock)
-
-            case res do
-              %{ok: false, error: %{type: "unknown"}} ->
-                {:cont, sock}
-
-              _ ->
-                {:halt, res, sock}
-            end
-        end
-      end)
-
-    # Attach handle_info hook
-    socket =
-      Phoenix.LiveView.attach_hook(socket, :alva_handle_info, :handle_info, fn
-        %Ash.Notifier.Notification{} = notification, sock ->
-          handle_notification(notification, sock, notification_occurrence_keys(notification))
-
-        %Phoenix.Socket.Broadcast{payload: %Ash.Notifier.Notification{} = notification} =
-            broadcast,
-        sock ->
-          _ = broadcast
-          handle_notification(notification, sock, notification_occurrence_keys(notification))
-
-        _msg, sock ->
-          {:cont, sock}
-      end)
-
-    socket =
+  defp attach_event_hook(socket, page_event_callbacks, otp_app) do
+    Phoenix.LiveView.attach_hook(socket, :alva_handle_event, :handle_event, fn event_name,
+                                                                               params,
+                                                                               sock ->
       cond do
-        map_size(route_change_collections) == 0 and not route_subscription_callbacks and
-            is_nil(page_state_callback) ->
-          socket
+        upload_lifecycle_event?(event_name) ->
+          {:halt, sock}
 
-        map_size(route_change_collections) == 0 and route_subscription_callbacks and
-          is_nil(page_state_callback) and
-            not route_lifecycle_available?(socket) ->
-          socket
+        event_name == "alva:activate_subscription" ->
+          handle_activate_subscription(params, sock, otp_app)
 
-        map_size(route_change_collections) == 0 and not route_subscription_callbacks and
-          not is_nil(page_state_callback) and not route_lifecycle_available?(socket) ->
-          socket
+        event_name == "alva:load_more_subscription" ->
+          handle_load_more_subscription(params, sock, otp_app)
+
+        event_name == "alva:deactivate_subscription" ->
+          handle_deactivate_subscription(params, sock, otp_app)
+
+        Map.has_key?(page_event_callbacks, event_name) ->
+          handle_page_event(page_event_callbacks, event_name, params, sock)
 
         true ->
-          Phoenix.LiveView.attach_hook(socket, :alva_handle_params, :handle_params, fn
-            params, _uri, sock ->
-              sock =
-                sock
-                |> put_route_params(params)
-                |> sync_projection_route_topics(route_subscriptions)
-                |> refresh_route_change_collections()
-                |> sync_page_state(page_state_callback)
+          res = Alva.Dispatcher.dispatch(event_name, params, otp_app: otp_app, socket: sock)
 
+          case res do
+            %{ok: false, error: %{type: "unknown"}} ->
               {:cont, sock}
-          end)
+
+            _ ->
+              {:halt, res, sock}
+          end
       end
+    end)
+  end
 
-    socket =
-      Enum.reduce(collections, socket, fn collection_spec, acc_socket ->
-        {collection_name, opts} = normalize_collection_spec!(collection_spec)
-        collection(acc_socket, collection_name, opts)
-      end)
+  defp attach_info_hook(socket) do
+    Phoenix.LiveView.attach_hook(socket, :alva_handle_info, :handle_info, fn
+      %Ash.Notifier.Notification{} = notification, sock ->
+        handle_notification(notification, sock, notification_occurrence_keys(notification))
 
-    socket =
-      Enum.reduce(signals, socket, fn signal_name, acc_socket ->
-        activate_signal(acc_socket, signal_name)
-      end)
+      %Phoenix.Socket.Broadcast{payload: %Ash.Notifier.Notification{} = notification} = broadcast,
+      sock ->
+        _ = broadcast
+        handle_notification(notification, sock, notification_occurrence_keys(notification))
 
-    socket = sync_projection_route_topics(socket, route_subscriptions)
-    socket = sync_page_state(socket, page_state_callback)
+      _msg, sock ->
+        {:cont, sock}
+    end)
+  end
 
-    {:cont, socket}
+  defp attach_params_hook(socket, normalized) do
+    route_change_collections = alva_state(socket).route_change_collections
+    route_subscription_callbacks = callback_route_subscriptions?(normalized.route_subscriptions)
+    page_state_callback = normalize_page_state_callback!(normalized.page_state)
+
+    cond do
+      map_size(route_change_collections) == 0 and not route_subscription_callbacks and
+          is_nil(page_state_callback) ->
+        socket
+
+      map_size(route_change_collections) == 0 and route_subscription_callbacks and
+        is_nil(page_state_callback) and not route_lifecycle_available?(socket) ->
+        socket
+
+      map_size(route_change_collections) == 0 and not route_subscription_callbacks and
+        not is_nil(page_state_callback) and not route_lifecycle_available?(socket) ->
+        socket
+
+      true ->
+        Phoenix.LiveView.attach_hook(socket, :alva_handle_params, :handle_params, fn
+          params, _uri, sock ->
+            sock =
+              sock
+              |> put_route_params(params)
+              |> sync_projection_route_topics(normalized.route_subscriptions)
+              |> refresh_route_change_collections()
+              |> sync_page_state(page_state_callback)
+
+            {:cont, sock}
+        end)
+    end
+  end
+
+  defp activate_initial_collections(socket, collections) do
+    Enum.reduce(collections, socket, fn collection_spec, acc_socket ->
+      {collection_name, opts} = normalize_collection_spec!(collection_spec)
+      collection(acc_socket, collection_name, opts)
+    end)
+  end
+
+  defp activate_initial_signals(socket, signals) do
+    Enum.reduce(signals, socket, fn signal_name, acc_socket ->
+      activate_signal(acc_socket, signal_name)
+    end)
   end
 
   defp handle_notification(notification, sock, occurrence_keys) do
@@ -399,24 +416,24 @@ defmodule Alva.LiveView do
       |> normalize_page_event_result!(event_name, callback)
     else
       changeset = Ecto.Changeset.cast({%{}, input_types}, params || %{}, Map.keys(input_types))
-      
+
       if changeset.valid? do
         casted_params =
           changeset
           |> Ecto.Changeset.apply_changes()
           |> Map.new(fn {k, v} -> {Atom.to_string(k), v} end)
-          
+
         callback
         |> resolve_page_event_callback!(socket, event_name, casted_params)
         |> normalize_page_event_result!(event_name, callback)
       else
-        errors = 
-          Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} -> 
-            Enum.reduce(opts, msg, fn {key, value}, acc -> 
-              String.replace(acc, "%{#{key}}", to_string(value)) 
-            end) 
+        errors =
+          Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
+            Enum.reduce(opts, msg, fn {key, value}, acc ->
+              String.replace(acc, "%{#{key}}", to_string(value))
+            end)
           end)
-        
+
         reply = %{
           ok: false,
           error: %{
@@ -424,7 +441,7 @@ defmodule Alva.LiveView do
             details: errors
           }
         }
-        
+
         {:halt, reply, socket}
       end
     end
@@ -541,8 +558,6 @@ defmodule Alva.LiveView do
       _ -> raise ArgumentError, "Alva collection #{inspect(name)} has no stored source input"
     end
   end
-
-
 
   defp collection_source_items!(_name, _collection, nil), do: []
 
@@ -735,6 +750,7 @@ defmodule Alva.LiveView do
       else
         socket
       end
+
     update_alva(socket, fn state ->
       Map.put(state, :dynamic_subscription_refs, Map.put(refs, topic, count + 1))
     end)
@@ -748,6 +764,7 @@ defmodule Alva.LiveView do
     if count > 0 do
       new_count = count - 1
       refs = if new_count == 0, do: Map.delete(refs, topic), else: Map.put(refs, topic, new_count)
+
       socket =
         update_alva(socket, fn state -> Map.put(state, :dynamic_subscription_refs, refs) end)
 
@@ -1229,11 +1246,11 @@ defmodule Alva.LiveView do
 
   defp matching_projection_operations(socket, notification_resource, occurrence_keys) do
     otp_app = alva_state(socket).otp_app
-    alva_options = Map.get(socket.private, :alva_options, [])
-    allowlist = Keyword.get(alva_options, :subscriptions, [])
 
     active_subscriptions =
-      Enum.flat_map(allowlist, fn sub_key ->
+      socket
+      |> active_subscription_keys()
+      |> Enum.flat_map(fn sub_key ->
         case Alva.App.Info.fetch_subscription_by_key(otp_app, sub_key) do
           {:ok, resource, subscription} -> [{sub_key, {resource, subscription}}]
           :error -> []
@@ -1247,10 +1264,12 @@ defmodule Alva.LiveView do
         if resource == notification_resource do
           case subscription.kind do
             :stream ->
+              stream_name = subscription_stream_name(subscription)
+
               ops =
                 subscription.operations
                 |> Enum.filter(&MapSet.member?(occurrence_keys, &1.on))
-                |> Enum.map(&{name, &1})
+                |> Enum.map(&{stream_name, &1})
 
               %{acc | streams: ops ++ acc.streams}
 
@@ -1351,13 +1370,16 @@ defmodule Alva.LiveView do
         sock = apply_subscription_resolution(sock, subscription, resolution)
         client_resolution = Map.drop(resolution, [:items])
         {:halt, %{ok: true, data: client_resolution}, sock}
-      
+
       {:error, reason} ->
         {:halt, %{ok: false, error: reason}, sock}
     end
   end
 
   defp apply_subscription_resolution(sock, subscription, resolution) do
+    sock = activate_subscription_key(sock, subscription.key)
+    stream_name = subscription_stream_name(subscription)
+
     # Subscribe to topics
     sock =
       if Phoenix.LiveView.connected?(sock) do
@@ -1370,7 +1392,7 @@ defmodule Alva.LiveView do
 
     # Stream items if it's a stream
     if subscription.kind == :stream do
-      Phoenix.LiveView.stream(sock, subscription.name, resolution.items)
+      Phoenix.LiveView.stream(sock, stream_name, resolution.items || [], reset: true)
     else
       sock
     end
@@ -1381,13 +1403,15 @@ defmodule Alva.LiveView do
       {:ok, subscription, resolution} ->
         sock =
           if subscription.kind == :stream do
+            stream_name = subscription_stream_name(subscription)
+
             Enum.reduce(resolution.items || [], sock, fn item, acc_sock ->
-              Phoenix.LiveView.stream_insert(acc_sock, subscription.name, item)
+              Phoenix.LiveView.stream_insert(acc_sock, stream_name, item)
             end)
           else
             sock
           end
-        
+
         client_resolution = Map.drop(resolution, [:items])
         {:halt, %{ok: true, data: client_resolution}, sock}
 
@@ -1400,7 +1424,8 @@ defmodule Alva.LiveView do
     subscription_name = params["name"]
     input = params["input"] || %{}
 
-    with {:ok, resource, subscription} <- Alva.App.Info.fetch_subscription(otp_app, subscription_name),
+    with {:ok, resource, subscription} <-
+           Alva.App.Info.fetch_subscription(otp_app, subscription_name),
          :ok <- check_subscription_allowlist(sock, subscription.key),
          :ok <- check_subscription_authorization(sock, resource, subscription),
          {:ok, resolution} <- apply(resource, subscription.resolve, [input, sock]) do
@@ -1428,6 +1453,7 @@ defmodule Alva.LiveView do
         else
           sock
         end
+        |> deactivate_subscription_key(subscription.key)
 
       {:halt, %{ok: true}, sock}
     else
@@ -1469,6 +1495,42 @@ defmodule Alva.LiveView do
     end
   end
 
+  defp activate_subscription_key(socket, key) when is_atom(key) do
+    update_alva(socket, fn state ->
+      refs = Map.get(state, :active_subscription_refs, %{})
+      next_count = Map.get(refs, key, 0) + 1
+      Map.put(state, :active_subscription_refs, Map.put(refs, key, next_count))
+    end)
+  end
+
+  defp deactivate_subscription_key(socket, key) when is_atom(key) do
+    update_alva(socket, fn state ->
+      refs = Map.get(state, :active_subscription_refs, %{})
+
+      next_refs =
+        case Map.get(refs, key, 0) do
+          count when count > 1 -> Map.put(refs, key, count - 1)
+          1 -> Map.delete(refs, key)
+          _ -> refs
+        end
+
+      Map.put(state, :active_subscription_refs, next_refs)
+    end)
+  end
+
+  defp active_subscription_keys(socket) do
+    socket
+    |> alva_state()
+    |> Map.get(:active_subscription_refs, %{})
+    |> Map.keys()
+  end
+
+  defp subscription_stream_name(%{key: key, name: name}) when is_atom(key) and is_binary(name) do
+    if Atom.to_string(key) == name, do: key, else: name
+  end
+
+  defp subscription_stream_name(%{key: key}), do: key
+
   defp projection_cache(%Alva.App.Info.Registry{} = registry) do
     %{
       event_map: registry.event_map,
@@ -1503,6 +1565,7 @@ defmodule Alva.LiveView do
 
     validate_collection_activation_specs!(collections)
     validate_signal_activation_specs!(signals)
+    validate_subscription_activation_specs!(Map.get(config, :subscriptions, []))
     validate_page_event_activation_specs!(Map.get(config, :page_events, []))
     validate_page_state_activation_spec!(Map.get(config, :page_state))
     validate_projection_namespace_activation_specs!(collections, signals)
@@ -1519,22 +1582,22 @@ defmodule Alva.LiveView do
 
   defp normalize_mount_config(config) when is_tuple(config) do
     raise ArgumentError,
-          "Alva declarative page activation no longer supports legacy tuple mount config. Use keyword-form `use Alva.LiveView` or pass a map with :collections, :signals, :route_subscriptions, :page_events, and :page_state."
+          "Alva declarative page activation no longer supports legacy tuple mount config. Prefer keyword-form `use Alva.LiveView, subscriptions: [...]`; if you must use map form, pass :subscriptions and any legacy compatibility keys explicitly."
   end
 
   defp normalize_mount_config(config) when is_list(config) do
     if Keyword.keyword?(config) do
       raise ArgumentError,
-            "Alva declarative page activation maps must be passed as a map, not a keyword list. Use keyword-form `use Alva.LiveView` or pass %{collections: ..., signals: ..., route_subscriptions: ..., page_events: ..., page_state: ...}."
+            "Alva declarative page activation maps must be passed as a map, not a keyword list. Prefer keyword-form `use Alva.LiveView, subscriptions: [...]`; if you pass a map, include :subscriptions and any legacy compatibility keys explicitly."
     else
       raise ArgumentError,
-            "Alva declarative page activation no longer accepts bare domain lists. Use keyword-form `use Alva.LiveView` or pass a map with :collections, :signals, :route_subscriptions, :page_events, and :page_state."
+            "Alva declarative page activation no longer accepts bare domain lists. Prefer keyword-form `use Alva.LiveView, subscriptions: [...]`; if you pass a map, include :subscriptions and any legacy compatibility keys explicitly."
     end
   end
 
   defp normalize_mount_config(config) do
     raise ArgumentError,
-          "Alva declarative page activation must be configured with keyword-form `use Alva.LiveView` or a map containing :collections, :signals, :route_subscriptions, :page_events, and :page_state. Got: #{inspect(config)}"
+          "Alva declarative page activation must be configured with keyword-form `use Alva.LiveView, subscriptions: [...]` or a map containing :subscriptions plus any legacy compatibility keys you still need. Got: #{inspect(config)}"
   end
 
   defp normalize_route_params(params) when is_map(params), do: params
@@ -1595,6 +1658,14 @@ defmodule Alva.LiveView do
           :error -> {:known, []}
         end
 
+      case Keyword.fetch(opts, :subscriptions) do
+        {:ok, subscriptions} ->
+          maybe_validate_subscription_use_declarations!(subscriptions, caller)
+
+        :error ->
+          :ok
+      end
+
       validate_projection_namespace_use_declarations!(collections, signals, caller)
 
       case Keyword.fetch(opts, :route_subscriptions) do
@@ -1626,18 +1697,12 @@ defmodule Alva.LiveView do
           :ok
       end
     else
-      raise CompileError,
-        file: caller.file,
-        line: caller.line,
-        description: @err_opts_expected
+      raise_compile_error!(caller, @err_opts_expected)
     end
   end
 
   defp validate_use_opts!(_opts, caller) do
-    raise CompileError,
-      file: caller.file,
-      line: caller.line,
-      description: @err_opts_expected
+    raise_compile_error!(caller, @err_opts_expected)
   end
 
   defp maybe_validate_collection_use_declarations!(collections, caller) do
@@ -1651,6 +1716,13 @@ defmodule Alva.LiveView do
     case expand_use_opt_literal(signals, caller) do
       {:ok, signals} -> {:known, validate_signal_use_declarations!(signals, caller)}
       :dynamic -> :unknown
+    end
+  end
+
+  defp maybe_validate_subscription_use_declarations!(subscriptions, caller) do
+    case expand_use_opt_literal(subscriptions, caller) do
+      {:ok, subscriptions} -> validate_subscription_use_declarations!(subscriptions, caller)
+      :dynamic -> :ok
     end
   end
 
@@ -1707,35 +1779,16 @@ defmodule Alva.LiveView do
   end
 
   defp validate_public_activation_key!(:domains, caller) do
-    raise CompileError,
-      file: caller.file,
-      line: caller.line,
-      description:
-        "Alva declarative page activation no longer accepts `domains:`. Collections and Signals now resolve through the consuming host app registry."
+    raise_compile_error!(caller, @err_domains_removed)
   end
 
   defp validate_public_activation_key!(:streams, caller) do
-    raise CompileError,
-      file: caller.file,
-      line: caller.line,
-      description:
-        "Alva declarative page activation no longer accepts top-level `streams:`. Replace route-owned lists with `collections:` or use raw Phoenix PubSub outside Alva."
-  end
-
-  defp validate_public_activation_key!(:subscriptions, caller) do
-    raise CompileError,
-      file: caller.file,
-      line: caller.line,
-      description:
-        "Alva declarative page activation no longer accepts top-level `subscriptions:`. Move topic wiring to top-level `route_subscriptions:` or use raw Phoenix PubSub outside Alva projections."
+    raise_compile_error!(caller, @err_streams_removed)
   end
 
   defp validate_public_activation_key!(key, caller) do
     unless key in @public_activation_keys do
-      raise CompileError,
-        file: caller.file,
-        line: caller.line,
-        description: err_unsupported_key(key)
+      raise_compile_error!(caller, err_unsupported_key(key))
     end
   end
 
@@ -1750,11 +1803,10 @@ defmodule Alva.LiveView do
           name
 
         other ->
-          raise CompileError,
-            file: caller.file,
-            line: caller.line,
-            description:
-              "Alva declarative `collections:` entries must be atoms or keyword entries like `collections: [sales_orders: [source_input: :callback]]`. Got: #{inspect(other)}"
+          raise_compile_error!(
+            caller,
+            "Alva declarative `collections:` entries must be atoms or keyword entries like `collections: [sales_orders: [source_input: :callback]]`. Got: #{inspect(other)}"
+          )
       end)
 
     validate_unique_activation_names!(names, :collection, caller)
@@ -1762,57 +1814,43 @@ defmodule Alva.LiveView do
   end
 
   defp validate_collection_use_declarations!(_collections, caller) do
-    raise CompileError,
-      file: caller.file,
-      line: caller.line,
-      description: "Alva declarative `collections:` must be a list."
+    raise_compile_error!(caller, "Alva declarative `collections:` must be a list.")
   end
 
   defp validate_collection_use_opts!(name, opts, caller) when is_list(opts) do
-    if Keyword.keyword?(opts) do
-      Enum.each(Keyword.keys(opts), fn
-        :source_input ->
-          :ok
-
-        :reload_on ->
-          :ok
-
-        :params ->
-          raise CompileError,
-            file: caller.file,
-            line: caller.line,
-            description:
-              "Alva declarative collection #{inspect(name)} no longer accepts `params:`. Use `source_input:` instead."
-
-        :subscriptions ->
-          raise CompileError,
-            file: caller.file,
-            line: caller.line,
-            description:
-              "Alva declarative collection #{inspect(name)} no longer accepts nested `subscriptions:`. Move topic wiring to top-level `route_subscriptions:`."
-
-        key ->
-          raise CompileError,
-            file: caller.file,
-            line: caller.line,
-            description:
-              "Alva declarative collection #{inspect(name)} only accepts :source_input and :reload_on options. Unsupported option: #{inspect(key)}"
-      end)
-    else
-      raise CompileError,
-        file: caller.file,
-        line: caller.line,
-        description:
-          "Alva declarative collection #{inspect(name)} options must be a keyword list containing only :source_input and :reload_on."
+    unless Keyword.keyword?(opts) do
+      raise_compile_error!(caller, invalid_collection_use_opts_description(name))
     end
+
+    Enum.each(Keyword.keys(opts), &validate_collection_use_opt_key!(&1, name, caller))
   end
 
   defp validate_collection_use_opts!(name, _opts, caller) do
-    raise CompileError,
-      file: caller.file,
-      line: caller.line,
-      description:
-        "Alva declarative collection #{inspect(name)} options must be a keyword list containing only :source_input and :reload_on."
+    raise_compile_error!(caller, invalid_collection_use_opts_description(name))
+  end
+
+  defp validate_collection_use_opt_key!(:source_input, _name, _caller), do: :ok
+  defp validate_collection_use_opt_key!(:reload_on, _name, _caller), do: :ok
+
+  defp validate_collection_use_opt_key!(:params, name, caller) do
+    raise_compile_error!(
+      caller,
+      "Alva declarative collection #{inspect(name)} no longer accepts `params:`. Use `source_input:` instead."
+    )
+  end
+
+  defp validate_collection_use_opt_key!(:subscriptions, name, caller) do
+    raise_compile_error!(
+      caller,
+      "Alva declarative collection #{inspect(name)} no longer accepts nested `subscriptions:`. Move topic wiring to top-level `route_subscriptions:`."
+    )
+  end
+
+  defp validate_collection_use_opt_key!(key, name, caller) do
+    raise_compile_error!(
+      caller,
+      "Alva declarative collection #{inspect(name)} only accepts :source_input and :reload_on options. Unsupported option: #{inspect(key)}"
+    )
   end
 
   defp validate_signal_use_declarations!(signals, caller) when is_list(signals) do
@@ -1822,25 +1860,22 @@ defmodule Alva.LiveView do
           key
 
         name when is_binary(name) ->
-          raise CompileError,
-            file: caller.file,
-            line: caller.line,
-            description:
-              "Alva declarative `signals:` no longer accepts browser-facing string names like #{inspect(name)}. Use the signal declaration key atom instead."
+          raise_compile_error!(
+            caller,
+            "Alva declarative `signals:` no longer accepts browser-facing string names like #{inspect(name)}. Use the signal declaration key atom instead."
+          )
 
         {key, _opts} when is_atom(key) ->
-          raise CompileError,
-            file: caller.file,
-            line: caller.line,
-            description:
-              "Alva declarative `signals:` only accepts atom declaration keys. Remove tuple options for #{inspect(key)} and keep client-facing names in the resource declaration."
+          raise_compile_error!(
+            caller,
+            "Alva declarative `signals:` only accepts atom declaration keys. Remove tuple options for #{inspect(key)} and keep client-facing names in the resource declaration."
+          )
 
         other ->
-          raise CompileError,
-            file: caller.file,
-            line: caller.line,
-            description:
-              "Alva declarative `signals:` entries must be atom declaration keys, got: #{inspect(other)}"
+          raise_compile_error!(
+            caller,
+            "Alva declarative `signals:` entries must be atom declaration keys, got: #{inspect(other)}"
+          )
       end)
 
     validate_unique_activation_names!(keys, :signal, caller)
@@ -1848,10 +1883,83 @@ defmodule Alva.LiveView do
   end
 
   defp validate_signal_use_declarations!(_signals, caller) do
-    raise CompileError,
-      file: caller.file,
-      line: caller.line,
-      description: "Alva declarative `signals:` must be a list of atom declaration keys."
+    raise_compile_error!(
+      caller,
+      "Alva declarative `signals:` must be a list of atom declaration keys."
+    )
+  end
+
+  defp validate_subscription_use_declarations!(subscriptions, caller)
+       when is_list(subscriptions) do
+    keys =
+      Enum.map(subscriptions, fn
+        key when is_atom(key) ->
+          key
+
+        {key, opts} when is_atom(key) and is_list(opts) ->
+          validate_subscription_use_opts!(key, opts, caller)
+          key
+
+        name when is_binary(name) ->
+          raise_compile_error!(
+            caller,
+            "Alva declarative `subscriptions:` entries must use declaration key atoms, got browser-facing name #{inspect(name)}"
+          )
+
+        {key, _opts} ->
+          raise_compile_error!(
+            caller,
+            invalid_subscription_use_entries_description("Invalid key: #{inspect(key)}")
+          )
+
+        other ->
+          raise_compile_error!(
+            caller,
+            invalid_subscription_use_entries_description("Got: #{inspect(other)}")
+          )
+      end)
+
+    validate_unique_activation_names!(keys, :subscription, caller)
+    keys
+  end
+
+  defp validate_subscription_use_declarations!(_subscriptions, caller) do
+    raise_compile_error!(
+      caller,
+      "Alva declarative `subscriptions:` must be a list of declaration key atoms or keyword entries."
+    )
+  end
+
+  defp validate_subscription_use_opts!(name, opts, caller) when is_list(opts) do
+    unless Keyword.keyword?(opts) do
+      raise_compile_error!(caller, invalid_subscription_use_opts_description(name))
+    end
+
+    Enum.each(Keyword.keys(opts), &validate_subscription_use_opt_key!(&1, name, opts, caller))
+  end
+
+  defp validate_subscription_use_opts!(name, _opts, caller) do
+    raise_compile_error!(caller, invalid_subscription_use_opts_description(name))
+  end
+
+  defp validate_subscription_use_opt_key!(:activate, name, opts, caller) do
+    case Keyword.get(opts, :activate) do
+      mode when mode in [:mount, :client] ->
+        :ok
+
+      mode ->
+        raise_compile_error!(
+          caller,
+          "Alva declarative subscription #{inspect(name)} only accepts `activate: :mount` or `activate: :client`, got: #{inspect(mode)}"
+        )
+    end
+  end
+
+  defp validate_subscription_use_opt_key!(key, name, _opts, caller) do
+    raise_compile_error!(
+      caller,
+      "Alva declarative subscription #{inspect(name)} only accepts #{@public_subscription_option_keys |> inspect()}. Unsupported option: #{inspect(key)}"
+    )
   end
 
   defp validate_unique_activation_names!(names, kind, caller) do
@@ -1862,11 +1970,10 @@ defmodule Alva.LiveView do
         :ok
 
       {name, _count} ->
-        raise CompileError,
-          file: caller.file,
-          line: caller.line,
-          description:
-            "Alva declarative #{kind} activation contains duplicate entries for #{inspect(name)}."
+        raise_compile_error!(
+          caller,
+          "Alva declarative #{kind} activation contains duplicate entries for #{inspect(name)}."
+        )
     end)
   end
 
@@ -1879,11 +1986,10 @@ defmodule Alva.LiveView do
     |> MapSet.new()
     |> MapSet.intersection(MapSet.new(signals))
     |> Enum.each(fn key ->
-      raise CompileError,
-        file: caller.file,
-        line: caller.line,
-        description:
-          "Alva declarative page activation cannot activate the same projection key in both `collections:` and `signals:`: #{inspect(key)}"
+      raise_compile_error!(
+        caller,
+        "Alva declarative page activation cannot activate the same projection key in both `collections:` and `signals:`: #{inspect(key)}"
+      )
     end)
   end
 
@@ -1902,29 +2008,26 @@ defmodule Alva.LiveView do
       Enum.map(route_subscriptions, fn
         {projection, topics} when is_atom(projection) ->
           unless MapSet.member?(active_projections, projection) do
-            raise CompileError,
-              file: caller.file,
-              line: caller.line,
-              description:
-                "Alva declarative route_subscriptions entry #{inspect(projection)} must reference an activated Collection or Signal projection on the same page."
+            raise_compile_error!(
+              caller,
+              "Alva declarative route_subscriptions entry #{inspect(projection)} must reference an activated Collection or Signal projection on the same page."
+            )
           end
 
           validate_route_subscription_use_topics!(projection, topics, caller)
           projection
 
         {projection, _topics} ->
-          raise CompileError,
-            file: caller.file,
-            line: caller.line,
-            description:
-              "Alva route_subscriptions keys must be Collection or Signal declaration key atoms, got: #{inspect(projection)}"
+          raise_compile_error!(
+            caller,
+            "Alva route_subscriptions keys must be Collection or Signal declaration key atoms, got: #{inspect(projection)}"
+          )
 
         spec ->
-          raise CompileError,
-            file: caller.file,
-            line: caller.line,
-            description:
-              "Alva route_subscriptions entries must be {projection, topics} tuples, got: #{inspect(spec)}"
+          raise_compile_error!(
+            caller,
+            "Alva route_subscriptions entries must be {projection, topics} tuples, got: #{inspect(spec)}"
+          )
       end)
 
     validate_unique_route_subscription_names!(projections, caller)
@@ -1936,11 +2039,10 @@ defmodule Alva.LiveView do
          _signals,
          caller
        ) do
-    raise CompileError,
-      file: caller.file,
-      line: caller.line,
-      description:
-        "Alva declarative `route_subscriptions:` must be a list of {projection, topics} tuples."
+    raise_compile_error!(
+      caller,
+      "Alva declarative `route_subscriptions:` must be a list of {projection, topics} tuples."
+    )
   end
 
   defp validate_route_subscription_use_topics!(_projection, topic, _caller)
@@ -1951,20 +2053,18 @@ defmodule Alva.LiveView do
     if Enum.all?(topics, &is_binary/1) do
       :ok
     else
-      raise CompileError,
-        file: caller.file,
-        line: caller.line,
-        description:
-          "Alva route_subscriptions entry #{inspect(projection)} must provide a binary topic or list of binary topics, got: #{inspect(topics)}"
+      raise_compile_error!(
+        caller,
+        invalid_route_subscription_topics_description(projection, topics)
+      )
     end
   end
 
   defp validate_route_subscription_use_topics!(projection, topics, caller) do
-    raise CompileError,
-      file: caller.file,
-      line: caller.line,
-      description:
-        "Alva route_subscriptions entry #{inspect(projection)} must provide a binary topic or list of binary topics, got: #{inspect(topics)}"
+    raise_compile_error!(
+      caller,
+      invalid_route_subscription_topics_description(projection, topics)
+    )
   end
 
   defp validate_unique_route_subscription_names!(projections, caller) do
@@ -1975,57 +2075,63 @@ defmodule Alva.LiveView do
         :ok
 
       {projection, _count} ->
-        raise CompileError,
-          file: caller.file,
-          line: caller.line,
-          description:
-            "Alva route_subscriptions contains duplicate entries for #{inspect(projection)}"
+        raise_compile_error!(
+          caller,
+          "Alva route_subscriptions contains duplicate entries for #{inspect(projection)}"
+        )
     end)
   end
 
+  defp normalize_page_event_use_spec!(page_event, caller) do
+    {event_name, callback} = page_event_use_tuple!(page_event, caller)
+    validate_page_event_use_name!(event_name, caller)
+    validate_page_event_use_callback!(event_name, callback, caller)
+    event_name
+  end
+
+  defp page_event_use_tuple!({:{}, _, [event_name, callback | _rest]}, _caller),
+    do: {event_name, callback}
+
+  defp page_event_use_tuple!({event_name, callback}, _caller), do: {event_name, callback}
+  defp page_event_use_tuple!({event_name, callback, _types}, _caller), do: {event_name, callback}
+
+  defp page_event_use_tuple!(other, caller) do
+    raise_compile_error!(
+      caller,
+      "Alva declarative page_events entries must be {event_name, callback} or {event_name, callback, types} tuples. Got: #{inspect(other)}"
+    )
+  end
+
+  defp validate_page_event_use_name!(event_name, _caller) when is_binary(event_name), do: :ok
+
+  defp validate_page_event_use_name!(event_name, caller) do
+    raise_compile_error!(
+      caller,
+      "Alva declarative page_events event names must be binaries, got: #{inspect(event_name)}"
+    )
+  end
+
+  defp validate_page_event_use_callback!(_event_name, callback, _caller) when is_atom(callback),
+    do: :ok
+
+  defp validate_page_event_use_callback!(event_name, callback, caller) do
+    raise_compile_error!(
+      caller,
+      "Alva declarative page_events callback for #{inspect(event_name)} must be a local callback atom, got: #{inspect(callback)}"
+    )
+  end
+
   defp validate_page_event_use_declarations!(page_events, caller) when is_list(page_events) do
-    event_names =
-      Enum.map(page_events, fn tuple ->
-        {event_name, callback} =
-          case tuple do
-            {:{}, _, [e, c | _]} -> {e, c}
-            {e, c} -> {e, c}
-            {e, c, _} -> {e, c}
-            other ->
-              raise CompileError,
-                file: caller.file,
-                line: caller.line,
-                description:
-                  "Alva declarative page_events entries must be {event_name, callback} or {event_name, callback, types} tuples. Got: #{inspect(other)}"
-          end
-
-        unless is_binary(event_name) do
-          raise CompileError,
-            file: caller.file,
-            line: caller.line,
-            description: "Alva declarative page_events event names must be binaries, got: #{inspect(event_name)}"
-        end
-
-        unless is_atom(callback) do
-          raise CompileError,
-            file: caller.file,
-            line: caller.line,
-            description:
-              "Alva declarative page_events callback for #{inspect(event_name)} must be a local callback atom, got: #{inspect(callback)}"
-        end
-
-        event_name
-      end)
+    event_names = Enum.map(page_events, &normalize_page_event_use_spec!(&1, caller))
 
     validate_unique_page_event_use_names!(event_names, caller)
   end
 
   defp validate_page_event_use_declarations!(_page_events, caller) do
-    raise CompileError,
-      file: caller.file,
-      line: caller.line,
-      description:
-        "Alva declarative `page_events:` must be a list of {event_name, callback} tuples."
+    raise_compile_error!(
+      caller,
+      "Alva declarative `page_events:` must be a list of {event_name, callback} tuples."
+    )
   end
 
   defp validate_unique_page_event_use_names!(event_names, caller) do
@@ -2036,22 +2142,43 @@ defmodule Alva.LiveView do
         :ok
 
       {event_name, _count} ->
-        raise CompileError,
-          file: caller.file,
-          line: caller.line,
-          description:
-            "Alva declarative page_events contains duplicate entries for #{inspect(event_name)}"
+        raise_compile_error!(
+          caller,
+          "Alva declarative page_events contains duplicate entries for #{inspect(event_name)}"
+        )
     end)
   end
 
   defp validate_page_state_use_declaration!(callback, _caller) when is_atom(callback), do: :ok
 
   defp validate_page_state_use_declaration!(callback, caller) do
+    raise_compile_error!(
+      caller,
+      "Alva declarative `page_state:` must be a local callback atom, got: #{inspect(callback)}"
+    )
+  end
+
+  defp invalid_collection_use_opts_description(name) do
+    "Alva declarative collection #{inspect(name)} options must be a keyword list containing only :source_input and :reload_on."
+  end
+
+  defp invalid_subscription_use_entries_description(detail) do
+    "Alva declarative `subscriptions:` entries must be atoms or keyword entries like `subscriptions: [sales_orders: [activate: :mount]]`. #{detail}"
+  end
+
+  defp invalid_subscription_use_opts_description(name) do
+    "Alva declarative subscription #{inspect(name)} options must be a keyword list containing only #{@public_subscription_option_keys |> inspect()}."
+  end
+
+  defp invalid_route_subscription_topics_description(projection, topics) do
+    "Alva route_subscriptions entry #{inspect(projection)} must provide a binary topic or list of binary topics, got: #{inspect(topics)}"
+  end
+
+  defp raise_compile_error!(caller, description) do
     raise CompileError,
       file: caller.file,
       line: caller.line,
-      description:
-        "Alva declarative `page_state:` must be a local callback atom, got: #{inspect(callback)}"
+      description: description
   end
 
   defp validate_mount_config_keys!(config) do
@@ -2059,8 +2186,7 @@ defmodule Alva.LiveView do
     |> Map.keys()
     |> Enum.each(fn
       :domains ->
-        raise ArgumentError,
-              "Alva declarative page activation no longer accepts `domains:`. Collections and Signals now resolve through the consuming host app registry."
+        raise ArgumentError, @err_domains_removed
 
       :collections ->
         :ok
@@ -2071,6 +2197,9 @@ defmodule Alva.LiveView do
       :route_subscriptions ->
         :ok
 
+      :subscriptions ->
+        :ok
+
       :page_events ->
         :ok
 
@@ -2078,12 +2207,7 @@ defmodule Alva.LiveView do
         :ok
 
       :streams ->
-        raise ArgumentError,
-              "Alva declarative page activation no longer accepts top-level `streams:`. Replace route-owned lists with `collections:` or use raw Phoenix PubSub outside Alva."
-
-      :subscriptions ->
-        raise ArgumentError,
-              "Alva declarative page activation no longer accepts top-level `subscriptions:`. Move topic wiring to top-level `route_subscriptions:` or use raw Phoenix PubSub outside Alva projections."
+        raise ArgumentError, @err_streams_removed
 
       key ->
         unless key in @public_activation_keys do
@@ -2158,6 +2282,60 @@ defmodule Alva.LiveView do
           "Alva declarative `signals:` must be a list of atom declaration keys, got: #{inspect(signals)}"
   end
 
+  defp validate_subscription_activation_specs!(subscriptions) when is_list(subscriptions) do
+    keys =
+      Enum.map(subscriptions, fn
+        key when is_atom(key) ->
+          key
+
+        {key, opts} when is_atom(key) and is_list(opts) ->
+          validate_subscription_activation_opts!(key, opts)
+          key
+
+        name when is_binary(name) ->
+          raise ArgumentError,
+                "Alva declarative `subscriptions:` entries must use declaration key atoms, got browser-facing name #{inspect(name)}"
+
+        {key, _opts} ->
+          raise ArgumentError,
+                "Alva declarative `subscriptions:` entries must be atoms or keyword entries like `subscriptions: [sales_orders: [activate: :mount]]`. Invalid key: #{inspect(key)}"
+
+        other ->
+          raise ArgumentError,
+                "Alva declarative `subscriptions:` entries must be atoms or keyword entries like `subscriptions: [sales_orders: [activate: :mount]]`, got: #{inspect(other)}"
+      end)
+
+    validate_unique_activation_specs!(keys, :subscription)
+  end
+
+  defp validate_subscription_activation_specs!(subscriptions) do
+    raise ArgumentError,
+          "Alva declarative `subscriptions:` must be a list of declaration key atoms or keyword entries, got: #{inspect(subscriptions)}"
+  end
+
+  defp validate_subscription_activation_opts!(name, opts) do
+    unless Keyword.keyword?(opts) do
+      raise ArgumentError,
+            "Alva declarative subscription #{inspect(name)} options must be a keyword list containing only #{@public_subscription_option_keys |> inspect()}."
+    end
+
+    Enum.each(Keyword.keys(opts), fn
+      :activate ->
+        case Keyword.get(opts, :activate) do
+          mode when mode in [:mount, :client] ->
+            :ok
+
+          mode ->
+            raise ArgumentError,
+                  "Alva declarative subscription #{inspect(name)} only accepts `activate: :mount` or `activate: :client`, got: #{inspect(mode)}"
+        end
+
+      key ->
+        raise ArgumentError,
+              "Alva declarative subscription #{inspect(name)} only accepts #{@public_subscription_option_keys |> inspect()}. Unsupported option: #{inspect(key)}"
+    end)
+  end
+
   defp validate_page_event_activation_specs!(page_events) when is_list(page_events) do
     event_names =
       page_events
@@ -2184,7 +2362,9 @@ defmodule Alva.LiveView do
     normalize_page_event_spec!({event_name, callback, nil})
   end
 
-  defp normalize_page_event_spec!({event_name, callback, input_types}) when is_binary(event_name) and is_atom(callback) and (is_map(input_types) or is_nil(input_types)) do
+  defp normalize_page_event_spec!({event_name, callback, input_types})
+       when is_binary(event_name) and is_atom(callback) and
+              (is_map(input_types) or is_nil(input_types)) do
     {event_name, %{callback: callback, input_types: input_types}}
   end
 
@@ -2360,7 +2540,8 @@ defmodule Alva.LiveView do
       route_change_collections: %{},
       collections: MapSet.new(),
       collection_source_inputs: %{},
-      signals: MapSet.new()
+      signals: MapSet.new(),
+      active_subscription_refs: %{}
     })
   end
 end

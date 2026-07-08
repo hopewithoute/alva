@@ -236,8 +236,7 @@ defmodule Alva.Resource.Verifiers.VerifyActions do
     raise Spark.Error.DslError,
       module: module,
       path: path,
-      message:
-        "#{kind} projection occurrence key must be an atom, got: #{inspect(trigger)}."
+      message: "#{kind} projection occurrence key must be an atom, got: #{inspect(trigger)}."
   end
 
   defp raise_dsl_error(module, event, message) do
@@ -246,5 +245,4 @@ defmodule Alva.Resource.Verifiers.VerifyActions do
       path: [:live_vue, :event, event.key],
       message: message
   end
-
 end

@@ -102,11 +102,45 @@ defmodule Alva.LiveViewTest do
         insert(on: :create)
       end
 
+      subscription :student_stream do
+        name("student_stream")
+        kind(:stream)
+        source(event: :students_list)
+        scope(%{page: :map})
+        insert(on: :upload_file)
+        insert(on: :create)
+        update(on: :rename)
+        delete(on: :destroy)
+        resolve(:resolve_student_stream_scope)
+      end
+
+      subscription :named_student_stream do
+        name("students.public")
+        kind(:stream)
+        source(event: :students_list)
+        scope(%{page: :map})
+        insert(on: :upload_file)
+        insert(on: :create)
+        update(on: :rename)
+        delete(on: :destroy)
+        resolve(:resolve_student_stream_scope)
+      end
+
       signal(:students_created,
         name: "students.created",
         on: :upload_file,
         expose_metadata: [:sync_token]
       )
+    end
+
+    def resolve_student_stream_scope(input, socket) do
+      case Alva.Dispatcher.dispatch("students.list", input || %{}, socket: socket) do
+        %{ok: true, data: items} ->
+          {:ok, %{topics: ["students"], items: items}}
+
+        %{ok: false, error: error} ->
+          {:error, error}
+      end
     end
   end
 
@@ -308,6 +342,93 @@ defmodule Alva.LiveViewTest do
         name: "students.ambiguous_created",
         on: :create
       )
+    end
+  end
+
+  defmodule AdminOnlyAuthorizer do
+    use Ash.Authorizer
+
+    def initial_state(actor, _resource, _action, _domain), do: %{actor: actor}
+
+    def strict_check_context(_state), do: []
+
+    def strict_check(%{actor: %{admin: true}} = state, _context), do: {:authorized, state}
+    def strict_check(_state, _context), do: {:error, Ash.Error.Forbidden.exception([])}
+
+    def check_context(_state), do: []
+    def check(_state, _context), do: :authorized
+  end
+
+  defmodule SignalSubscriptionResource do
+    use Ash.Resource,
+      domain: Alva.LiveViewTest.TestDomain,
+      validate_domain_inclusion?: false,
+      data_layer: Ash.DataLayer.Ets,
+      extensions: [Alva.Resource],
+      notifiers: [Ash.Notifier.PubSub],
+      authorizers: [AdminOnlyAuthorizer]
+
+    ets do
+      private?(true)
+    end
+
+    resource do
+      require_primary_key?(false)
+    end
+
+    attributes do
+      uuid_primary_key(:id)
+
+      attribute :title, :string do
+        public?(true)
+      end
+
+      attribute :severity, :atom do
+        public?(true)
+        constraints(one_of: [:info, :success, :warning])
+      end
+    end
+
+    actions do
+      read :read_signal do
+        public?(true)
+      end
+
+      create :notify do
+        public?(true)
+        accept([:title, :severity])
+      end
+    end
+
+    pub_sub do
+      module(Alva.LiveViewTest.Endpoint)
+      prefix("secure_notice")
+      publish(:notify, ["sent"])
+    end
+
+    live_vue do
+      subscription :admin_only_notice do
+        name("admin_only_notice")
+        kind(:signal)
+        on(:notify)
+        authorize_with(:read_signal)
+        resolve(:resolve_admin_only_notice_scope)
+      end
+    end
+
+    def resolve_admin_only_notice_scope(_input, _socket) do
+      {:ok, %{topics: [publication_topic("sent")]}}
+    end
+
+    defp publication_topic(topic) do
+      prefix = Ash.Notifier.PubSub.Info.prefix(__MODULE__) || ""
+      delimiter = Ash.Notifier.PubSub.Info.delimiter(__MODULE__)
+
+      if prefix == "" do
+        topic
+      else
+        "#{prefix}#{delimiter}#{topic}"
+      end
     end
   end
 
@@ -555,6 +676,7 @@ defmodule Alva.LiveViewTest do
       resource(JobResource)
       resource(MultiTopicResource)
       resource(AmbiguousResource)
+      resource(SignalSubscriptionResource)
     end
   end
 
@@ -837,7 +959,6 @@ defmodule Alva.LiveViewTest do
 
     assert {:noreply, ^socket} = DummyLive.handle_params(%{}, "/", socket)
   end
-
 
   test "route_params/1 returns the latest route params known to Alva" do
     {:cont, socket} =
@@ -1893,6 +2014,252 @@ defmodule Alva.LiveViewTest do
              final_socket.private.live_temp.push_events
   end
 
+  test "signal subscriptions enforce page allowlists on activation" do
+    socket =
+      %Phoenix.LiveView.Socket{
+        endpoint: Alva.LiveViewTest.Endpoint,
+        transport_pid: self(),
+        assigns: %{__changed__: %{}, current_user: %{admin: true}},
+        private: %{
+          lifecycle: %Phoenix.LiveView.Lifecycle{},
+          live_temp: %{push_events: []}
+        }
+      }
+
+    {:cont, socket} = Alva.LiveView.on_mount(%{subscriptions: []}, %{}, %{}, socket)
+    [%{function: callback}] = socket.private.lifecycle.handle_event
+
+    {:halt, reply, _socket} =
+      callback.(
+        "alva:activate_subscription",
+        %{"name" => "admin_only_notice", "input" => %{}},
+        socket
+      )
+
+    assert %{ok: false, error: %{type: "forbidden"}} = reply
+  end
+
+  test "signal subscriptions enforce authorize_with on activation" do
+    socket =
+      %Phoenix.LiveView.Socket{
+        endpoint: Alva.LiveViewTest.Endpoint,
+        transport_pid: self(),
+        assigns: %{__changed__: %{}, current_user: %{admin: false}},
+        private: %{
+          lifecycle: %Phoenix.LiveView.Lifecycle{},
+          live_temp: %{push_events: []}
+        }
+      }
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount(%{subscriptions: [:admin_only_notice]}, %{}, %{}, socket)
+
+    [%{function: callback}] = socket.private.lifecycle.handle_event
+
+    {:halt, reply, _socket} =
+      callback.(
+        "alva:activate_subscription",
+        %{"name" => "admin_only_notice", "input" => %{}},
+        socket
+      )
+
+    assert %{ok: false, error: %{type: "forbidden"}} = reply
+  end
+
+  test "signal subscriptions subscribe to derived topics and push signal payloads" do
+    socket =
+      %Phoenix.LiveView.Socket{
+        endpoint: Alva.LiveViewTest.Endpoint,
+        transport_pid: self(),
+        assigns: %{__changed__: %{}, current_user: %{admin: true}},
+        private: %{
+          lifecycle: %Phoenix.LiveView.Lifecycle{},
+          live_temp: %{push_events: []}
+        }
+      }
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount(%{subscriptions: [:admin_only_notice]}, %{}, %{}, socket)
+
+    [%{function: event_callback}] = socket.private.lifecycle.handle_event
+
+    {:halt, %{ok: true, data: %{topics: ["secure_notice:sent"]}}, socket} =
+      event_callback.(
+        "alva:activate_subscription",
+        %{"name" => "admin_only_notice", "input" => %{}},
+        socket
+      )
+
+    Phoenix.PubSub.broadcast(
+      Alva.PubSub,
+      "secure_notice:sent",
+      {:signal_subscription_seen, self()}
+    )
+
+    assert_receive {:signal_subscription_seen, _}
+
+    [%{function: info_callback}] = socket.private.lifecycle.handle_info
+
+    {:halt, final_socket} = info_callback.(admin_notice_notification(), socket)
+
+    assert [["admin_only_notice", %{id: "notice-1", title: "Admin only", severity: "info"}]] =
+             final_socket.private.live_temp.push_events
+  end
+
+  test "stream subscriptions configured with activate: :mount populate stream data during mount" do
+    create_student!("Eager Stream A")
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{subscriptions: [student_stream: [activate: :mount]]},
+        %{},
+        %{},
+        base_socket()
+      )
+
+    assert [%{name: "Eager Stream A"}] = stream_items(socket, :student_stream)
+  end
+
+  test "stream subscriptions execute the source event when activated lazily" do
+    create_student!("Lazy Stream A")
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{subscriptions: [:student_stream]},
+        %{},
+        %{},
+        connected_alva_socket()
+      )
+
+    [%{function: callback}] = socket.private.lifecycle.handle_event
+
+    {:halt, %{ok: true, data: %{topics: ["students"]}}, activated_socket} =
+      callback.(
+        "alva:activate_subscription",
+        %{"name" => "student_stream", "input" => %{}},
+        socket
+      )
+
+    assert [%{name: "Lazy Stream A"}] = stream_items(activated_socket, :student_stream)
+  end
+
+  test "inactive stream subscriptions ignore matching notifications until activated" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{subscriptions: [:student_stream]},
+        %{},
+        %{},
+        connected_alva_socket()
+      )
+
+    [%{function: callback}] = socket.private.lifecycle.handle_info
+
+    assert {:cont, ^socket} = callback.(student_created_notification(), socket)
+    refute Map.has_key?(socket.assigns, :streams)
+  end
+
+  test "active stream subscriptions apply matching notification operations" do
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{subscriptions: [:student_stream]},
+        %{},
+        %{},
+        connected_alva_socket()
+      )
+
+    [%{function: event_callback}] = socket.private.lifecycle.handle_event
+
+    {:halt, %{ok: true, data: %{topics: ["students"]}}, socket} =
+      event_callback.(
+        "alva:activate_subscription",
+        %{"name" => "student_stream", "input" => %{}},
+        socket
+      )
+
+    [%{function: info_callback}] = socket.private.lifecycle.handle_info
+
+    {:halt, final_socket} = info_callback.(student_created_notification(), socket)
+
+    assert [%{id: "123", name: "test"}] = stream_items(final_socket, :student_stream)
+  end
+
+  test "stream subscriptions load more into the existing LiveView stream" do
+    create_student!("First Page")
+    create_student!("Second Page")
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{subscriptions: [:student_stream]},
+        %{},
+        %{},
+        connected_alva_socket()
+      )
+
+    [%{function: event_callback}] = socket.private.lifecycle.handle_event
+
+    {:halt, %{ok: true, data: %{topics: ["students"]}}, socket} =
+      event_callback.(
+        "alva:activate_subscription",
+        %{"name" => "student_stream", "input" => %{"page" => %{"limit" => 1}}},
+        socket
+      )
+
+    initial_names = Enum.map(stream_items(socket, :student_stream), & &1.name)
+    assert length(initial_names) == 1
+
+    {:halt, %{ok: true, data: %{topics: ["students"]}}, loaded_socket} =
+      event_callback.(
+        "alva:load_more_subscription",
+        %{"name" => "student_stream", "input" => %{"page" => %{"limit" => 2}}},
+        socket
+      )
+
+    names = Enum.map(stream_items(loaded_socket, :student_stream), & &1.name)
+
+    assert length(names) > length(initial_names)
+    assert Enum.all?(initial_names, &(&1 in names))
+    assert Enum.sort(Enum.uniq(names)) == ["First Page", "Second Page"]
+  end
+
+  test "custom-named stream subscriptions reset and load more under the public subscription name" do
+    create_student!("Named First Page")
+    create_student!("Named Second Page")
+
+    {:cont, socket} =
+      Alva.LiveView.on_mount(
+        %{subscriptions: [:named_student_stream]},
+        %{},
+        %{},
+        connected_alva_socket()
+      )
+
+    [%{function: event_callback}] = socket.private.lifecycle.handle_event
+
+    {:halt, %{ok: true, data: %{topics: ["students"]}}, socket} =
+      event_callback.(
+        "alva:activate_subscription",
+        %{"name" => "students.public", "input" => %{"page" => %{"limit" => 1}}},
+        socket
+      )
+
+    initial_names = Enum.map(stream_items(socket, "students.public"), & &1.name)
+    assert length(initial_names) == 1
+    refute Map.has_key?(socket.assigns.streams, :named_student_stream)
+
+    {:halt, %{ok: true, data: %{topics: ["students"]}}, loaded_socket} =
+      event_callback.(
+        "alva:load_more_subscription",
+        %{"name" => "students.public", "input" => %{"page" => %{"limit" => 2}}},
+        socket
+      )
+
+    names = Enum.map(stream_items(loaded_socket, "students.public"), & &1.name)
+
+    assert length(names) > length(initial_names)
+    assert Enum.all?(initial_names, &(&1 in names))
+    assert Enum.sort(Enum.uniq(names)) == ["Named First Page", "Named Second Page"]
+  end
+
   test "unbound command read results behave as normal replies without collection mutation" do
     create_student!("Unbound A")
 
@@ -2254,6 +2621,18 @@ defmodule Alva.LiveViewTest do
     |> base_socket()
   end
 
+  defp connected_alva_socket do
+    %Phoenix.LiveView.Socket{
+      endpoint: Alva.LiveViewTest.Endpoint,
+      transport_pid: self(),
+      assigns: %{__changed__: %{}},
+      private: %{
+        lifecycle: %Phoenix.LiveView.Lifecycle{},
+        live_temp: %{push_events: []}
+      }
+    }
+  end
+
   defp active_students_collection_socket do
     {:cont, socket} =
       Alva.LiveView.on_mount(
@@ -2364,6 +2743,14 @@ defmodule Alva.LiveViewTest do
       )
 
     final_socket
+  end
+
+  defp admin_notice_notification do
+    %Ash.Notifier.Notification{
+      resource: SignalSubscriptionResource,
+      action: %{name: :notify},
+      data: %{id: "notice-1", title: "Admin only", severity: :info}
+    }
   end
 
   defp create_student!(name) do

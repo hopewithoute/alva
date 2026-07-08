@@ -19,9 +19,12 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEvents do
         identity_label: :key
       )
 
-
     subscription_map =
-      persist_projection_map(resources, module, :subscription, &Alva.Resource.Info.subscriptions/1,
+      persist_projection_map(
+        resources,
+        module,
+        :subscription,
+        &Alva.Resource.Info.subscriptions/1,
         identity_fun: & &1.key,
         identity_label: :key
       )

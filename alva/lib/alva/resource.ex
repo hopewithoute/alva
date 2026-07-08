@@ -376,7 +376,7 @@ defmodule Alva.Resource do
           "Whether this capability acts as a reactive list (stream) or a one-off notification (signal)."
       ],
       scope: [
-        type: :any,
+        type: {:custom, Alva.Resource, :validate_scope, []},
         required: false,
         default: %{},
         doc:
@@ -417,4 +417,28 @@ defmodule Alva.Resource do
     sections: [@live_vue],
     verifiers: [Alva.Resource.Verifiers.VerifyActions],
     transformers: []
+
+  @doc false
+  def validate_scope(scope) when scope in [%{}, []], do: {:ok, scope}
+
+  def validate_scope(scope) when is_map(scope) do
+    if Enum.all?(scope, fn {k, v} -> is_atom(k) and validate_scope_entry(v) end) do
+      {:ok, scope}
+    else
+      {:error, "Scope must be a valid schema map, e.g. %{id: :uuid, params: %{type: :map, required?: true}}"}
+    end
+  end
+
+  def validate_scope(_), do: {:error, "Scope must be a map"}
+
+  defp validate_scope_entry(spec) when is_list(spec) do
+    spec |> Enum.into(%{}) |> validate_scope_entry()
+  end
+
+  defp validate_scope_entry(spec) when is_map(spec) do
+    Map.has_key?(spec, :type) or Map.has_key?(spec, "type")
+  end
+
+  defp validate_scope_entry(type) when is_atom(type), do: true
+  defp validate_scope_entry(_), do: false
 end

@@ -53,7 +53,9 @@ defmodule Alva.App.Info do
 
   def fetch_subscription(otp_app, subscription_name)
       when is_atom(otp_app) and not is_nil(otp_app) and is_binary(subscription_name) do
-    case Enum.find(subscription_map(otp_app), fn {_key, {_res, sub}} -> sub.name == subscription_name end) do
+    case Enum.find(subscription_map(otp_app), fn {_key, {_res, sub}} ->
+           sub.name == subscription_name
+         end) do
       {_key, {resource, subscription}} -> {:ok, resource, subscription}
       nil -> :error
     end
@@ -95,7 +97,6 @@ defmodule Alva.App.Info do
       "application event name"
     )
   end
-
 
   def verify_host_app_subscription_uniqueness!(current_domain, current_subscription_map) do
     verify_host_app_uniqueness!(
