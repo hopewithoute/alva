@@ -150,19 +150,23 @@ defmodule Alva.Registry do
   end
 
   defp build_unique_map!(domains, fetcher, identity_label) do
-    domains
-    |> Enum.reduce(%{}, fn domain, acc ->
-      fetcher.(domain)
-      |> Enum.reduce(acc, fn {identity, {resource, value}}, map ->
-        case map do
-          %{^identity => {existing_resource, _existing_value}} ->
-            raise ArgumentError,
-                  "Duplicate application #{identity_label} #{inspect(identity)} found in #{inspect(resource)} (already defined in #{inspect(existing_resource)})"
+    Enum.reduce(domains, %{}, fn domain, acc ->
+      domain
+      |> fetcher.()
+      |> reduce_unique_map!(acc, identity_label)
+    end)
+  end
 
-          _ ->
-            Map.put(map, identity, {resource, value})
-        end
-      end)
+  defp reduce_unique_map!(entries, acc, identity_label) do
+    Enum.reduce(entries, acc, fn {identity, {resource, value}}, map ->
+      case map do
+        %{^identity => {existing_resource, _existing_value}} ->
+          raise ArgumentError,
+                "Duplicate application #{identity_label} #{inspect(identity)} found in #{inspect(resource)} (already defined in #{inspect(existing_resource)})"
+
+        _ ->
+          Map.put(map, identity, {resource, value})
+      end
     end)
   end
 
@@ -187,8 +191,7 @@ defmodule Alva.Registry do
          identity_label
        ) do
     _ =
-      domains
-      |> Enum.reduce(%{}, fn domain, acc ->
+      Enum.reduce(domains, %{}, fn domain, acc ->
         domain_entries =
           if domain == current_domain do
             current_entries
@@ -196,22 +199,40 @@ defmodule Alva.Registry do
             fetcher.(domain)
           end
 
-        Enum.reduce(domain_entries, acc, fn {identity, {resource, _value}}, map ->
-          case map do
-            %{^identity => {existing_domain, existing_resource}} ->
-              raise Spark.Error.DslError,
-                module: current_domain,
-                path: [:resources],
-                message:
-                  "Duplicate #{identity_label} #{inspect(identity)} in #{inspect(otp_app)} across #{inspect(domain)} / #{inspect(resource)} (already defined in #{inspect(existing_domain)} / #{inspect(existing_resource)})"
-
-            _ ->
-              Map.put(map, identity, {domain, resource})
-          end
-        end)
+        reduce_domain_entries!(
+          domain_entries,
+          acc,
+          domain,
+          current_domain,
+          otp_app,
+          identity_label
+        )
       end)
 
     :ok
+  end
+
+  defp reduce_domain_entries!(
+         domain_entries,
+         acc,
+         domain,
+         current_domain,
+         otp_app,
+         identity_label
+       ) do
+    Enum.reduce(domain_entries, acc, fn {identity, {resource, _value}}, map ->
+      case map do
+        %{^identity => {existing_domain, existing_resource}} ->
+          raise Spark.Error.DslError,
+            module: current_domain,
+            path: [:resources],
+            message:
+              "Duplicate #{identity_label} #{inspect(identity)} in #{inspect(otp_app)} across #{inspect(domain)} / #{inspect(resource)} (already defined in #{inspect(existing_domain)} / #{inspect(existing_resource)})"
+
+        _ ->
+          Map.put(map, identity, {domain, resource})
+      end
+    end)
   end
 
   defp cache_registry? do
@@ -248,17 +269,19 @@ defmodule Alva.Registry do
       action = Ash.Resource.Info.action(resource, event_def.action)
 
       if action do
-        Enum.filter(action.arguments, fn arg ->
-          case arg.type do
-            Ash.Type.File -> true
-            {:array, Ash.Type.File} -> true
-            _ -> false
-          end
-        end)
+        Enum.filter(action.arguments, &file_arg?/1)
       else
         []
       end
     end)
+  end
+
+  defp file_arg?(arg) do
+    case arg.type do
+      Ash.Type.File -> true
+      {:array, Ash.Type.File} -> true
+      _ -> false
+    end
   end
 
   # ==========================================

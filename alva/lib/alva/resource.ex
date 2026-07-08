@@ -1,4 +1,5 @@
 defmodule Alva.Resource.Event do
+  @moduledoc false
   defstruct [
     :key,
     :name,
@@ -12,14 +13,17 @@ defmodule Alva.Resource.Event do
 end
 
 defmodule Alva.Resource.SubscriptionSource do
+  @moduledoc false
   defstruct [:event, :__spark_metadata__]
 end
 
 defmodule Alva.Resource.SubscriptionOperation do
+  @moduledoc false
   defstruct [:on, :op, :at, :limit, :update_only, :__spark_metadata__]
 end
 
 defmodule Alva.Resource.Subscription do
+  @moduledoc false
   defstruct [
     :key,
     :name,
