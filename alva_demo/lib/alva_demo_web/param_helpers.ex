@@ -16,8 +16,16 @@ defmodule AlvaDemoWeb.ParamHelpers do
 
   def active_conversation_id(socket) do
     socket
-    |> Alva.LiveView.route_params()
+    |> route_params()
     |> normalize_conversation_id()
+  end
+
+  def route_params(socket) do
+    socket.assigns[:alva_route_params] || %{}
+  end
+
+  def on_mount(:default, params, _session, socket) do
+    {:cont, Phoenix.Component.assign(socket, :alva_route_params, params)}
   end
 
   def normalize_conversation_id(params) when is_map(params) do

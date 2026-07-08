@@ -177,7 +177,7 @@ defmodule AlvaDemo.Support.Conversation do
   end
 
   defp conversation_stream_defaults(%{view: AlvaDemoWeb.MerchantConsoleLive} = socket) do
-    params = Alva.LiveView.route_params(socket)
+    params = ParamHelpers.route_params(socket)
 
     %{
       "customer_query" => ParamHelpers.normalize_optional_string(params["conv_customer"]),

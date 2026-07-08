@@ -200,7 +200,7 @@ defmodule AlvaDemo.Sales.Order do
   end
 
   defp sales_order_stream_defaults(%{view: AlvaDemoWeb.CustomerStorefrontLive} = socket) do
-    params = Alva.LiveView.route_params(socket)
+    params = ParamHelpers.route_params(socket)
 
     %{
       "customer_query" => ParamHelpers.normalize_optional_string(params["customer_name"]),
@@ -210,7 +210,7 @@ defmodule AlvaDemo.Sales.Order do
   end
 
   defp sales_order_stream_defaults(%{view: AlvaDemoWeb.MerchantConsoleLive} = socket) do
-    params = Alva.LiveView.route_params(socket)
+    params = ParamHelpers.route_params(socket)
 
     %{
       "status" => normalize_order_status(params["order_status"]),

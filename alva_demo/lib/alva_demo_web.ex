@@ -19,6 +19,8 @@ defmodule AlvaDemoWeb do
     quote do
       use Phoenix.LiveView
 
+      on_mount {AlvaDemoWeb.ParamHelpers, :default}
+
       unquote(html_helpers())
     end
   end

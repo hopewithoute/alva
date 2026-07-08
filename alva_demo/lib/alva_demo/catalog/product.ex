@@ -146,7 +146,7 @@ defmodule AlvaDemo.Catalog.Product do
   end
 
   defp product_stream_defaults(%{view: AlvaDemoWeb.MerchantConsoleLive} = socket) do
-    params = Alva.LiveView.route_params(socket)
+    params = ParamHelpers.route_params(socket)
 
     %{
       "query" => ParamHelpers.normalize_optional_string(params["inv_query"]),
