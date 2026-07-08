@@ -15,15 +15,10 @@ export function useAlvaForm<
     SubmitEventKey extends keyof Events,
     FormValues extends object = Events[SubmitEventKey]["input"],
 >(
-    api: any, // Kept for backwards compatibility but not used directly
     submitEvent: SubmitEventKey,
     options: AlvaFormOptions<FormValues, keyof Events>,
 ): UseLiveFormReturn<FormValues> & { 
     submit: () => Promise<AlvaResult>; 
-    validate: () => Promise<AlvaResult>;
-    loading: import("vue").Ref<boolean>;
-    errors: import("vue").Ref<Record<string, string[]>>;
-    values: FormValues;
 } {
     const pseudoForm = reactive({
         name: submitEvent as string,
@@ -31,8 +26,6 @@ export function useAlvaForm<
         errors: {},
         valid: true,
     }) as Form<FormValues>;
-
-    const loading = ref(false);
 
     const liveForm = useLiveForm(pseudoForm, {
         submitEvent: submitEvent as string,
@@ -50,10 +43,8 @@ export function useAlvaForm<
 
     const originalSubmit = liveForm.submit;
 
-    // We expose a loading ref to match the v1 signature
-    // We also map the backend result error format back to the form state
+    // We map the backend result error format back to the form state
     const submit = async (): Promise<AlvaResult> => {
-        loading.value = true;
         let rollbackFn: (() => void) | void = undefined;
         if (options.onOptimisticSubmit) {
             rollbackFn = options.onOptimisticSubmit(pseudoForm.values);
@@ -62,9 +53,7 @@ export function useAlvaForm<
         let result: any;
         try {
             result = await originalSubmit();
-            loading.value = false;
         } catch (e: any) {
-            loading.value = false;
             if (rollbackFn) rollbackFn();
             return { ok: false, error: { type: "unknown", message: e.message || String(e) } };
         }
@@ -88,20 +77,8 @@ export function useAlvaForm<
         return result;
     };
 
-    // Since useLiveForm handles validation internally via changeEvent, we mock a manual validate
-    const validate = async (): Promise<AlvaResult> => {
-        // live_vue handles the validation transparently, but if the user calls validate() manually,
-        // we just return a stub indicating ok (or we could wait for isValidating to become false).
-        // For Alva V1 compatibility, returning a stub.
-        return { ok: true, data: {} };
-    };
-
     return {
         ...liveForm,
         submit,
-        validate,
-        loading,
-        errors: ref(pseudoForm.errors), // Compatibility
-        values: pseudoForm.values as FormValues, // Compatibility
     } as any;
 }

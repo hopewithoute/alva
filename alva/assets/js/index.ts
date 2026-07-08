@@ -4,4 +4,3 @@ export * from "./useAlvaUpload";
 export * from "./useAlvaSignal";
 export * from "./useAlvaStream";
 export * from "./useAlvaSubscriptions";
-export * from "./usePageEvent";

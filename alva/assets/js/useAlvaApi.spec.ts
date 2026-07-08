@@ -66,12 +66,4 @@ describe("useAlvaApi", () => {
         expect(result).toEqual({ ok: false, error: errorResponse });
     });
 
-    it("should register a pubsub event using on() which calls useLiveEvent", () => {
-        const api = useAlvaApi();
-        const callback = vi.fn();
-
-        api.on("post_created", callback);
-
-        expect(useLiveEvent).toHaveBeenCalledWith("post_created", callback);
-    });
 });

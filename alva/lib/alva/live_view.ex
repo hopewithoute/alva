@@ -5,11 +5,7 @@ defmodule Alva.LiveView do
 
   @alva_private_key :alva
   @public_activation_keys [
-    :collections,
-    :signals,
-    :route_subscriptions,
     :subscriptions,
-    :page_events,
     :commands
   ]
   @public_subscription_option_keys [:activate]
@@ -18,18 +14,16 @@ defmodule Alva.LiveView do
   @err_domains_removed "Alva declarative page activation no longer accepts `domains:`. Prefer `subscriptions:` for the supported V2 path; projection lookup now resolves through the consuming host app registry."
   @err_streams_removed "Alva declarative page activation no longer accepts top-level `streams:`. For the supported V2 path, expose typed `subscription` capabilities and activate them with `subscriptions:`."
 
-  @err_opts_expected "use Alva.LiveView expects keyword options. Prefer keyword-form `use Alva.LiveView, subscriptions: [...]` for the supported V2 path; legacy :collections, :signals, :route_subscriptions, :page_events, and :page_state remain compatibility surfaces."
+  @err_opts_expected "use Alva.LiveView expects keyword options. The V2 path only accepts `subscriptions:` and `commands:`. Legacy keys are no longer supported."
   defp err_unsupported_key(key),
     do:
-      "Alva declarative page activation only accepts :subscriptions and :commands on the supported V2 path, plus legacy compatibility keys :collections, :signals, :route_subscriptions, :page_events, and :page_state. Unsupported key: #{inspect(key)}"
+      "Alva declarative page activation only accepts :subscriptions and :commands on the supported V2 path. Unsupported key: #{inspect(key)}. The V1 legacy keys are removed."
 
   defmacro __using__(opts) do
     validate_use_opts!(opts, __CALLER__)
 
     quote do
       import Alva.LiveView
-      @alva_subscriptions Keyword.get(unquote(opts), :subscriptions, [])
-      @alva_commands Keyword.get(unquote(opts), :commands, [])
       @alva_subscriptions Keyword.get(unquote(opts), :subscriptions, [])
       @alva_commands Keyword.get(unquote(opts), :commands, [])
 
@@ -571,52 +565,9 @@ defmodule Alva.LiveView do
       |> Keyword.keys()
       |> Enum.each(&validate_public_activation_key!(&1, caller))
 
-      collections =
-        case Keyword.fetch(opts, :collections) do
-          {:ok, collections} -> maybe_validate_collection_use_declarations!(collections, caller)
-          :error -> {:known, []}
-        end
-
-      signals =
-        case Keyword.fetch(opts, :signals) do
-          {:ok, signals} -> maybe_validate_signal_use_declarations!(signals, caller)
-          :error -> {:known, []}
-        end
-
       case Keyword.fetch(opts, :subscriptions) do
         {:ok, subscriptions} ->
           maybe_validate_subscription_use_declarations!(subscriptions, caller)
-
-        :error ->
-          :ok
-      end
-
-      validate_projection_namespace_use_declarations!(collections, signals, caller)
-
-      case Keyword.fetch(opts, :route_subscriptions) do
-        {:ok, route_subscriptions} ->
-          maybe_validate_route_subscription_use_declarations!(
-            route_subscriptions,
-            collections,
-            signals,
-            caller
-          )
-
-        :error ->
-          :ok
-      end
-
-      case Keyword.fetch(opts, :page_events) do
-        {:ok, page_events} ->
-          maybe_validate_page_event_use_declarations!(page_events, caller)
-
-        :error ->
-          :ok
-      end
-
-      case Keyword.fetch(opts, :page_state) do
-        {:ok, page_state} ->
-          maybe_validate_page_state_use_declaration!(page_state, caller)
 
         :error ->
           :ok
@@ -630,65 +581,9 @@ defmodule Alva.LiveView do
     raise_compile_error!(caller, @err_opts_expected)
   end
 
-  defp maybe_validate_collection_use_declarations!(collections, caller) do
-    case expand_use_opt_literal(collections, caller) do
-      {:ok, collections} -> {:known, validate_collection_use_declarations!(collections, caller)}
-      :dynamic -> :unknown
-    end
-  end
-
-  defp maybe_validate_signal_use_declarations!(signals, caller) do
-    case expand_use_opt_literal(signals, caller) do
-      {:ok, signals} -> {:known, validate_signal_use_declarations!(signals, caller)}
-      :dynamic -> :unknown
-    end
-  end
-
   defp maybe_validate_subscription_use_declarations!(subscriptions, caller) do
     case expand_use_opt_literal(subscriptions, caller) do
       {:ok, subscriptions} -> validate_subscription_use_declarations!(subscriptions, caller)
-      :dynamic -> :ok
-    end
-  end
-
-  defp maybe_validate_route_subscription_use_declarations!(
-         route_subscriptions,
-         {:known, collections},
-         {:known, signals},
-         caller
-       ) do
-    case expand_use_opt_literal(route_subscriptions, caller) do
-      {:ok, route_subscriptions} ->
-        validate_route_subscription_use_declarations!(
-          route_subscriptions,
-          collections,
-          signals,
-          caller
-        )
-
-      :dynamic ->
-        :ok
-    end
-  end
-
-  defp maybe_validate_route_subscription_use_declarations!(
-         _route_subscriptions,
-         _collections,
-         _signals,
-         _caller
-       ),
-       do: :ok
-
-  defp maybe_validate_page_event_use_declarations!(page_events, caller) do
-    case expand_use_opt_literal(page_events, caller) do
-      {:ok, page_events} -> validate_page_event_use_declarations!(page_events, caller)
-      :dynamic -> :ok
-    end
-  end
-
-  defp maybe_validate_page_state_use_declaration!(page_state, caller) do
-    case expand_use_opt_literal(page_state, caller) do
-      {:ok, page_state} -> validate_page_state_use_declaration!(page_state, caller)
       :dynamic -> :ok
     end
   end
@@ -711,107 +606,14 @@ defmodule Alva.LiveView do
     raise_compile_error!(caller, @err_streams_removed)
   end
 
+  defp validate_public_activation_key!(key, caller) when key in [:collections, :signals, :route_subscriptions, :page_events, :page_state] do
+    raise_compile_error!(caller, "Alva declarative page activation no longer accepts `#{key}:`. For the supported V2 path, use `subscriptions:` and `commands:`.")
+  end
+
   defp validate_public_activation_key!(key, caller) do
     unless key in @public_activation_keys do
       raise_compile_error!(caller, err_unsupported_key(key))
     end
-  end
-
-  defp validate_collection_use_declarations!(collections, caller) when is_list(collections) do
-    names =
-      Enum.map(collections, fn
-        name when is_atom(name) ->
-          name
-
-        {name, opts} when is_atom(name) and is_list(opts) ->
-          validate_collection_use_opts!(name, opts, caller)
-          name
-
-        other ->
-          raise_compile_error!(
-            caller,
-            "Alva declarative `collections:` entries must be atoms or keyword entries like `collections: [sales_orders: [source_input: :callback]]`. Got: #{inspect(other)}"
-          )
-      end)
-
-    validate_unique_activation_names!(names, :collection, caller)
-    names
-  end
-
-  defp validate_collection_use_declarations!(_collections, caller) do
-    raise_compile_error!(caller, "Alva declarative `collections:` must be a list.")
-  end
-
-  defp validate_collection_use_opts!(name, opts, caller) when is_list(opts) do
-    unless Keyword.keyword?(opts) do
-      raise_compile_error!(caller, invalid_collection_use_opts_description(name))
-    end
-
-    Enum.each(Keyword.keys(opts), &validate_collection_use_opt_key!(&1, name, caller))
-  end
-
-  defp validate_collection_use_opts!(name, _opts, caller) do
-    raise_compile_error!(caller, invalid_collection_use_opts_description(name))
-  end
-
-  defp validate_collection_use_opt_key!(:source_input, _name, _caller), do: :ok
-  defp validate_collection_use_opt_key!(:reload_on, _name, _caller), do: :ok
-
-  defp validate_collection_use_opt_key!(:params, name, caller) do
-    raise_compile_error!(
-      caller,
-      "Alva declarative collection #{inspect(name)} no longer accepts `params:`. Use `source_input:` instead."
-    )
-  end
-
-  defp validate_collection_use_opt_key!(:subscriptions, name, caller) do
-    raise_compile_error!(
-      caller,
-      "Alva declarative collection #{inspect(name)} no longer accepts nested `subscriptions:`. Move topic wiring to top-level `route_subscriptions:`."
-    )
-  end
-
-  defp validate_collection_use_opt_key!(key, name, caller) do
-    raise_compile_error!(
-      caller,
-      "Alva declarative collection #{inspect(name)} only accepts :source_input and :reload_on options. Unsupported option: #{inspect(key)}"
-    )
-  end
-
-  defp validate_signal_use_declarations!(signals, caller) when is_list(signals) do
-    keys =
-      Enum.map(signals, fn
-        key when is_atom(key) ->
-          key
-
-        name when is_binary(name) ->
-          raise_compile_error!(
-            caller,
-            "Alva declarative `signals:` no longer accepts browser-facing string names like #{inspect(name)}. Use the signal declaration key atom instead."
-          )
-
-        {key, _opts} when is_atom(key) ->
-          raise_compile_error!(
-            caller,
-            "Alva declarative `signals:` only accepts atom declaration keys. Remove tuple options for #{inspect(key)} and keep client-facing names in the resource declaration."
-          )
-
-        other ->
-          raise_compile_error!(
-            caller,
-            "Alva declarative `signals:` entries must be atom declaration keys, got: #{inspect(other)}"
-          )
-      end)
-
-    validate_unique_activation_names!(keys, :signal, caller)
-    keys
-  end
-
-  defp validate_signal_use_declarations!(_signals, caller) do
-    raise_compile_error!(
-      caller,
-      "Alva declarative `signals:` must be a list of atom declaration keys."
-    )
   end
 
   defp validate_subscription_use_declarations!(subscriptions, caller)
@@ -902,201 +704,12 @@ defmodule Alva.LiveView do
     end)
   end
 
-  defp validate_projection_namespace_use_declarations!(
-         {:known, collections},
-         {:known, signals},
-         caller
-       ) do
-    collections
-    |> MapSet.new()
-    |> MapSet.intersection(MapSet.new(signals))
-    |> Enum.each(fn key ->
-      raise_compile_error!(
-        caller,
-        "Alva declarative page activation cannot activate the same projection key in both `collections:` and `signals:`: #{inspect(key)}"
-      )
-    end)
-  end
-
-  defp validate_projection_namespace_use_declarations!(_collections, _signals, _caller), do: :ok
-
-  defp validate_route_subscription_use_declarations!(
-         route_subscriptions,
-         collections,
-         signals,
-         caller
-       )
-       when is_list(route_subscriptions) do
-    active_projections = MapSet.new(collections ++ signals)
-
-    projections =
-      Enum.map(route_subscriptions, fn
-        {projection, topics} when is_atom(projection) ->
-          unless MapSet.member?(active_projections, projection) do
-            raise_compile_error!(
-              caller,
-              "Alva declarative route_subscriptions entry #{inspect(projection)} must reference an activated Collection or Signal projection on the same page."
-            )
-          end
-
-          validate_route_subscription_use_topics!(projection, topics, caller)
-          projection
-
-        {projection, _topics} ->
-          raise_compile_error!(
-            caller,
-            "Alva route_subscriptions keys must be Collection or Signal declaration key atoms, got: #{inspect(projection)}"
-          )
-
-        spec ->
-          raise_compile_error!(
-            caller,
-            "Alva route_subscriptions entries must be {projection, topics} tuples, got: #{inspect(spec)}"
-          )
-      end)
-
-    validate_unique_route_subscription_names!(projections, caller)
-  end
-
-  defp validate_route_subscription_use_declarations!(
-         _route_subscriptions,
-         _collections,
-         _signals,
-         caller
-       ) do
-    raise_compile_error!(
-      caller,
-      "Alva declarative `route_subscriptions:` must be a list of {projection, topics} tuples."
-    )
-  end
-
-  defp validate_route_subscription_use_topics!(_projection, topic, _caller)
-       when is_binary(topic) or is_atom(topic),
-       do: :ok
-
-  defp validate_route_subscription_use_topics!(projection, topics, caller) when is_list(topics) do
-    if Enum.all?(topics, &is_binary/1) do
-      :ok
-    else
-      raise_compile_error!(
-        caller,
-        invalid_route_subscription_topics_description(projection, topics)
-      )
-    end
-  end
-
-  defp validate_route_subscription_use_topics!(projection, topics, caller) do
-    raise_compile_error!(
-      caller,
-      invalid_route_subscription_topics_description(projection, topics)
-    )
-  end
-
-  defp validate_unique_route_subscription_names!(projections, caller) do
-    projections
-    |> Enum.frequencies()
-    |> Enum.each(fn
-      {_projection, 1} ->
-        :ok
-
-      {projection, _count} ->
-        raise_compile_error!(
-          caller,
-          "Alva route_subscriptions contains duplicate entries for #{inspect(projection)}"
-        )
-    end)
-  end
-
-  defp normalize_page_event_use_spec!(page_event, caller) do
-    {event_name, callback} = page_event_use_tuple!(page_event, caller)
-    validate_page_event_use_name!(event_name, caller)
-    validate_page_event_use_callback!(event_name, callback, caller)
-    event_name
-  end
-
-  defp page_event_use_tuple!({:{}, _, [event_name, callback | _rest]}, _caller),
-    do: {event_name, callback}
-
-  defp page_event_use_tuple!({event_name, callback}, _caller), do: {event_name, callback}
-  defp page_event_use_tuple!({event_name, callback, _types}, _caller), do: {event_name, callback}
-
-  defp page_event_use_tuple!(other, caller) do
-    raise_compile_error!(
-      caller,
-      "Alva declarative page_events entries must be {event_name, callback} or {event_name, callback, types} tuples. Got: #{inspect(other)}"
-    )
-  end
-
-  defp validate_page_event_use_name!(event_name, _caller) when is_binary(event_name), do: :ok
-
-  defp validate_page_event_use_name!(event_name, caller) do
-    raise_compile_error!(
-      caller,
-      "Alva declarative page_events event names must be binaries, got: #{inspect(event_name)}"
-    )
-  end
-
-  defp validate_page_event_use_callback!(_event_name, callback, _caller) when is_atom(callback),
-    do: :ok
-
-  defp validate_page_event_use_callback!(event_name, callback, caller) do
-    raise_compile_error!(
-      caller,
-      "Alva declarative page_events callback for #{inspect(event_name)} must be a local callback atom, got: #{inspect(callback)}"
-    )
-  end
-
-  defp validate_page_event_use_declarations!(page_events, caller) when is_list(page_events) do
-    event_names = Enum.map(page_events, &normalize_page_event_use_spec!(&1, caller))
-
-    validate_unique_page_event_use_names!(event_names, caller)
-  end
-
-  defp validate_page_event_use_declarations!(_page_events, caller) do
-    raise_compile_error!(
-      caller,
-      "Alva declarative `page_events:` must be a list of {event_name, callback} tuples."
-    )
-  end
-
-  defp validate_unique_page_event_use_names!(event_names, caller) do
-    event_names
-    |> Enum.frequencies()
-    |> Enum.each(fn
-      {_event_name, 1} ->
-        :ok
-
-      {event_name, _count} ->
-        raise_compile_error!(
-          caller,
-          "Alva declarative page_events contains duplicate entries for #{inspect(event_name)}"
-        )
-    end)
-  end
-
-  defp validate_page_state_use_declaration!(callback, _caller) when is_atom(callback), do: :ok
-
-  defp validate_page_state_use_declaration!(callback, caller) do
-    raise_compile_error!(
-      caller,
-      "Alva declarative `page_state:` must be a local callback atom, got: #{inspect(callback)}"
-    )
-  end
-
-  defp invalid_collection_use_opts_description(name) do
-    "Alva declarative collection #{inspect(name)} options must be a keyword list containing only :source_input and :reload_on."
-  end
-
   defp invalid_subscription_use_entries_description(detail) do
     "Alva declarative `subscriptions:` entries must be atoms or keyword entries like `subscriptions: [sales_orders: [activate: :mount]]`. #{detail}"
   end
 
   defp invalid_subscription_use_opts_description(name) do
     "Alva declarative subscription #{inspect(name)} options must be a keyword list containing only #{@public_subscription_option_keys |> inspect()}."
-  end
-
-  defp invalid_route_subscription_topics_description(projection, topics) do
-    "Alva route_subscriptions entry #{inspect(projection)} must provide a binary topic or list of binary topics, got: #{inspect(topics)}"
   end
 
   defp raise_compile_error!(caller, description) do

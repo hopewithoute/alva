@@ -1,4 +1,4 @@
-import { useLiveVue, useLiveEvent } from "live_vue";
+import { useLiveVue } from "live_vue";
 
 export type AlvaErrorType =
     | "validation"
@@ -34,13 +34,10 @@ export interface AlvaCallOptions {
 /**
  * Provides the primary client interface for Alva.
  * It offers request/reply command execution via `call`.
- * `on` remains available as a compatibility helper, but `useAlvaSignal`
- * is the preferred V2 component-level signal lifecycle wrapper.
  */
 export function useAlvaApi<
     Events extends Record<string, { input: any; output: AlvaResult<any> }> =
         any,
-    SignalEvents extends Record<string, any> = any,
 >(config?: AlvaApiConfig) {
     const live = useLiveVue();
 
@@ -70,20 +67,7 @@ export function useAlvaApi<
         });
     };
 
-    /**
-     * Compatibility helper for semantic Signal delivery (e.g., async progress, toasts).
-     * Prefer `useAlvaSignal` for component-scoped subscriptions so activation and
-     * cleanup stay aligned with the V2 typed subscription lifecycle.
-     */
-    const on = <E extends keyof SignalEvents>(
-        event: E,
-        callback: (payload: SignalEvents[E]) => void,
-    ): void => {
-        useLiveEvent<SignalEvents[E]>(event as string, callback);
-    };
-
     return {
         call,
-        on,
     };
 }
