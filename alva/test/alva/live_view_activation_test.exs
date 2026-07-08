@@ -37,6 +37,7 @@ defmodule Alva.LiveViewActivationTest do
                    """)
                  end
   end
+
   test "fails to compile when legacy V1 keys are used" do
     for legacy_key <- [:collections, :signals, :route_subscriptions, :page_events, :page_state] do
       assert_raise CompileError,
