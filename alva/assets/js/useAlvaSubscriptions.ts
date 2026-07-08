@@ -15,33 +15,44 @@ interface ActiveSubscription {
     refCount: number;
 }
 
-// Track whether the page has loaded at least once globally to identify reconnects
-let initialLoadComplete = false;
+// Track whether the current page has completed its first LiveView load.
+// Hooks mounted after that point should treat the next `kind: initial` event
+// as reconnect healing, while hooks mounted before it should not replay
+// subscriptions during the first load event.
+let pageInitialLoadComplete = false;
 
 export function useAlvaSubscriptions<
     Subs extends Record<string, AlvaSubscriptionDef> = any,
 >() {
     const live = useLiveVue();
     const localSubscriptions = new Map<string, ActiveSubscription>();
+    let sawInitialLoadForHook = pageInitialLoadComplete;
 
-    const onReconnect = (info: any) => {
-        if (info.detail?.kind === 'initial') {
-            if (initialLoadComplete) {
-                // This is a reconnect! Heal all active subscriptions for this component
-                for (const sub of localSubscriptions.values()) {
-                    live.pushEvent(
-                        "alva:activate_subscription",
-                        { name: sub.name, input: sub.input },
-                        () => {}
-                    );
-                }
-            } else {
-                initialLoadComplete = true;
-            }
+    const replayLocalSubscriptions = () => {
+        for (const sub of localSubscriptions.values()) {
+            live.pushEvent(
+                "alva:activate_subscription",
+                { name: sub.name, input: sub.input },
+                () => {}
+            );
         }
     };
 
-    if (typeof window !== 'undefined') {
+    const onReconnect = (info: any) => {
+        if (info.detail?.kind !== "initial") {
+            return;
+        }
+
+        if (!sawInitialLoadForHook) {
+            sawInitialLoadForHook = true;
+            pageInitialLoadComplete = true;
+            return;
+        }
+
+        replayLocalSubscriptions();
+    };
+
+    if (typeof window !== "undefined") {
         window.addEventListener("phx:page-loading-stop", onReconnect);
         onScopeDispose(() => {
             window.removeEventListener("phx:page-loading-stop", onReconnect);
@@ -53,7 +64,7 @@ export function useAlvaSubscriptions<
         input: Subs[S]["input"]
     ): Promise<AlvaResult<{ key: any; topics: string[] }>> => {
         const cacheKey = `${String(name)}:${JSON.stringify(input)}`;
-        
+
         const existing = localSubscriptions.get(cacheKey);
         if (existing) {
             existing.refCount++;
@@ -96,7 +107,7 @@ export function useAlvaSubscriptions<
         input: Subs[S]["input"]
     ): Promise<AlvaResult> => {
         const cacheKey = `${String(name)}:${JSON.stringify(input)}`;
-        
+
         const existing = localSubscriptions.get(cacheKey);
         if (existing) {
             existing.refCount--;

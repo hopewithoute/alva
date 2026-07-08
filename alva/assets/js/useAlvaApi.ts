@@ -33,7 +33,9 @@ export interface AlvaCallOptions {
 
 /**
  * Provides the primary client interface for Alva.
- * It offers request/reply command execution via `call` and semantic Signal delivery via `on`.
+ * It offers request/reply command execution via `call`.
+ * `on` remains available as a compatibility helper, but `useAlvaSignal`
+ * is the preferred V2 component-level signal lifecycle wrapper.
  */
 export function useAlvaApi<
     Events extends Record<string, { input: any; output: AlvaResult<any> }> =
@@ -69,9 +71,9 @@ export function useAlvaApi<
     };
 
     /**
-     * Register a callback for semantic Signal delivery (e.g., async progress, toasts).
-     * Note: This is NOT for canonical collection synchronization. Route collections
-     * should be handled by LiveVue 1.x stream props directly.
+     * Compatibility helper for semantic Signal delivery (e.g., async progress, toasts).
+     * Prefer `useAlvaSignal` for component-scoped subscriptions so activation and
+     * cleanup stay aligned with the V2 typed subscription lifecycle.
      */
     const on = <E extends keyof SignalEvents>(
         event: E,
