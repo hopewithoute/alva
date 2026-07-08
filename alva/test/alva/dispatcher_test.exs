@@ -762,7 +762,8 @@ defmodule Alva.DispatcherTest do
 
       event_def = %Alva.Resource.Event{expose_metadata: [:sync_token]}
 
-      {stripped, exposed_meta} = Alva.Serializer.serialize(record, expose_metadata: event_def.expose_metadata)
+      {stripped, exposed_meta} =
+        Alva.Serializer.serialize(record, expose_metadata: event_def.expose_metadata)
 
       assert stripped == %{id: "test-id", name: "Test"}
       assert exposed_meta == %{sync_token: "tok_123"}
@@ -777,7 +778,8 @@ defmodule Alva.DispatcherTest do
 
       event_def = %Alva.Resource.Event{expose_metadata: []}
 
-      {stripped, exposed_meta} = Alva.Serializer.serialize(record, expose_metadata: event_def.expose_metadata)
+      {stripped, exposed_meta} =
+        Alva.Serializer.serialize(record, expose_metadata: event_def.expose_metadata)
 
       assert stripped == %{id: "test-id", name: "Test"}
       assert exposed_meta == %{}
@@ -791,7 +793,8 @@ defmodule Alva.DispatcherTest do
 
       event_def = %Alva.Resource.Event{expose_metadata: [:sync_token]}
 
-      {stripped, exposed_meta} = Alva.Serializer.serialize(records, expose_metadata: event_def.expose_metadata)
+      {stripped, exposed_meta} =
+        Alva.Serializer.serialize(records, expose_metadata: event_def.expose_metadata)
 
       assert length(stripped) == 2
       assert exposed_meta == %{sync_token: "tok_1"}

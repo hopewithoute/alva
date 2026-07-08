@@ -12,7 +12,8 @@ defmodule Alva.Serializer do
   """
   def serialize(record, opts \\ [])
 
-  def serialize(record, opts) when is_map(record) and not is_struct(record, Ash.Notifier.Notification) do
+  def serialize(record, opts)
+      when is_map(record) and not is_struct(record, Ash.Notifier.Notification) do
     expose_keys = Keyword.get(opts, :expose_metadata, [])
     exposed_meta = extract_exposed_metadata(record, expose_keys)
     {strip_metadata(record), exposed_meta}

@@ -349,7 +349,8 @@ defmodule Alva.Dispatcher do
   end
 
   defp dispatch_success(record_or_list, event_def, page \\ nil) do
-    {stripped, exposed_meta} = Alva.Serializer.serialize(record_or_list, expose_metadata: event_def.expose_metadata)
+    {stripped, exposed_meta} =
+      Alva.Serializer.serialize(record_or_list, expose_metadata: event_def.expose_metadata)
 
     if page do
       handle_success(stripped, exposed_meta, page)
@@ -378,10 +379,6 @@ defmodule Alva.Dispatcher do
       end
     end)
   end
-
-
-
-
 
   defp not_found_error(resource, lookup_field, lookup_value) do
     Ash.Error.Query.NotFound.exception(
