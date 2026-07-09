@@ -6,26 +6,27 @@ import { useLiveVue, useLiveEvent } from "live_vue";
 import type { AlvaSignals } from "../signals";
 
 export const ash = {
-    on: {
-      "demo_notifications.sent": (input: Record<string, never>, callback: (payload: AlvaSignals["demo_notifications.sent"]["payload"]) => void) => {
+    on: <K extends keyof AlvaSignals>(
+        name: K,
+        input: Record<string, never>,
+        callback: (payload: AlvaSignals[K]["payload"]) => void
+    ) => {
         const live = useLiveVue();
 
         live.pushEvent(
             "alva:subscribe_signal",
-            { name: "demo_notifications.sent", input },
+            { name, input },
             () => {}
         );
 
-        useLiveEvent("demo_notifications.sent", callback);
+        useLiveEvent(name as string, callback);
 
         onUnmounted(() => {
             live.pushEvent(
                 "alva:unsubscribe_signal",
-                { name: "demo_notifications.sent", input },
+                { name, input },
                 () => {}
             );
         });
-      },
-
     }
 };
