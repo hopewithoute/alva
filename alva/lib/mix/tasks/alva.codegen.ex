@@ -174,30 +174,11 @@ defmodule Mix.Tasks.Alva.Codegen do
   end
 
   defp generate_ash_ts(signal_map, composables_dir) do
-    signal_methods =
+    signal_names =
       signal_map
-      |> Enum.map_join("\n", fn {_key, {_resource, signal_def}} ->
-        """
-              "#{signal_def.name}": (input: Record<string, never>, callback: (payload: AlvaSignals["#{signal_def.name}"]["payload"]) => void) => {
-                const live = useLiveVue();
-
-                live.pushEvent(
-                    "alva:subscribe_signal",
-                    { name: "#{signal_def.name}", input },
-                    () => {}
-                );
-
-                useLiveEvent("#{signal_def.name}", callback);
-
-                onUnmounted(() => {
-                    live.pushEvent(
-                        "alva:unsubscribe_signal",
-                        { name: "#{signal_def.name}", input },
-                        () => {}
-                    );
-                });
-              },
-        """
+      |> Map.values()
+      |> Enum.map_join(" | ", fn {_resource, signal_def} ->
+        ~s("#{signal_def.name}")
       end)
 
     content = """
@@ -209,8 +190,28 @@ defmodule Mix.Tasks.Alva.Codegen do
     import type { AlvaSignals } from "../signals";
 
     export const ash = {
-        on: {
-    #{signal_methods}
+        on: <K extends keyof AlvaSignals>(
+            name: K,
+            input: Record<string, never>,
+            callback: (payload: AlvaSignals[K]["payload"]) => void
+        ) => {
+            const live = useLiveVue();
+
+            live.pushEvent(
+                "alva:subscribe_signal",
+                { name, input },
+                () => {}
+            );
+
+            useLiveEvent(name as string, callback);
+
+            onUnmounted(() => {
+                live.pushEvent(
+                    "alva:unsubscribe_signal",
+                    { name, input },
+                    () => {}
+                );
+            });
         }
     };
     """

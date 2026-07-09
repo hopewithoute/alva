@@ -137,8 +137,8 @@ defmodule Mix.Tasks.Alva.CodegenTest do
     assert String.contains?(ash_content, "import { onUnmounted } from \"vue\"")
     assert String.contains?(ash_content, "import { useLiveVue, useLiveEvent } from \"live_vue\"")
     assert String.contains?(ash_content, "import type { AlvaSignals } from \"../signals\"")
+    assert String.contains?(ash_content, "name: K,")
     assert String.contains?(ash_content, ~s(alva:subscribe_signal))
     assert String.contains?(ash_content, ~s(alva:unsubscribe_signal))
-    assert String.contains?(ash_content, ~s("test_signal"))
   end
 end
