@@ -6,7 +6,6 @@ import CustomerOrderDrawer from "../sales/CustomerOrderDrawer.vue";
 import SupportChatWidget from "../support/SupportChatWidget.vue";
 import { ref } from "vue";
 import type { Order, Product, SupportMessage } from "../../../js/alva/types";
-import type { AlvaSubscriptions } from "../../../js/alva/subscriptions";
 
 const props = defineProps<{
   sales_orders?: Order[];

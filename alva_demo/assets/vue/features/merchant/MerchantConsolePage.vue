@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import type { Order, Product, Conversation, SupportMessage } from "../../../js/alva/types";
-import type { AlvaSubscriptions } from "../../../js/alva/subscriptions";
 import MerchantOrdersTab from "../sales/MerchantOrdersTab.vue";
 import MerchantInventoryTab from "../catalog/MerchantInventoryTab.vue";
 import MerchantSupportTab from "../support/MerchantSupportTab.vue";
