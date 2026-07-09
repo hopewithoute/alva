@@ -10,8 +10,13 @@ const title = ref("Build finished cleanly.");
 const severity = ref<NotificationSignal["severity"]>("success");
 const sending = ref(false);
 const error = ref<string | null>(null);
+const notices = ref<NotificationSignal[]>([]);
 
 const api = useAlvaApi();
+
+ash.on("demo_notifications.sent", {}, (payload) => {
+  notices.value.unshift(payload);
+});
 
 const sendNotification = async () => {
   const trimmedTitle = title.value.trim();
