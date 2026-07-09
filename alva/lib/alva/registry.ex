@@ -258,16 +258,8 @@ defmodule Alva.Registry do
     SparkAdapter.get_persisted(domain, :alva_event_map, %{})
   end
 
-  def alva_event_key_map(domain) do
-    SparkAdapter.get_persisted(domain, :alva_event_key_map, %{})
-  end
-
   def alva_signal_map(domain) do
     SparkAdapter.get_persisted(domain, :alva_signal_map, %{})
-  end
-
-  def alva_signal_key_map(domain) do
-    SparkAdapter.get_persisted(domain, :alva_signal_key_map, %{})
   end
 
   def file_upload_arguments(domain) do

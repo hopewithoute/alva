@@ -2,6 +2,11 @@ defmodule Alva.Serializer do
   @moduledoc """
   Translates Ash records into JSON-friendly payloads, extracting explicitly exposed metadata
   and stripping internal fields.
+
+  ### Type Coercion
+  During serialization, some Erlang/Elixir specific types are safely coerced for JSON:
+  * **Tuples** are converted to lists (e.g., `{:ok, val}` becomes `["ok", val]`).
+  * **Atoms** (other than `true`, `false`, and `nil`) are converted to strings.
   """
 
   @doc """

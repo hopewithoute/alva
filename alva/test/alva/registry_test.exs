@@ -100,7 +100,7 @@ defmodule Alva.RegistryTest do
     end
 
     assert Registry.alva_event_map(EmptyDomain) == %{}
-    assert Registry.alva_event_key_map(EmptyDomain) == %{}
+
     assert Registry.file_upload_arguments(EmptyDomain) == []
   end
 
