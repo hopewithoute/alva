@@ -42,7 +42,7 @@
 - **Alva Client API**: The primary v2 Vue-side surface is a thin Ash-aware layer over LiveVue. It includes:
   - `useAlvaApi` and generated helpers such as `ashCall`: For executing remote commands or ad hoc request/reply reads and returning an immediate promise.
   - `useAlvaStream`: For declaring Stream lifecycle intent only. Canonical route-owned list data still arrives from LiveView props / `@streams.*`, not from the composable return value.
-  - `useAlvaSignal`: For typed Signal lifecycle management and callback registration.
+  - `ash.on`: For typed Signal lifecycle management and callback registration (replaces legacy `useAlvaSignal`).
   - `useAlvaUpload`: For seamlessly handling upload flows integrated with Ash.
   - `useAlvaForm`: For pure server-side auto-validation via debounce (including in-memory caching for validations that hit the DB). No client-side schema validation (for example Zod) is used.
   - `usePageEvent`: A compatibility surface for page-local UI orchestration during migration. It relies on route-specific codegen rather than the global registry and is not the primary v2 teaching path.
@@ -56,7 +56,7 @@
 - **Opt-in Filter AST Codegen**: By default, clients cannot send complex filter ASTs. However, when an event explicitly sets `enable_filter: true`, Alva leverages `ash_typescript` generation logic to construct full, type-safe Filter AST types on the frontend.
 - **Selective PubSub Subscription**: Alva only listens to Topics a page explicitly activates. `Alva.LiveView`'s `handle_info` fallback then safely intercepts `%Ash.Notifier.Notification{}` events and routes them into active projections.
 - **Signal Event Name**: The application-wide client-facing realtime `name: "..."` exposed to Vue through a Signal declaration. It names the domain occurrence directly (e.g. `chat.message_created`) instead of leaking a generic transport envelope such as `ash_notification`.
-- **Signal Payload**: The normalized map payload delivered to a Vue `useAlvaSignal()` callback or equivalent typed Signal listener. DTO-shaped payloads are passed through as maps, scalar or list payloads are wrapped under `data`, and optional metadata lives under `meta`.
+- **Signal Payload**: The normalized map payload delivered to a Vue `ash.on()` callback or equivalent typed Signal listener. DTO-shaped payloads are passed through as maps, scalar or list payloads are wrapped under `data`, and optional metadata lives under `meta`.
 - **Alva.LiveView Hijack**: A required macro (`use Alva.LiveView`) that hooks into LiveView's lifecycle. Crucially, it hijacks `mount` to dynamically inject `allow_upload` for any exposed events requiring `ash_storage`, providing true zero-boilerplate file uploads. It also provides automatic fallbacks for `handle_event` (to route to the Dispatcher) and `handle_info` (for PubSub bridging).
 - **Custom Metadata Opt-in**: Execution metadata (`record.__metadata__`) is stripped by default to prevent internal leaks. It is only included if explicitly registered via `expose_metadata: [...]` in the DSL, and is cleanly isolated under the `meta` key in the JSON response to separate it from core domain data.
 - **Action Exposure Verifier**: A compile-time check in the Alva extension that halts compilation if an `event` in the `live_vue` block maps to an Ash action that is not marked `public?: true`. It acts as a hard boundary to ensure internal actions are never accidentally exposed to the Vue client.

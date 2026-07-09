@@ -8,6 +8,7 @@ defmodule Alva.Registry do
             domains: [],
             event_map: %{},
             subscription_map: %{},
+            signal_map: %{},
             file_upload_arguments: []
 
   @registry_cache_key {__MODULE__, :registry}
@@ -80,6 +81,18 @@ defmodule Alva.Registry do
     end
   end
 
+  def signal_map(otp_app) when is_atom(otp_app) and not is_nil(otp_app) do
+    registry(otp_app).signal_map
+  end
+
+  def fetch_signal(otp_app, signal_name)
+      when is_atom(otp_app) and not is_nil(otp_app) and is_binary(signal_name) do
+    case Map.fetch(signal_map(otp_app), signal_name) do
+      {:ok, {resource, signal}} -> {:ok, resource, signal}
+      :error -> :error
+    end
+  end
+
   def otp_app(%{endpoint: endpoint}), do: otp_app(endpoint)
 
   def otp_app(endpoint) when is_atom(endpoint) do
@@ -144,7 +157,8 @@ defmodule Alva.Registry do
       otp_app: otp_app,
       domains: domains,
       event_map: build_unique_map!(domains, &alva_event_map/1, "event name"),
-      subscription_map: build_unique_map!(domains, &alva_subscription_map/1, "subscription key"),
+      subscription_map: build_unique_map!(domains, &alva_subscription_map/1, "subscription name"),
+      signal_map: build_unique_map!(domains, &alva_signal_map/1, "signal name"),
       file_upload_arguments: build_file_upload_arguments(domains)
     }
   end
@@ -262,6 +276,18 @@ defmodule Alva.Registry do
     SparkAdapter.get_persisted(domain, :alva_subscription_map, %{})
   end
 
+  def alva_subscription_key_map(domain) do
+    SparkAdapter.get_persisted(domain, :alva_subscription_key_map, %{})
+  end
+
+  def alva_signal_map(domain) do
+    SparkAdapter.get_persisted(domain, :alva_signal_map, %{})
+  end
+
+  def alva_signal_key_map(domain) do
+    SparkAdapter.get_persisted(domain, :alva_signal_key_map, %{})
+  end
+
   def file_upload_arguments(domain) do
     domain
     |> alva_event_map()
@@ -291,6 +317,11 @@ defmodule Alva.Registry do
   def events(resource) do
     SparkAdapter.get_entities(resource, [:live_vue])
     |> Enum.filter(&match?(%Alva.Resource.Event{}, &1))
+  end
+
+  def signals(resource) do
+    SparkAdapter.get_entities(resource, [:live_vue])
+    |> Enum.filter(&match?(%Alva.Resource.Signal{}, &1))
   end
 
   def subscriptions(resource) do

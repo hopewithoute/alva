@@ -43,14 +43,19 @@ defmodule Alva.LiveViewTest do
         authorize_with(:test_authorize_action)
       end
 
-      subscription(:test_signal,
-        name: "test_signal",
-        resolve: :resolve_signal,
-        kind: :signal,
-        on: :create
-      )
+      signal :test_signal do
+        name "test_signal"
+        on [:create]
+        authorize_with(:test_authorize_action)
+      end
 
       subscription(:test_error, name: "test_error", resolve: :resolve_error, kind: :stream)
+
+      subscription(:test_forbidden,
+        name: "test_forbidden",
+        resolve: :resolve_error,
+        kind: :stream
+      )
     end
 
     actions do
@@ -224,7 +229,7 @@ defmodule Alva.LiveViewTest do
     end
 
     test "alva:load_more_subscription forbidden", %{socket: socket, handle_event: handle_event} do
-      params = %{"name" => "test_signal", "input" => %{}}
+      params = %{"name" => "test_forbidden", "input" => %{}}
 
       assert {:halt, %{ok: false, error: %{type: "forbidden"}}, _socket} =
                handle_event.("alva:load_more_subscription", params, socket)
@@ -274,6 +279,34 @@ defmodule Alva.LiveViewTest do
                  %{"name" => "unknown_stream"},
                  socket
                )
+    end
+
+    test "alva:subscribe_signal success", %{socket: socket, handle_event: handle_event} do
+      params = %{"name" => "test_signal", "input" => %{}}
+
+      assert {:halt, %{ok: true}, socket} =
+               handle_event.("alva:subscribe_signal", params, socket)
+
+      assert Map.has_key?(socket.private.alva.active_signal_refs, :test_signal)
+    end
+
+    test "alva:subscribe_signal not found", %{socket: socket, handle_event: handle_event} do
+      params = %{"name" => "unknown_signal", "input" => %{}}
+
+      assert {:halt, %{ok: false, error: %{type: "not_found"}}, _socket} =
+               handle_event.("alva:subscribe_signal", params, socket)
+    end
+
+    test "alva:unsubscribe_signal success", %{socket: socket, handle_event: handle_event} do
+      # First subscribe
+      {:halt, _, socket} =
+        handle_event.("alva:subscribe_signal", %{"name" => "test_signal", "input" => %{}}, socket)
+
+      # Then unsubscribe
+      assert {:halt, %{ok: true}, socket} =
+               handle_event.("alva:unsubscribe_signal", %{"name" => "test_signal"}, socket)
+
+      assert not Map.has_key?(socket.private.alva.active_signal_refs, :test_signal)
     end
 
     test "upload lifecycle events", %{socket: socket, handle_event: handle_event} do

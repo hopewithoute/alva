@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { useAlvaSignal } from "alva";
+import { ash } from "alva";
 import { ashCall } from "../../../js/alva/client";
 import type { AlvaSubscriptions } from "../../../js/alva/subscriptions";
 
@@ -12,7 +12,7 @@ const notices = ref<NotificationSignal[]>([]);
 const error = ref<string | null>(null);
 const sending = ref(false);
 
-useAlvaSignal<AlvaSubscriptions, "demo_notifications_sent">(
+ash.on<AlvaSubscriptions, "demo_notifications_sent">(
   "demo_notifications_sent",
   {},
   (payload: NotificationSignal) => {

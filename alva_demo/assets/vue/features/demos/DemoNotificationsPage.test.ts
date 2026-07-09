@@ -13,12 +13,14 @@ const { ashCallMock, signalRegistrations } = vi.hoisted(() => ({
 }));
 
 vi.mock("alva", () => ({
-  useAlvaSignal: (
-    name: string,
-    input: Record<string, never>,
-    callback: (payload: { id: string; title: string; severity: "info" | "success" | "warning" }) => void
-  ) => {
-    signalRegistrations.push({ name, input, callback });
+  ash: {
+    on: (
+      name: string,
+      input: Record<string, never>,
+      callback: (payload: { id: string; title: string; severity: "info" | "success" | "warning" }) => void
+    ) => {
+      signalRegistrations.push({ name, input, callback });
+    }
   }
 }));
 

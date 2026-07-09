@@ -147,6 +147,12 @@ defmodule Alva.LiveView do
         event_name == "alva:deactivate_subscription" ->
           handle_deactivate_subscription(params, sock, otp_app)
 
+        event_name == "alva:subscribe_signal" ->
+          handle_subscribe_signal(params, sock, otp_app)
+
+        event_name == "alva:unsubscribe_signal" ->
+          handle_unsubscribe_signal(params, sock, otp_app)
+
         true ->
           res = Alva.Dispatcher.dispatch(event_name, params, otp_app: otp_app, socket: sock)
           handle_dispatch_result(res, sock)
@@ -528,6 +534,113 @@ defmodule Alva.LiveView do
     end
   end
 
+  defp handle_subscribe_signal(params, sock, otp_app) do
+    case resolve_and_authorize_signal(params, sock, otp_app) do
+      {:ok, signal, topics} ->
+        sock = activate_signal_key(sock, signal.key)
+
+        sock =
+          if Phoenix.LiveView.connected?(sock) do
+            Enum.reduce(topics, sock, fn topic, acc_sock ->
+              subscribe_dynamic_topic(acc_sock, topic)
+            end)
+          else
+            sock
+          end
+
+        {:halt, %{ok: true}, sock}
+
+      {:error, reason} ->
+        {:halt, %{ok: false, error: reason}, sock}
+    end
+  end
+
+  defp handle_unsubscribe_signal(params, sock, otp_app) do
+    case resolve_and_authorize_signal(params, sock, otp_app) do
+      {:ok, signal, topics} ->
+        sock =
+          if Phoenix.LiveView.connected?(sock) do
+            Enum.reduce(topics, sock, fn topic, acc_sock ->
+              unsubscribe_dynamic_topic(acc_sock, topic)
+            end)
+          else
+            sock
+          end
+
+        sock = deactivate_signal_key(sock, signal.key)
+        {:halt, %{ok: true}, sock}
+
+      {:error, _} ->
+        {:halt, %{ok: false}, sock}
+    end
+  end
+
+  defp resolve_and_authorize_signal(params, sock, otp_app) do
+    signal_name = params["name"]
+    input = params["input"] || %{}
+
+    with {:ok, resource, signal} <- Alva.Registry.fetch_signal(otp_app, signal_name),
+         :ok <- check_signal_authorization(sock, resource, signal) do
+      topics = compute_signal_topics(resource, signal, input)
+      {:ok, signal, topics}
+    else
+      :error -> {:error, %{type: "not_found", message: "Signal not found"}}
+      {:error, :forbidden} -> {:error, %{type: "forbidden", message: "Forbidden"}}
+      {:error, reason} -> {:error, Alva.Error.format(reason)}
+    end
+  end
+
+  defp compute_signal_topics(resource, signal, _input) do
+    prefix = Ash.Notifier.PubSub.Info.prefix(resource) || ""
+    delimiter = Ash.Notifier.PubSub.Info.delimiter(resource) || ":"
+
+    Enum.map(List.wrap(signal.on), fn event ->
+      if prefix == "" do
+        to_string(event)
+      else
+        "#{prefix}#{delimiter}#{event}"
+      end
+    end)
+  end
+
+  defp check_signal_authorization(sock, resource, signal) do
+    if signal.authorize_with do
+      actor = sock.assigns[:current_user] || sock.assigns[:current_actor]
+      tenant = sock.assigns[:current_tenant]
+
+      if Ash.can?({resource, signal.authorize_with}, actor, tenant: tenant, maybe_is: false) do
+        :ok
+      else
+        {:error, :forbidden}
+      end
+    else
+      :ok
+    end
+  end
+
+  defp activate_signal_key(socket, key) when is_atom(key) do
+    update_alva(socket, fn state ->
+      refs = Map.get(state, :active_signal_refs, %{})
+      next_count = Map.get(refs, key, 0) + 1
+      Map.put(state, :active_signal_refs, Map.put(refs, key, next_count))
+    end)
+  end
+
+  defp deactivate_signal_key(socket, key) when is_atom(key) do
+    update_alva(socket, fn state ->
+      refs = Map.get(state, :active_signal_refs, %{})
+
+      next_refs =
+        case Map.get(refs, key, 0) do
+          count when count > 1 -> Map.put(refs, key, count - 1)
+          1 -> Map.delete(refs, key)
+          _ -> refs
+        end
+
+      Map.put(state, :active_signal_refs, next_refs)
+    end)
+  end
+
   defp unsubscribe_all_dynamic_topics(sock, topics) do
     if Phoenix.LiveView.connected?(sock) do
       Enum.reduce(topics || [], sock, fn topic, acc_sock ->
@@ -853,7 +966,8 @@ defmodule Alva.LiveView do
       otp_app: nil,
       domains: [],
       event_map: %{},
-      active_subscription_refs: %{}
+      active_subscription_refs: %{},
+      active_signal_refs: %{}
     })
   end
 end

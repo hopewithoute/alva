@@ -22,6 +22,17 @@ defmodule Alva.Resource.SubscriptionOperation do
   defstruct [:on, :op, :at, :limit, :update_only, :__spark_metadata__]
 end
 
+defmodule Alva.Resource.Signal do
+  @moduledoc false
+  defstruct [
+    :key,
+    :name,
+    :on,
+    :authorize_with,
+    :__spark_metadata__
+  ]
+end
+
 defmodule Alva.Resource.Subscription do
   @moduledoc false
   defstruct [
@@ -225,10 +236,48 @@ defmodule Alva.Resource do
     ]
   }
 
+  @signal %Spark.Dsl.Entity{
+    name: :signal,
+    describe: "A LiveVue signal for real-time notification",
+    examples: [
+      """
+      signal :chat_typing do
+        name "chat.user_typing"
+        on [:user_started_typing]
+        authorize_with: :read_room
+      end
+      """
+    ],
+    target: Alva.Resource.Signal,
+    args: [:key],
+    schema: [
+      key: [
+        type: :atom,
+        required: true,
+        doc: "The atom declaration key."
+      ],
+      name: [
+        type: :string,
+        required: true,
+        doc: "The application-wide client-facing signal name."
+      ],
+      on: [
+        type: {:list, :atom},
+        required: true,
+        doc: "The Ash.Notifier pubsub triggers to listen to."
+      ],
+      authorize_with: [
+        type: :atom,
+        required: true,
+        doc: "The Ash action to use for authorization."
+      ]
+    ]
+  }
+
   @live_vue %Spark.Dsl.Section{
     name: :live_vue,
     describe: "Configure how this resource is exposed to LiveVue",
-    entities: [@event, @subscription],
+    entities: [@event, @subscription, @signal],
     schema: []
   }
 
