@@ -13,26 +13,12 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEvents do
     event_map =
       persist_projection_map(resources, module, :event, &Alva.Registry.events/1)
 
-    event_key_map =
-      persist_projection_map(resources, module, :event, &Alva.Registry.events/1,
-        identity_fun: & &1.key,
-        identity_label: :key
-      )
-
     signal_map =
       persist_projection_map(resources, module, :signal, &Alva.Registry.signals/1)
 
-    signal_key_map =
-      persist_projection_map(resources, module, :signal, &Alva.Registry.signals/1,
-        identity_fun: & &1.key,
-        identity_label: :key
-      )
-
     dsl_state =
       dsl_state
-      |> Spark.Dsl.Transformer.persist(:alva_event_key_map, event_key_map)
       |> Spark.Dsl.Transformer.persist(:alva_event_map, event_map)
-      |> Spark.Dsl.Transformer.persist(:alva_signal_key_map, signal_key_map)
       |> Spark.Dsl.Transformer.persist(:alva_signal_map, signal_map)
 
     Alva.Registry.verify_host_app_command_uniqueness!(module, event_map)
