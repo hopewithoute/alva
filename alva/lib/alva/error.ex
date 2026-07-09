@@ -119,7 +119,10 @@ defmodule Alva.Error do
   end
 
   defp maybe_append_field(path, field) do
-    if List.last(path) == field, do: path, else: path ++ [field]
+    case Enum.reverse(path) do
+      [^field | _] = reversed -> Enum.reverse(reversed)
+      reversed -> Enum.reverse([field | reversed])
+    end
   end
 
   defp conflict_error(conflict_error) do

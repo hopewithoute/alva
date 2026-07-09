@@ -88,8 +88,7 @@ defmodule Alva.Serializer do
   def strip_metadata(%{} = map) when not is_struct(map) do
     map
     |> drop_metadata()
-    |> Enum.map(fn {k, v} -> {k, strip_metadata(v)} end)
-    |> Enum.into(%{})
+    |> Map.new(fn {k, v} -> {k, strip_metadata(v)} end)
   end
 
   def strip_metadata(atom) when is_atom(atom) and atom not in [nil, true, false] do

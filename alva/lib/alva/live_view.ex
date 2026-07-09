@@ -463,11 +463,9 @@ defmodule Alva.LiveView do
 
       pubsub = endpoint_pubsub!(sock)
 
-      Enum.each(topics, fn topic ->
-        unless MapSet.member?(existing_topics, topic) do
-          Phoenix.PubSub.subscribe(pubsub, topic)
-        end
-      end)
+      topics
+      |> Enum.reject(&MapSet.member?(existing_topics, &1))
+      |> Enum.each(&Phoenix.PubSub.subscribe(pubsub, &1))
     end
   end
 
@@ -500,11 +498,9 @@ defmodule Alva.LiveView do
       protected_topics = MapSet.union(remaining_signal_topics, stream_topics)
       pubsub = endpoint_pubsub!(sock)
 
-      Enum.each(topics_to_remove, fn topic ->
-        unless MapSet.member?(protected_topics, topic) do
-          Phoenix.PubSub.unsubscribe(pubsub, topic)
-        end
-      end)
+      topics_to_remove
+      |> Enum.reject(&MapSet.member?(protected_topics, &1))
+      |> Enum.each(&Phoenix.PubSub.unsubscribe(pubsub, &1))
     end
 
     {:halt, %{ok: true}, sock}
