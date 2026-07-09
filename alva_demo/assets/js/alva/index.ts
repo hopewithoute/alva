@@ -2,7 +2,9 @@
 // Do not edit manually.
 
 export { useAlvaApi } from "./composables/useAlvaApi";
+export { useAlvaForm } from "./composables/useAlvaForm";
 export { ash } from "./composables/ash";
 export type { AlvaApiConfig, AlvaError } from "./composables/useAlvaApi";
+export type { AlvaFormOptions } from "./composables/useAlvaForm";
 export type { AlvaEvents } from "./events";
 export type { AlvaSignals } from "./signals";
