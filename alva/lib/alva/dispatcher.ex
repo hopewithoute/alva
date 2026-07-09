@@ -222,20 +222,23 @@ defmodule Alva.Dispatcher do
   end
 
   defp resolve_page_opts(_page_opts, action, resource) do
-    if action.pagination do
-      Logger.warning(
-        "Alva Dispatcher: Action #{action.name} on #{inspect(resource)} is paginated but no page options were provided. Enforcing default limit: 50."
-      )
+    cond do
+      action.pagination ->
+        Logger.warning(
+          "Alva Dispatcher: Action #{action.name} on #{inspect(resource)} is paginated but no page options were provided. Enforcing default limit: 50."
+        )
 
-      [page: [limit: 50]]
-    else
-      unless action.get? do
+        [page: [limit: 50]]
+
+      action.get? ->
+        []
+
+      true ->
         Logger.warning(
           "Alva Dispatcher: Action #{action.name} on #{inspect(resource)} returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads."
         )
-      end
 
-      []
+        []
     end
   end
 
@@ -335,9 +338,7 @@ defmodule Alva.Dispatcher do
   end
 
   defp cleanup_persisted_uploads(paths) do
-    Enum.each(paths, fn path ->
-      File.rm(path)
-    end)
+    Enum.each(paths, &File.rm/1)
   end
 
   defp handle_dry_run(changeset, _event_def) do
@@ -352,11 +353,7 @@ defmodule Alva.Dispatcher do
     {stripped, exposed_meta} =
       Alva.Serializer.serialize(record_or_list, expose_metadata: event_def.expose_metadata)
 
-    if page do
-      handle_success(stripped, exposed_meta, page)
-    else
-      handle_success(stripped, exposed_meta)
-    end
+    handle_success(stripped, exposed_meta, page)
   end
 
   defp find_event(opts, event_name) do
@@ -387,32 +384,29 @@ defmodule Alva.Dispatcher do
     )
   end
 
-  defp handle_success(data, exposed_meta) do
+  defp handle_success(data, exposed_meta, page \\ nil) do
     {permissions, cleaned_data} = extract_and_remove_permissions(data)
-    meta = build_meta(permissions, exposed_meta)
+
+    meta =
+      if page do
+        pagination = %{
+          limit: page.limit,
+          offset: page.offset,
+          count: page.count,
+          has_more: page.more?
+        }
+
+        pagination = pagination |> Enum.reject(fn {_, v} -> is_nil(v) end) |> Enum.into(%{})
+        Map.merge(%{pagination: pagination}, build_meta(permissions, exposed_meta))
+      else
+        build_meta(permissions, exposed_meta)
+      end
 
     if map_size(meta) > 0 do
       %{ok: true, data: cleaned_data, meta: meta}
     else
       %{ok: true, data: cleaned_data}
     end
-  end
-
-  defp handle_success(data, exposed_meta, page) do
-    {permissions, cleaned_data} = extract_and_remove_permissions(data)
-
-    meta_pagination =
-      %{
-        limit: page.limit,
-        offset: page.offset,
-        count: page.count,
-        has_more: page.more?
-      }
-      |> Enum.reject(fn {_, v} -> is_nil(v) end)
-      |> Enum.into(%{})
-
-    meta = Map.merge(%{pagination: meta_pagination}, build_meta(permissions, exposed_meta))
-    %{ok: true, data: cleaned_data, meta: meta}
   end
 
   defp build_meta(permissions, exposed_meta) do

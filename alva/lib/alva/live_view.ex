@@ -400,53 +400,53 @@ defmodule Alva.LiveView do
     signal_name = params["name"]
     payload = params["input"] || %{}
 
-    case Alva.Registry.fetch_signal(otp_app, signal_name) do
-      {:ok, resource, signal} ->
-        {actor, tenant} = socket_actor_tenant(sock)
-        action = Ash.Resource.Info.action(resource, signal.authorize_with)
+    with {:ok, resource, signal} <- Alva.Registry.fetch_signal(otp_app, signal_name),
+         {actor, tenant} <- socket_actor_tenant(sock),
+         action when not is_nil(action) <-
+           Ash.Resource.Info.action(resource, signal.authorize_with),
+         subject <- build_authorization_subject(resource, action, payload),
+         true <- Ash.can?(subject, actor, tenant: tenant, maybe_is: false) do
+      topics = pubsub_topics(resource, signal.on, payload)
+      maybe_subscribe_to_topics(sock, topics)
 
-        subject =
-          case action.type do
-            :read -> Ash.Query.for_read(resource, action.name, payload)
-            :create -> Ash.Changeset.for_create(resource, action.name, payload)
-            :update -> Ash.Changeset.for_update(resource, action.name, payload)
-            :destroy -> Ash.Changeset.for_destroy(resource, action.name, payload)
-            :action -> Ash.ActionInput.for_action(resource, action.name, payload)
-          end
+      sock =
+        update_alva(sock, fn state ->
+          active_signals = Map.get(state, :active_signals, %{})
+          signal_meta = %{resource: resource, signal: signal, topics: topics, params: payload}
+          Map.put(state, :active_signals, Map.put(active_signals, signal_name, signal_meta))
+        end)
 
-        authorized? = Ash.can?(subject, actor, tenant: tenant, maybe_is: false)
-
-        if authorized? do
-          topics = pubsub_topics(resource, signal.on, payload)
-          pubsub = endpoint_pubsub!(sock)
-
-          if Phoenix.LiveView.connected?(sock) do
-            Enum.each(topics, fn topic ->
-              :ok = Phoenix.PubSub.subscribe(pubsub, topic)
-            end)
-          end
-
-          sock =
-            update_alva(sock, fn state ->
-              active_signals = Map.get(state, :active_signals, %{})
-
-              signal_meta = %{
-                resource: resource,
-                signal: signal,
-                topics: topics,
-                params: payload
-              }
-
-              Map.put(state, :active_signals, Map.put(active_signals, signal_name, signal_meta))
-            end)
-
-          {:halt, %{ok: true}, sock}
-        else
-          {:halt, %{ok: false, error: %{type: "forbidden", message: "Forbidden"}}, sock}
-        end
-
+      {:halt, %{ok: true}, sock}
+    else
       :error ->
         {:halt, %{ok: false, error: %{type: "not_found", message: "Signal not found"}}, sock}
+
+      nil ->
+        {:halt,
+         %{
+           ok: false,
+           error: %{type: "not_found", message: "Signal authorize_with action not found"}
+         }, sock}
+
+      false ->
+        {:halt, %{ok: false, error: %{type: "forbidden", message: "Forbidden"}}, sock}
+    end
+  end
+
+  defp build_authorization_subject(resource, action, payload) do
+    case action.type do
+      :read -> Ash.Query.for_read(resource, action.name, payload)
+      :create -> Ash.Changeset.for_create(resource, action.name, payload)
+      :update -> Ash.Changeset.for_update(resource, action.name, payload)
+      :destroy -> Ash.Changeset.for_destroy(resource, action.name, payload)
+      :action -> Ash.ActionInput.for_action(resource, action.name, payload)
+    end
+  end
+
+  defp maybe_subscribe_to_topics(sock, topics) do
+    if Phoenix.LiveView.connected?(sock) do
+      pubsub = endpoint_pubsub!(sock)
+      Enum.each(topics, &Phoenix.PubSub.subscribe(pubsub, &1))
     end
   end
 
@@ -482,16 +482,11 @@ defmodule Alva.LiveView do
 
   defp validate_use_opts!(opts, caller) when is_list(opts) do
     if Keyword.keyword?(opts) do
-      opts
-      |> Keyword.keys()
-      |> Enum.each(&validate_public_activation_key!(&1, caller))
+      Enum.each(Keyword.keys(opts), &validate_public_activation_key!(&1, caller))
 
       case Keyword.fetch(opts, :streams) do
-        {:ok, streams} ->
-          maybe_validate_stream_use_declarations!(streams, caller)
-
-        :error ->
-          :ok
+        {:ok, streams} -> maybe_validate_stream_use_declarations!(streams, caller)
+        :error -> :ok
       end
     else
       raise_compile_error!(caller, @err_opts_expected)
@@ -643,9 +638,9 @@ defmodule Alva.LiveView do
     action_occurrence_keys(resource, action_name)
   end
 
-  defp notification_occurrence_keys(%Ash.Notifier.Notification{action: %{name: name}})
-       when is_atom(name) do
-    MapSet.new([name])
+  defp notification_occurrence_keys(%Ash.Notifier.Notification{action: action})
+       when is_map_key(action, :name) do
+    MapSet.new([action.name])
   end
 
   defp notification_occurrence_keys(%Ash.Notifier.Notification{action: action_name})
