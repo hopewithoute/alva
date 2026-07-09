@@ -29,7 +29,7 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
         sync_on: [:create]
       ]
     ],
-    commands: ["catalog.upload_media"]
+    uploads: ["catalog.upload_media"]
 
   def handle_params(params, _uri, socket) do
     {:noreply, socket |> assign(console_route_assigns(params)) |> Alva.LiveView.reconfigure_streams(params)}

@@ -13,7 +13,7 @@ defmodule AlvaDemo.Support.SupportMessage do
     publish(:create, ["conversation", :conversation_id])
   end
 
-  live_vue do
+  alva do
     event(:support_list_messages, name: "support.list_messages", action: :read_for_conversation)
     event(:support_send_message, name: "support.send_message", action: :create)
   end

@@ -119,15 +119,15 @@ defmodule Alva.Resource do
     ]
   }
 
-  @live_vue %Spark.Dsl.Section{
-    name: :live_vue,
+  @alva %Spark.Dsl.Section{
+    name: :alva,
     describe: "Configure how this resource is exposed to LiveVue",
     entities: [@event, @signal],
     schema: []
   }
 
   use Spark.Dsl.Extension,
-    sections: [@live_vue],
+    sections: [@alva],
     verifiers: [Alva.Resource.Verifiers.VerifyActions],
     transformers: []
 

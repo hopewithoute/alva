@@ -11,7 +11,7 @@ defmodule AlvaDemo.Demos.Notification do
     publish(:send, ["sent"])
   end
 
-  live_vue do
+  alva do
     event(:demo_notifications_send, name: "demo_notifications.send", action: :send)
 
     signal :demo_notifications_sent do

@@ -183,7 +183,7 @@ defmodule Alva.DispatcherTest do
       end
     end
 
-    live_vue do
+    alva do
       event(:test_archive, name: "test.archive", action: :archive, lookup: :id)
       event(:test_say_hello, name: "test.say_hello", action: :say_hello)
       event(:test_get_context, name: "test.get_context", action: :get_context)
@@ -681,7 +681,7 @@ defmodule Alva.DispatcherTest do
       end
     end
 
-    live_vue do
+    alva do
       event(:meta_get,
         name: "meta.get",
         action: :read,

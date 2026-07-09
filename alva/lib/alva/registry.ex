@@ -281,7 +281,7 @@ defmodule Alva.Registry do
   end
 
   defp get_live_vue_entities(resource, module) do
-    SparkAdapter.get_entities(resource, [:live_vue])
+    SparkAdapter.get_entities(resource, [:alva])
     |> Enum.filter(&is_struct(&1, module))
   end
 

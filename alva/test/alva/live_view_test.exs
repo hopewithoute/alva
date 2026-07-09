@@ -33,7 +33,7 @@ defmodule Alva.LiveViewTest do
       defaults [:create, :update, :destroy]
     end
 
-    live_vue do
+    alva do
       event(:test_signal_event, name: "test_signal_event", action: :test_signal_action)
       event(:create_event, name: "create_event", action: :create)
       event(:update_event, name: "update_event", action: :update)
@@ -130,7 +130,7 @@ defmodule Alva.LiveViewTest do
 
   describe "on_mount/4" do
     test "configures alva state and attaches hooks", %{socket: socket} do
-      config = %{commands: []}
+      config = %{uploads: []}
       {:cont, socket} = Alva.LiveView.on_mount(config, %{}, %{}, socket)
 
       assert %{otp_app: :alva, domains: _} = socket.private.alva
@@ -140,9 +140,9 @@ defmodule Alva.LiveViewTest do
       assert Enum.any?(socket.private.lifecycle.handle_info, &(&1.id == :alva_handle_info))
     end
 
-    test "configures file uploads from commands", %{socket: socket} do
+    test "configures file uploads from uploads directive", %{socket: socket} do
       config = %{
-        commands: [:upload_command, :unknown_command, :unknown_action_command]
+        uploads: [:upload_command, :unknown_command, :unknown_action_command]
       }
 
       {:cont, socket} = Alva.LiveView.on_mount(config, %{}, %{}, socket)
@@ -155,7 +155,7 @@ defmodule Alva.LiveViewTest do
 
   describe "handle_event hooks" do
     setup %{socket: socket} do
-      config = %{commands: []}
+      config = %{uploads: []}
       {:cont, socket} = Alva.LiveView.on_mount(config, %{}, %{}, socket)
 
       # Set user for authorization
@@ -219,7 +219,7 @@ defmodule Alva.LiveViewTest do
 
   describe "handle_info hooks" do
     setup %{socket: socket} do
-      config = %{commands: []}
+      config = %{uploads: []}
       {:cont, socket} = Alva.LiveView.on_mount(config, %{}, %{}, socket)
 
       hook = Enum.find(socket.private.lifecycle.handle_info, &(&1.id == :alva_handle_info))

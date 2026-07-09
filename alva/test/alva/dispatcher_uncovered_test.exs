@@ -7,7 +7,7 @@ defmodule Alva.DispatcherUncoveredTest do
       extensions: [Alva.Resource],
       data_layer: Ash.DataLayer.Ets
 
-    live_vue do
+    alva do
       event(:test_create_error, name: "test_create", action: :create_err)
       event(:test_update_error, name: "test_update", action: :update_err)
       event(:test_destroy_error, name: "test_destroy", action: :destroy_err)

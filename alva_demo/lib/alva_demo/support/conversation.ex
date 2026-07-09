@@ -14,7 +14,7 @@ defmodule AlvaDemo.Support.Conversation do
     publish(:record_message, ["updated"])
   end
 
-  live_vue do
+  alva do
     event(:support_create, name: "support.create", action: :create)
     event(:support_list_conversations, name: "support.list_conversations", action: :list)
     event(:support_get_conversation, name: "support.get_conversation", action: :get_by_customer)

@@ -10,7 +10,7 @@ defmodule Alva.DispatcherCoverageTest do
       extensions: [Alva.Resource],
       validate_domain_inclusion?: false
 
-    live_vue do
+    alva do
       event(:test_unknown, name: "unknown.action", action: :read)
       event(:test_update, name: "error.update", action: :update_error)
       event(:test_destroy, name: "error.destroy", action: :destroy_error)

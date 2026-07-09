@@ -6,16 +6,16 @@ defmodule Alva.LiveView do
   @alva_private_key :alva
   @public_activation_keys [
     :streams,
-    :commands
+    :uploads
   ]
   @upload_change_event "alva.validate_upload"
   @upload_submit_event "alva.save_upload"
   @err_domains_removed "Alva declarative page activation no longer accepts `domains:`. Prefer `subscriptions:` for the supported V2 path; projection lookup now resolves through the consuming host app registry."
 
-  @err_opts_expected "use Alva.LiveView expects keyword options. The V2 path only accepts `streams:` and `commands:`. Legacy keys are no longer supported."
+  @err_opts_expected "use Alva.LiveView expects keyword options. The V2 path only accepts `streams:` and `uploads:`. Legacy keys are no longer supported."
   defp err_unsupported_key(key),
     do:
-      "Alva declarative page activation only accepts :streams and :commands on the supported V2 path. Unsupported key: #{inspect(key)}. The V1 legacy keys are removed."
+      "Alva declarative page activation only accepts :streams and :uploads on the supported V2 path. Unsupported key: #{inspect(key)}. The V1 legacy keys are removed."
 
   defmacro __using__(opts) do
     validate_use_opts!(opts, __CALLER__)
@@ -29,15 +29,15 @@ defmodule Alva.LiveView do
     quote do
       import Alva.LiveView
       @alva_streams Keyword.get(unquote(opts), :streams, [])
-      @alva_commands Keyword.get(unquote(opts), :commands, [])
+      @alva_uploads Keyword.get(unquote(opts), :uploads, [])
 
-      on_mount({Alva.LiveView, %{streams: @alva_streams, commands: @alva_commands}})
+      on_mount({Alva.LiveView, %{streams: @alva_streams, uploads: @alva_uploads}})
     end
   end
 
   def on_mount(config, params, _session, socket) do
     streams_config = Map.get(config, :streams, [])
-    commands_config = Map.get(config, :commands, [])
+    uploads_config = Map.get(config, :uploads, [])
     socket = Phoenix.LiveView.put_private(socket, :alva_options, streams: streams_config)
 
     otp_app = host_app_otp_app!(socket)
@@ -46,7 +46,7 @@ defmodule Alva.LiveView do
     socket
     |> setup_initial_alva_state(otp_app, registry)
     |> configure_streams(streams_config, params, otp_app)
-    |> configure_file_uploads_from_commands(commands_config, otp_app)
+    |> configure_file_uploads(uploads_config, otp_app)
     |> attach_alva_hooks(otp_app)
     |> then(&{:cont, &1})
   end
@@ -132,10 +132,10 @@ defmodule Alva.LiveView do
     end)
   end
 
-  defp configure_file_uploads_from_commands(socket, commands, otp_app) do
+  defp configure_file_uploads(socket, uploads, otp_app) do
     upload_arg_names =
-      Enum.flat_map(commands || [], fn command_name ->
-        fetch_upload_args_for_command(command_name, otp_app)
+      Enum.flat_map(uploads || [], fn upload_name ->
+        fetch_upload_args(upload_name, otp_app)
       end)
       |> Enum.uniq()
 
@@ -144,8 +144,8 @@ defmodule Alva.LiveView do
     end)
   end
 
-  defp fetch_upload_args_for_command(command_name, otp_app) do
-    case Alva.Registry.fetch_event(otp_app, to_string(command_name)) do
+  defp fetch_upload_args(upload_name, otp_app) do
+    case Alva.Registry.fetch_event(otp_app, to_string(upload_name)) do
       {:ok, resource, event_def} ->
         case Ash.Resource.Info.action(resource, event_def.action) do
           nil -> []
@@ -504,7 +504,7 @@ defmodule Alva.LiveView do
        when key in [:collections, :signals, :route_subscriptions, :page_events, :page_state] do
     raise_compile_error!(
       caller,
-      "Alva declarative page activation no longer accepts `#{key}:`. For the supported V2 path, use `streams:` and `commands:`."
+      "Alva declarative page activation no longer accepts `#{key}:`. For the supported V2 path, use `streams:` and `uploads:`."
     )
   end
 

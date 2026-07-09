@@ -56,7 +56,7 @@ defmodule Mix.Tasks.Alva.CodegenTest do
       publish(:create, ["created"])
     end
 
-    live_vue do
+    alva do
       event(:test_create, name: "test.create", action: :create)
       event(:test_read, name: "test.read", action: :read)
       event(:test_upload, name: "test.upload", action: :upload)

@@ -4,7 +4,7 @@ defmodule Alva.Resource.Verifiers.VerifyActions do
   use Spark.Dsl.Verifier
 
   def verify(dsl_state) do
-    projections = Spark.Dsl.Extension.get_entities(dsl_state, [:live_vue])
+    projections = Spark.Dsl.Extension.get_entities(dsl_state, [:alva])
     events = Enum.filter(projections, &match?(%Alva.Resource.Event{}, &1))
 
     module = Spark.Dsl.Extension.get_persisted(dsl_state, :module)
@@ -20,7 +20,7 @@ defmodule Alva.Resource.Verifiers.VerifyActions do
         raise_dsl_error(
           module,
           event,
-          "Action #{inspect(event.action)} must be public? true to be exposed via live_vue."
+          "Action #{inspect(event.action)} must be public? true to be exposed via alva."
         )
       end
 
@@ -51,7 +51,7 @@ defmodule Alva.Resource.Verifiers.VerifyActions do
   defp raise_dsl_error(module, event, message) do
     raise Spark.Error.DslError,
       module: module,
-      path: [:live_vue, :event, event.key],
+      path: [:alva, :event, event.key],
       message: message
   end
 end

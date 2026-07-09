@@ -10,7 +10,7 @@ defmodule Alva.RegistryTest do
       data_layer: Ash.DataLayer.Ets,
       validate_domain_inclusion?: false
 
-    live_vue do
+    alva do
       event(:test_event, name: "my_event", action: :read)
     end
 
@@ -30,7 +30,7 @@ defmodule Alva.RegistryTest do
       data_layer: Ash.DataLayer.Ets,
       validate_domain_inclusion?: false
 
-    live_vue do
+    alva do
       event(:test_event_dup, name: "my_event", action: :read)
     end
 

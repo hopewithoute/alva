@@ -15,7 +15,7 @@ defmodule AlvaDemo.Sales.Order do
     publish(:fulfill, ["updated"])
   end
 
-  live_vue do
+  alva do
     event(:sales_create_order, name: "sales.create_order", action: :create)
     event(:sales_list_orders, name: "sales.list_orders", action: :list)
     event(:sales_begin_processing, name: "sales.begin_processing", action: :begin_processing)

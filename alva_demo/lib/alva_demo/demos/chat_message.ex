@@ -12,7 +12,7 @@ defmodule AlvaDemo.Demos.ChatMessage do
     publish(:send, ["created"])
   end
 
-  live_vue do
+  alva do
     event(:demo_chat_list_messages, name: "demo_chat.list_messages", action: :list)
     event(:demo_chat_send_message, name: "demo_chat.send_message", action: :send)
   end

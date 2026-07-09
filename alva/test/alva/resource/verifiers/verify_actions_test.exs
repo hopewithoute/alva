@@ -9,7 +9,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
       persisted: %{module: MockModule},
       entities: [
         %{
-          path: [:live_vue],
+          path: [:alva],
           entities: events
         }
       ],
@@ -36,7 +36,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
                 extensions: [Alva.Resource],
                 data_layer: Ash.DataLayer.Ets
 
-              live_vue do
+              alva do
                 event(:test, name: "test", action: :missing_action)
               end
 
@@ -66,7 +66,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
                 extensions: [Alva.Resource],
                 data_layer: Ash.DataLayer.Ets
 
-              live_vue do
+              alva do
                 event(:test, name: "test", action: :private_read)
               end
 
@@ -84,7 +84,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
         )
       end)
 
-    assert output =~ "Action :private_read must be public? true to be exposed via live_vue"
+    assert output =~ "Action :private_read must be public? true to be exposed via alva"
   end
 
   test "logs warning for empty dto on regular resource" do
@@ -96,7 +96,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
             extensions: [Alva.Resource],
             data_layer: Ash.DataLayer.Ets
 
-          live_vue do
+          alva do
             event(:test, name: "test", action: :read)
           end
 
@@ -123,7 +123,7 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
             extensions: [Alva.Resource],
             data_layer: Ash.DataLayer.Ets
 
-          live_vue do
+          alva do
             event(:test, name: "test", action: :say_hello)
           end
 

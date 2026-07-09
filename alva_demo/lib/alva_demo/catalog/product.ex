@@ -14,7 +14,7 @@ defmodule AlvaDemo.Catalog.Product do
     publish(:upload_media, ["updated"])
   end
 
-  live_vue do
+  alva do
     event(:catalog_list_products, name: "catalog.list_products", action: :list)
     event(:catalog_adjust_stock, name: "catalog.adjust_stock", action: :adjust_stock)
     event(:catalog_upload_media, name: "catalog.upload_media", action: :upload_media)

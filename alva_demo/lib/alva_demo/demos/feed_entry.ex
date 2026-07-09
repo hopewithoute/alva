@@ -5,7 +5,7 @@ defmodule AlvaDemo.Demos.FeedEntry do
     data_layer: Ash.DataLayer.Ets,
     extensions: [Alva.Resource]
 
-  live_vue do
+  alva do
     event(:demo_feed_list_entries, name: "demo_feed.list_entries", action: :list)
   end
 

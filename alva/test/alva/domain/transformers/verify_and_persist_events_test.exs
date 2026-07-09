@@ -21,7 +21,7 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEventsTest do
                            extensions: [Alva.Resource],
                            data_layer: Ash.DataLayer.Ets
 
-                         live_vue do
+                         alva do
                            event(:test1, name: "test", action: :read)
                          end
 
@@ -40,7 +40,7 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEventsTest do
                            extensions: [Alva.Resource],
                            data_layer: Ash.DataLayer.Ets
 
-                         live_vue do
+                         alva do
                            event(:test2, name: "test", action: :read)
                          end
 
