@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { useAlvaUpload } from "alva";
-import { ashCall } from "../../../js/alva/client";
+import { useAlvaUpload } from "../../../js/alva/composables/useAlvaUpload";
+import { useAlvaApi } from "../../../js/alva/composables/useAlvaApi";
 import type { Product } from "../../../js/alva/types";
 import Button from "../../shared/ui/button/Button.vue";
 
@@ -9,6 +9,7 @@ const props = defineProps<{
   product: Product;
 }>();
 
+const api = useAlvaApi();
 const stockInput = ref(props.product.stock);
 const isAdjusting = ref(false);
 const adjustmentError = ref<string | null>(null);
@@ -20,7 +21,7 @@ const adjustStock = async () => {
   adjustmentError.value = null;
 
   try {
-    const result = await ashCall("catalog.adjust_stock", {
+    const result = await api.call["catalog.adjust_stock"]({
       id: props.product.id,
       stock: stockInput.value
     });
@@ -47,7 +48,7 @@ const triggerMediaUpload = async () => {
   const upload_request = mediaUpload.dispatch(async ({ primaryReference }) => {
     isSavingUpload.value = true;
 
-    const result = await ashCall("catalog.upload_media", {
+    const result = await api.call["catalog.upload_media"]({
       id: props.product.id,
       media: primaryReference,
     });

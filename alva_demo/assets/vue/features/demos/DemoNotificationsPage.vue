@@ -1,34 +1,26 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { ash } from "alva";
-import { ashCall } from "../../../js/alva/client";
-import type { AlvaSubscriptions } from "../../../js/alva/subscriptions";
+import { ash } from "../../../js/alva/composables/ash";
+import { useAlvaApi } from "../../../js/alva/composables/useAlvaApi";
+import type { AlvaSignals } from "../../../js/alva/signals";
 
-type NotificationSignal = AlvaSubscriptions["demo_notifications.sent"]["payload"];
+type NotificationSignal = AlvaSignals["demo_notifications.sent"]["payload"];
 
 const title = ref("Build finished cleanly.");
 const severity = ref<NotificationSignal["severity"]>("success");
-const notices = ref<NotificationSignal[]>([]);
-const error = ref<string | null>(null);
 const sending = ref(false);
+const error = ref<string | null>(null);
 
-ash.on<AlvaSubscriptions, "demo_notifications.sent">(
-  "demo_notifications.sent",
-  {},
-  (payload: NotificationSignal) => {
-    notices.value = [payload, ...notices.value].slice(0, 6);
-  }
-);
+const api = useAlvaApi();
 
 const sendNotification = async () => {
   const trimmedTitle = title.value.trim();
-
   if (!trimmedTitle || sending.value) return;
 
   sending.value = true;
   error.value = null;
 
-  const result = await ashCall("demo_notifications.send", {
+  const result = await api.call["demo_notifications.send"]({
     title: trimmedTitle,
     severity: severity.value,
   });
