@@ -89,37 +89,30 @@ defmodule Alva.LiveView do
     scope_def = Keyword.get(config, :scope, %{})
     sync_on = Keyword.get(config, :sync_on, [])
 
-    # 1. Resolve scope from assigns, fallback to params
     scope_args =
       Map.new(scope_def, fn {arg_name, assign_key} ->
         value = Map.get(socket.assigns, assign_key) || Map.get(params, to_string(assign_key))
         {arg_name, value}
       end)
 
-    # 2. Build Query
-    actor = socket.assigns[:current_user] || socket.assigns[:current_actor]
-    tenant = socket.assigns[:current_tenant]
+    {actor, tenant} = socket_actor_tenant(socket)
 
     query =
       resource
       |> Ash.Query.new()
       |> Ash.Query.for_read(source, scope_args, actor: actor, tenant: tenant)
 
-    # 3. Fetch data
     records =
       case Ash.read(query, actor: actor, tenant: tenant) do
         {:ok, results} -> results
         {:error, _} -> []
       end
 
-    # 4. Initialize Stream
     socket = Phoenix.LiveView.stream(socket, name, records)
 
-    # 5. Subscribe to PubSub
     socket =
       if Ash.Resource.Info.notifiers(resource) |> Enum.member?(Ash.Notifier.PubSub) do
         topics = pubsub_topics(resource, sync_on, scope_args)
-
         pubsub = endpoint_pubsub!(socket)
 
         Enum.each(topics, fn topic ->
@@ -131,7 +124,6 @@ defmodule Alva.LiveView do
         socket
       end
 
-    # 6. Store metadata for handle_info diffing
     update_alva(socket, fn state ->
       streams_meta = Map.get(state, :streams, %{})
 
@@ -235,21 +227,19 @@ defmodule Alva.LiveView do
   end
 
   defp handle_notification(notification, sock, occurrence_keys) do
-    matches =
+    %{streams: streams, signals: signals} =
       matching_projection_operations(sock, notification.resource, occurrence_keys)
 
-    case matches do
-      %{streams: [], signals: []} ->
-        {:cont, sock}
+    if streams == [] and signals == [] do
+      {:cont, sock}
+    else
+      sock = apply_stream_operations(sock, streams, notification.data)
 
-      %{signals: signals, streams: streams} ->
-        sock = apply_stream_operations(sock, streams, notification.data)
-
-        if signals == [] do
-          {:halt, sock}
-        else
-          {:halt, push_signals(sock, notification.data, signals)}
-        end
+      if signals == [] do
+        {:halt, sock}
+      else
+        {:halt, push_signals(sock, notification.data, signals)}
+      end
     end
   end
 
@@ -295,7 +285,7 @@ defmodule Alva.LiveView do
     |> Map.get(:inserts, [])
     |> Enum.any?(fn
       {^dom_id, _at, _item, _limit, _update_only} -> true
-      _other -> false
+      _ -> false
     end)
   end
 
@@ -396,17 +386,12 @@ defmodule Alva.LiveView do
     active_signals = Map.get(state, :active_signals, %{})
 
     signal_ops =
-      Enum.flat_map(active_signals, fn {signal_name, meta} ->
-        if meta.resource == notification_resource do
-          if Enum.any?(occurrence_keys, fn action_name -> action_name in meta.signal.on end) do
-            [{signal_name, meta.signal}]
-          else
-            []
-          end
-        else
-          []
-        end
+      active_signals
+      |> Enum.filter(fn {_name, meta} ->
+        meta.resource == notification_resource and
+          Enum.any?(occurrence_keys, &(&1 in meta.signal.on))
       end)
+      |> Enum.map(fn {signal_name, meta} -> {signal_name, meta.signal} end)
 
     %{streams: stream_ops, signals: signal_ops}
   end
@@ -417,9 +402,7 @@ defmodule Alva.LiveView do
 
     case Alva.Registry.fetch_signal(otp_app, signal_name) do
       {:ok, resource, signal} ->
-        actor = sock.assigns[:current_user] || sock.assigns[:current_actor]
-        tenant = sock.assigns[:current_tenant]
-
+        {actor, tenant} = socket_actor_tenant(sock)
         action = Ash.Resource.Info.action(resource, signal.authorize_with)
 
         subject =
@@ -706,14 +689,12 @@ defmodule Alva.LiveView do
     resource = stream_meta.resource
     primary_keys = Ash.Resource.Info.primary_key(resource)
     filter_args = Map.take(record, primary_keys) |> Map.to_list()
+    {actor, tenant} = socket_actor_tenant(socket)
 
     query =
       resource
       |> Ash.Query.for_read(stream_meta.source, stream_meta.scope_args)
       |> Ash.Query.filter_input(filter_args)
-
-    tenant = socket.assigns[:current_tenant]
-    actor = socket.assigns[:current_user] || socket.assigns[:current_actor]
 
     case Ash.read(query, tenant: tenant, actor: actor) do
       {:ok, []} -> false
@@ -748,6 +729,12 @@ defmodule Alva.LiveView do
   defp publication_occurrence_key(%{type: type}) when not is_nil(type), do: type
   defp publication_occurrence_key(_publication), do: nil
 
+  defp socket_actor_tenant(socket) do
+    actor = socket.assigns[:current_user] || socket.assigns[:current_actor]
+    tenant = socket.assigns[:current_tenant]
+    {actor, tenant}
+  end
+
   defp update_alva(socket, fun) do
     state =
       socket
@@ -761,8 +748,7 @@ defmodule Alva.LiveView do
     Map.get(socket.private, @alva_private_key, %{
       otp_app: nil,
       domains: [],
-      event_map: %{},
-      active_subscription_refs: %{}
+      event_map: %{}
     })
   end
 end

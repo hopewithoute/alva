@@ -185,20 +185,21 @@ defmodule Alva.Dispatcher do
   end
 
   defp handle_read_result(records, action, event_def, resource, page) do
-    if action.get? do
-      case records do
-        [record | _] ->
-          dispatch_success(record, event_def, page)
+    cond do
+      action.get? ->
+        case records do
+          [record | _] ->
+            dispatch_success(record, event_def, page)
 
-        [] ->
-          handle_error(Ash.Error.Query.NotFound.exception(resource: resource, primary_key: %{}))
-      end
-    else
-      if page do
+          [] ->
+            handle_error(Ash.Error.Query.NotFound.exception(resource: resource, primary_key: %{}))
+        end
+
+      page ->
         dispatch_success(records, event_def, page)
-      else
+
+      true ->
         dispatch_success(records, event_def)
-      end
     end
   end
 
@@ -419,20 +420,18 @@ defmodule Alva.Dispatcher do
     Map.merge(meta, exposed_meta)
   end
 
-  defp extract_and_remove_permissions(data) when is_list(data) do
-    if data == [] do
-      {%{}, []}
-    else
-      {permissions, _} = extract_permissions_from_map(hd(data))
+  defp extract_and_remove_permissions([]), do: {%{}, []}
 
-      new_data =
-        Enum.map(data, fn item ->
-          {_, cleaned} = extract_permissions_from_map(item)
-          cleaned
-        end)
+  defp extract_and_remove_permissions([first | _] = data) when is_list(data) do
+    {permissions, _} = extract_permissions_from_map(first)
 
-      {permissions, new_data}
-    end
+    new_data =
+      Enum.map(data, fn item ->
+        {_, cleaned} = extract_permissions_from_map(item)
+        cleaned
+      end)
+
+    {permissions, new_data}
   end
 
   defp extract_and_remove_permissions(data) when is_map(data) do
@@ -472,33 +471,34 @@ defmodule Alva.Dispatcher do
     end
   end
 
+  defp resolve_auth_opts(opts, _event_name, nil), do: opts
+
   defp resolve_auth_opts(opts, event_name, socket) do
-    if is_nil(socket) do
-      opts
-    else
-      user_key = Application.get_env(:alva, :actor_assign_key, :current_user)
-      tenant_key = Application.get_env(:alva, :tenant_assign_key, :current_tenant)
+    user_key = Application.get_env(:alva, :actor_assign_key, :current_user)
+    tenant_key = Application.get_env(:alva, :tenant_assign_key, :current_tenant)
 
-      actor = Map.get(socket.assigns, user_key)
-      tenant = Map.get(socket.assigns, tenant_key)
+    actor = Map.get(socket.assigns, user_key)
+    tenant = Map.get(socket.assigns, tenant_key)
 
-      if is_nil(actor) and not Keyword.has_key?(opts, :actor) do
-        Logger.warning(
-          "Alva Extension: Dispatching event #{inspect(event_name)} without an actor. Expected socket.assigns.#{user_key} to be set."
-        )
-      end
-
-      if is_nil(tenant) and not Keyword.has_key?(opts, :tenant) do
-        Logger.warning(
-          "Alva Extension: Dispatching event #{inspect(event_name)} without a tenant. Expected socket.assigns.#{tenant_key} to be set."
-        )
-      end
-
-      opts
-      |> (fn o -> if actor, do: Keyword.put_new(o, :actor, actor), else: o end).()
-      |> (fn o -> if tenant, do: Keyword.put_new(o, :tenant, tenant), else: o end).()
+    if is_nil(actor) and not Keyword.has_key?(opts, :actor) do
+      Logger.warning(
+        "Alva Extension: Dispatching event #{inspect(event_name)} without an actor. Expected socket.assigns.#{user_key} to be set."
+      )
     end
+
+    if is_nil(tenant) and not Keyword.has_key?(opts, :tenant) do
+      Logger.warning(
+        "Alva Extension: Dispatching event #{inspect(event_name)} without a tenant. Expected socket.assigns.#{tenant_key} to be set."
+      )
+    end
+
+    opts
+    |> maybe_put(:actor, actor)
+    |> maybe_put(:tenant, tenant)
   end
+
+  defp maybe_put(opts, _key, nil), do: opts
+  defp maybe_put(opts, key, value), do: Keyword.put_new(opts, key, value)
 
   defp emit_telemetry(event_name, params, opts, result, start_time) do
     duration = System.monotonic_time() - start_time
