@@ -21,226 +21,210 @@ export function useAlvaApi(config?: AlvaApiConfig) {
 
     return {
 call: {
-      "catalog.adjust_stock": (payload: AlvaEvents["catalog.adjust_stock"]["input"]): Promise<AlvaEvents["catalog.adjust_stock"]["output"]> => {
+      "catalog.adjust_stock": (payload: AlvaEvents["catalog.adjust_stock"]["input"]): AlvaEvents["catalog.adjust_stock"]["output"] => {
         return new Promise((resolve) => {
-          live.pushEvent("catalog.adjust_stock", payload, (reply: any) => {
+          live.pushEvent("catalog.adjust_stock", payload, (reply: AlvaEvents["catalog.adjust_stock"]["output"]) => {
             if (reply.ok) {
               config?.onSuccess?.(reply.data, "catalog.adjust_stock");
-              resolve(reply);
             } else {
               config?.onError?.(reply.error, "catalog.adjust_stock");
-              resolve(reply);
             }
+            resolve(reply);
           });
         });
       },
 
-      "catalog.list_products": (payload: AlvaEvents["catalog.list_products"]["input"]): Promise<AlvaEvents["catalog.list_products"]["output"]> => {
+      "catalog.list_products": (payload: AlvaEvents["catalog.list_products"]["input"]): AlvaEvents["catalog.list_products"]["output"] => {
         return new Promise((resolve) => {
-          live.pushEvent("catalog.list_products", payload, (reply: any) => {
+          live.pushEvent("catalog.list_products", payload, (reply: AlvaEvents["catalog.list_products"]["output"]) => {
             if (reply.ok) {
               config?.onSuccess?.(reply.data, "catalog.list_products");
-              resolve(reply);
             } else {
               config?.onError?.(reply.error, "catalog.list_products");
-              resolve(reply);
             }
+            resolve(reply);
           });
         });
       },
 
-      "catalog.upload_media": (payload: AlvaEvents["catalog.upload_media"]["input"]): Promise<AlvaEvents["catalog.upload_media"]["output"]> => {
+      "catalog.upload_media": (payload: AlvaEvents["catalog.upload_media"]["input"]): AlvaEvents["catalog.upload_media"]["output"] => {
         return new Promise((resolve) => {
-          live.pushEvent("catalog.upload_media", payload, (reply: any) => {
+          live.pushEvent("catalog.upload_media", payload, (reply: AlvaEvents["catalog.upload_media"]["output"]) => {
             if (reply.ok) {
               config?.onSuccess?.(reply.data, "catalog.upload_media");
-              resolve(reply);
             } else {
               config?.onError?.(reply.error, "catalog.upload_media");
-              resolve(reply);
             }
+            resolve(reply);
           });
         });
       },
 
-      "demo_chat.list_messages": (payload: AlvaEvents["demo_chat.list_messages"]["input"]): Promise<AlvaEvents["demo_chat.list_messages"]["output"]> => {
+      "demo_chat.list_messages": (payload: AlvaEvents["demo_chat.list_messages"]["input"]): AlvaEvents["demo_chat.list_messages"]["output"] => {
         return new Promise((resolve) => {
-          live.pushEvent("demo_chat.list_messages", payload, (reply: any) => {
+          live.pushEvent("demo_chat.list_messages", payload, (reply: AlvaEvents["demo_chat.list_messages"]["output"]) => {
             if (reply.ok) {
               config?.onSuccess?.(reply.data, "demo_chat.list_messages");
-              resolve(reply);
             } else {
               config?.onError?.(reply.error, "demo_chat.list_messages");
-              resolve(reply);
             }
+            resolve(reply);
           });
         });
       },
 
-      "demo_chat.send_message": (payload: AlvaEvents["demo_chat.send_message"]["input"]): Promise<AlvaEvents["demo_chat.send_message"]["output"]> => {
+      "demo_chat.send_message": (payload: AlvaEvents["demo_chat.send_message"]["input"]): AlvaEvents["demo_chat.send_message"]["output"] => {
         return new Promise((resolve) => {
-          live.pushEvent("demo_chat.send_message", payload, (reply: any) => {
+          live.pushEvent("demo_chat.send_message", payload, (reply: AlvaEvents["demo_chat.send_message"]["output"]) => {
             if (reply.ok) {
               config?.onSuccess?.(reply.data, "demo_chat.send_message");
-              resolve(reply);
             } else {
               config?.onError?.(reply.error, "demo_chat.send_message");
-              resolve(reply);
             }
+            resolve(reply);
           });
         });
       },
 
-      "demo_feed.list_entries": (payload: AlvaEvents["demo_feed.list_entries"]["input"]): Promise<AlvaEvents["demo_feed.list_entries"]["output"]> => {
+      "demo_feed.list_entries": (payload: AlvaEvents["demo_feed.list_entries"]["input"]): AlvaEvents["demo_feed.list_entries"]["output"] => {
         return new Promise((resolve) => {
-          live.pushEvent("demo_feed.list_entries", payload, (reply: any) => {
+          live.pushEvent("demo_feed.list_entries", payload, (reply: AlvaEvents["demo_feed.list_entries"]["output"]) => {
             if (reply.ok) {
               config?.onSuccess?.(reply.data, "demo_feed.list_entries");
-              resolve(reply);
             } else {
               config?.onError?.(reply.error, "demo_feed.list_entries");
-              resolve(reply);
             }
+            resolve(reply);
           });
         });
       },
 
-      "demo_notifications.send": (payload: AlvaEvents["demo_notifications.send"]["input"]): Promise<AlvaEvents["demo_notifications.send"]["output"]> => {
+      "demo_notifications.send": (payload: AlvaEvents["demo_notifications.send"]["input"]): AlvaEvents["demo_notifications.send"]["output"] => {
         return new Promise((resolve) => {
-          live.pushEvent("demo_notifications.send", payload, (reply: any) => {
+          live.pushEvent("demo_notifications.send", payload, (reply: AlvaEvents["demo_notifications.send"]["output"]) => {
             if (reply.ok) {
               config?.onSuccess?.(reply.data, "demo_notifications.send");
-              resolve(reply);
             } else {
               config?.onError?.(reply.error, "demo_notifications.send");
-              resolve(reply);
             }
+            resolve(reply);
           });
         });
       },
 
-      "sales.begin_processing": (payload: AlvaEvents["sales.begin_processing"]["input"]): Promise<AlvaEvents["sales.begin_processing"]["output"]> => {
+      "sales.begin_processing": (payload: AlvaEvents["sales.begin_processing"]["input"]): AlvaEvents["sales.begin_processing"]["output"] => {
         return new Promise((resolve) => {
-          live.pushEvent("sales.begin_processing", payload, (reply: any) => {
+          live.pushEvent("sales.begin_processing", payload, (reply: AlvaEvents["sales.begin_processing"]["output"]) => {
             if (reply.ok) {
               config?.onSuccess?.(reply.data, "sales.begin_processing");
-              resolve(reply);
             } else {
               config?.onError?.(reply.error, "sales.begin_processing");
-              resolve(reply);
             }
+            resolve(reply);
           });
         });
       },
 
-      "sales.create_order": (payload: AlvaEvents["sales.create_order"]["input"]): Promise<AlvaEvents["sales.create_order"]["output"]> => {
+      "sales.create_order": (payload: AlvaEvents["sales.create_order"]["input"]): AlvaEvents["sales.create_order"]["output"] => {
         return new Promise((resolve) => {
-          live.pushEvent("sales.create_order", payload, (reply: any) => {
+          live.pushEvent("sales.create_order", payload, (reply: AlvaEvents["sales.create_order"]["output"]) => {
             if (reply.ok) {
               config?.onSuccess?.(reply.data, "sales.create_order");
-              resolve(reply);
             } else {
               config?.onError?.(reply.error, "sales.create_order");
-              resolve(reply);
             }
+            resolve(reply);
           });
         });
       },
 
-      "sales.fulfill": (payload: AlvaEvents["sales.fulfill"]["input"]): Promise<AlvaEvents["sales.fulfill"]["output"]> => {
+      "sales.fulfill": (payload: AlvaEvents["sales.fulfill"]["input"]): AlvaEvents["sales.fulfill"]["output"] => {
         return new Promise((resolve) => {
-          live.pushEvent("sales.fulfill", payload, (reply: any) => {
+          live.pushEvent("sales.fulfill", payload, (reply: AlvaEvents["sales.fulfill"]["output"]) => {
             if (reply.ok) {
               config?.onSuccess?.(reply.data, "sales.fulfill");
-              resolve(reply);
             } else {
               config?.onError?.(reply.error, "sales.fulfill");
-              resolve(reply);
             }
+            resolve(reply);
           });
         });
       },
 
-      "sales.list_orders": (payload: AlvaEvents["sales.list_orders"]["input"]): Promise<AlvaEvents["sales.list_orders"]["output"]> => {
+      "sales.list_orders": (payload: AlvaEvents["sales.list_orders"]["input"]): AlvaEvents["sales.list_orders"]["output"] => {
         return new Promise((resolve) => {
-          live.pushEvent("sales.list_orders", payload, (reply: any) => {
+          live.pushEvent("sales.list_orders", payload, (reply: AlvaEvents["sales.list_orders"]["output"]) => {
             if (reply.ok) {
               config?.onSuccess?.(reply.data, "sales.list_orders");
-              resolve(reply);
             } else {
               config?.onError?.(reply.error, "sales.list_orders");
-              resolve(reply);
             }
+            resolve(reply);
           });
         });
       },
 
-      "support.create": (payload: AlvaEvents["support.create"]["input"]): Promise<AlvaEvents["support.create"]["output"]> => {
+      "support.create": (payload: AlvaEvents["support.create"]["input"]): AlvaEvents["support.create"]["output"] => {
         return new Promise((resolve) => {
-          live.pushEvent("support.create", payload, (reply: any) => {
+          live.pushEvent("support.create", payload, (reply: AlvaEvents["support.create"]["output"]) => {
             if (reply.ok) {
               config?.onSuccess?.(reply.data, "support.create");
-              resolve(reply);
             } else {
               config?.onError?.(reply.error, "support.create");
-              resolve(reply);
             }
+            resolve(reply);
           });
         });
       },
 
-      "support.get_conversation": (payload: AlvaEvents["support.get_conversation"]["input"]): Promise<AlvaEvents["support.get_conversation"]["output"]> => {
+      "support.get_conversation": (payload: AlvaEvents["support.get_conversation"]["input"]): AlvaEvents["support.get_conversation"]["output"] => {
         return new Promise((resolve) => {
-          live.pushEvent("support.get_conversation", payload, (reply: any) => {
+          live.pushEvent("support.get_conversation", payload, (reply: AlvaEvents["support.get_conversation"]["output"]) => {
             if (reply.ok) {
               config?.onSuccess?.(reply.data, "support.get_conversation");
-              resolve(reply);
             } else {
               config?.onError?.(reply.error, "support.get_conversation");
-              resolve(reply);
             }
+            resolve(reply);
           });
         });
       },
 
-      "support.list_conversations": (payload: AlvaEvents["support.list_conversations"]["input"]): Promise<AlvaEvents["support.list_conversations"]["output"]> => {
+      "support.list_conversations": (payload: AlvaEvents["support.list_conversations"]["input"]): AlvaEvents["support.list_conversations"]["output"] => {
         return new Promise((resolve) => {
-          live.pushEvent("support.list_conversations", payload, (reply: any) => {
+          live.pushEvent("support.list_conversations", payload, (reply: AlvaEvents["support.list_conversations"]["output"]) => {
             if (reply.ok) {
               config?.onSuccess?.(reply.data, "support.list_conversations");
-              resolve(reply);
             } else {
               config?.onError?.(reply.error, "support.list_conversations");
-              resolve(reply);
             }
+            resolve(reply);
           });
         });
       },
 
-      "support.list_messages": (payload: AlvaEvents["support.list_messages"]["input"]): Promise<AlvaEvents["support.list_messages"]["output"]> => {
+      "support.list_messages": (payload: AlvaEvents["support.list_messages"]["input"]): AlvaEvents["support.list_messages"]["output"] => {
         return new Promise((resolve) => {
-          live.pushEvent("support.list_messages", payload, (reply: any) => {
+          live.pushEvent("support.list_messages", payload, (reply: AlvaEvents["support.list_messages"]["output"]) => {
             if (reply.ok) {
               config?.onSuccess?.(reply.data, "support.list_messages");
-              resolve(reply);
             } else {
               config?.onError?.(reply.error, "support.list_messages");
-              resolve(reply);
             }
+            resolve(reply);
           });
         });
       },
 
-      "support.send_message": (payload: AlvaEvents["support.send_message"]["input"]): Promise<AlvaEvents["support.send_message"]["output"]> => {
+      "support.send_message": (payload: AlvaEvents["support.send_message"]["input"]): AlvaEvents["support.send_message"]["output"] => {
         return new Promise((resolve) => {
-          live.pushEvent("support.send_message", payload, (reply: any) => {
+          live.pushEvent("support.send_message", payload, (reply: AlvaEvents["support.send_message"]["output"]) => {
             if (reply.ok) {
               config?.onSuccess?.(reply.data, "support.send_message");
-              resolve(reply);
             } else {
               config?.onError?.(reply.error, "support.send_message");
-              resolve(reply);
             }
+            resolve(reply);
           });
         });
       },
