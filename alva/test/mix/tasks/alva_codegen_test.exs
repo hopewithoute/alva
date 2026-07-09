@@ -88,6 +88,7 @@ defmodule Mix.Tasks.Alva.CodegenTest do
     composables_dir = Path.join(tmp_dir, "composables")
     use_alva_api_path = Path.join(composables_dir, "useAlvaApi.ts")
     use_alva_form_path = Path.join(composables_dir, "useAlvaForm.ts")
+    use_alva_upload_path = Path.join(composables_dir, "useAlvaUpload.ts")
     index_path = Path.join(tmp_dir, "index.ts")
     types_path = Path.join(tmp_dir, "types.ts")
     signals_path = Path.join(tmp_dir, "signals.ts")
@@ -95,6 +96,7 @@ defmodule Mix.Tasks.Alva.CodegenTest do
     assert File.exists?(events_path)
     assert File.exists?(use_alva_api_path)
     assert File.exists?(use_alva_form_path)
+    assert File.exists?(use_alva_upload_path)
     assert File.exists?(index_path)
     assert File.exists?(types_path)
     assert File.exists?(signals_path)
@@ -154,5 +156,19 @@ defmodule Mix.Tasks.Alva.CodegenTest do
 
     assert String.contains?(use_alva_form_content, "export function useAlvaForm")
     assert String.contains?(use_alva_form_content, "submitEvent: K,")
+
+    use_alva_upload_content = File.read!(use_alva_upload_path)
+
+    assert String.contains?(
+             use_alva_upload_content,
+             "import { computed, ref, watch } from \"vue\""
+           )
+
+    assert String.contains?(
+             use_alva_upload_content,
+             "import { useLiveUpload, useLiveVue } from \"live_vue\""
+           )
+
+    assert String.contains?(use_alva_upload_content, "export function useAlvaUpload")
   end
 end
