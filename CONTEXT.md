@@ -66,6 +66,9 @@
 - **Alva Test Helpers**: Utilities (e.g., `assert_dispatch_ok`, `assert_dispatch_forbidden`) that allow developers to test the exact authorization boundary Vue interacts with, without writing raw boilerplate dispatcher code in ExUnit tests.
 - **Error Redaction Rule**: Alva's environment-aware error masking. In production, unhandled or internal errors are redacted into a generic `unknown` payload to prevent detail leakage. In development, the full error details are sent to the Vue client for debugging. In both cases, the complete error is logged to the server console.
 - **Alva Telemetry Events**: Standard Erlang `:telemetry` events emitted by `Alva.Dispatcher` containing the actor, event name, parameters, and result/duration. This is the idiomatic way host applications hook into Alva for audit logging or metrics without tightly coupling to specific callbacks.
+- **Generated SDK**: The self-contained TypeScript artifact produced by `mix alva.codegen` that lives in the host app's `assets/js/alva/`. It contains composables, types, and event maps — all generated from the registry. The generated SDK imports `live_vue` directly and has no runtime dependency on the `alva` npm package.
+- **Per-Event Composable**: A composable pattern where the generated SDK exposes one method per declared event or signal, rather than a generic `call(event, payload)` interface. Provides strict type safety and IDE autocomplete at the call site.
+- **Alva Codegen**: The build-time tool (`mix alva.codegen`) that reads the host app's registry metadata and generates the complete TypeScript SDK. It is the source of truth for frontend types and composable behavior.
 
 ## Flagged ambiguities
 
