@@ -3,8 +3,10 @@
 
 export { useAlvaApi } from "./composables/useAlvaApi";
 export { useAlvaForm } from "./composables/useAlvaForm";
+export { useAlvaUpload } from "./composables/useAlvaUpload";
 export { ash } from "./composables/ash";
 export type { AlvaApiConfig, AlvaError } from "./composables/useAlvaApi";
 export type { AlvaFormOptions } from "./composables/useAlvaForm";
+export type { AlvaUploadOptions, AlvaUploadDispatchContext, UploadEntry } from "./composables/useAlvaUpload";
 export type { AlvaEvents } from "./events";
 export type { AlvaSignals } from "./signals";
