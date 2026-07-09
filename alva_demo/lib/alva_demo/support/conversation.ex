@@ -1,7 +1,5 @@
 defmodule AlvaDemo.Support.Conversation do
   require Ash.Query
-  alias AlvaDemo.Subscriptions, as: DemoSubscriptions
-  alias AlvaDemoWeb.ParamHelpers
 
   use Ash.Resource,
     domain: AlvaDemo.Support,

@@ -27,7 +27,7 @@ defmodule AlvaDemoWeb.SynchronizationTest do
     product: product
   } do
     # Mount both surfaces
-    {:ok, storefront_live, _html} = live(conn, "/storefront")
+    {:ok, storefront_live, _html} = live(conn, "/storefront?customer_name=Sync%20Shopper")
     {:ok, console_live, _html} = live(conn, "/console")
 
     # Simulate an order created via Ash domain (which triggers pubsub)
@@ -69,7 +69,7 @@ defmodule AlvaDemoWeb.SynchronizationTest do
     conn: conn,
     product: product
   } do
-    {:ok, storefront_live, _html} = live(conn, "/storefront")
+    {:ok, storefront_live, _html} = live(conn, "/storefront?customer_name=Hook%20Shopper")
 
     render_hook(storefront_live, "sales.create_order", %{
       "customer_name" => "Hook Shopper",
@@ -93,7 +93,7 @@ defmodule AlvaDemoWeb.SynchronizationTest do
       })
       |> Ash.create!()
 
-    {:ok, storefront_live, _html} = live(conn, "/storefront")
+    {:ok, storefront_live, _html} = live(conn, "/storefront?customer_name=Console%20Sync%20Shopper")
     {:ok, console_live, _html} = live(conn, "/console")
 
     render_hook(console_live, "sales.begin_processing", %{"id" => order.id})

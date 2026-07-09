@@ -344,60 +344,6 @@ describe("MerchantConsolePage tabs", () => {
     expect(supportPanel.text()).not.toContain("Waiting Shopper");
   });
 
-  it("derives stream activation input from the latest restored filter props", async () => {
-    const wrapper = mountPage();
-
-    const byName = (name: string) => streamCalls.find((call) => call.name === name);
-
-    const productsInput = byName("products")?.input;
-    const salesOrdersInput = byName("sales_orders")?.input;
-    const conversationsInput = byName("conversations")?.input;
-    const supportMessagesInput = byName("support_messages")?.input;
-
-    expect(typeof productsInput).toBe("function");
-    expect(typeof salesOrdersInput).toBe("function");
-    expect(typeof conversationsInput).toBe("function");
-    expect(typeof supportMessagesInput).toBe("function");
-
-    await wrapper.setProps({
-      order_filters: {
-        status: "processing",
-        customer: "Bob",
-        product: "Lamp"
-      },
-      inventory_filters: {
-        query: "Desk",
-        low_stock: true
-      },
-      conversation_filters: {
-        customer: "Resolved",
-        waiting: true
-      },
-      active_conversation_id: "conv-replied"
-    } as never);
-    await flushPromises();
-
-    expect((productsInput as () => unknown)()).toEqual({
-      sort: "stock",
-      query: "Desk",
-      max_stock: 25
-    });
-    expect((salesOrdersInput as () => unknown)()).toEqual({
-      sort: "-created_at",
-      status: "processing",
-      customer_query: "Bob",
-      product_query: "Lamp"
-    });
-    expect((conversationsInput as () => unknown)()).toEqual({
-      sort: "-last_message_at",
-      customer_query: "Resolved",
-      needs_merchant_reply: true
-    });
-    expect((supportMessagesInput as () => unknown)()).toEqual({
-      conversation_id: "conv-replied"
-    });
-  });
-
   it("preserves selected conversation and draft reply across tab switches", async () => {
     const wrapper = mountPage();
 

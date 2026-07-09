@@ -8,11 +8,9 @@ defmodule Alva.LiveView do
     :streams,
     :commands
   ]
-  @public_subscription_option_keys [:activate]
   @upload_change_event "alva.validate_upload"
   @upload_submit_event "alva.save_upload"
   @err_domains_removed "Alva declarative page activation no longer accepts `domains:`. Prefer `subscriptions:` for the supported V2 path; projection lookup now resolves through the consuming host app registry."
-  @err_streams_removed "Alva declarative page activation no longer accepts top-level `streams:`. For the supported V2 path, expose typed `subscription` capabilities and activate them with `subscriptions:`."
 
   @err_opts_expected "use Alva.LiveView expects keyword options. The V2 path only accepts `streams:` and `commands:`. Legacy keys are no longer supported."
   defp err_unsupported_key(key),
@@ -61,6 +59,21 @@ defmodule Alva.LiveView do
         otp_app: otp_app,
         domains: registry.domains
       })
+    end)
+  end
+
+  def reconfigure_streams(socket, params \\ %{}) do
+    state = alva_state(socket)
+
+    Enum.reduce(state.streams || %{}, socket, fn {name, stream_meta}, acc_socket ->
+      config = [
+        resource: stream_meta.resource,
+        source: stream_meta.source,
+        scope: Map.get(stream_meta, :scope, %{}),
+        sync_on: stream_meta.sync_on
+      ]
+
+      configure_stream(acc_socket, name, config, params, state.otp_app)
     end)
   end
 
@@ -125,6 +138,7 @@ defmodule Alva.LiveView do
       new_meta = %{
         resource: resource,
         source: source,
+        scope: scope_def,
         scope_args: scope_args,
         sync_on: sync_on
       }
@@ -321,57 +335,6 @@ defmodule Alva.LiveView do
       _ ->
         raise ArgumentError,
               "Alva.LiveView requires socket.endpoint to resolve the consuming host app registry. Page-scoped `domains:` activation is no longer supported."
-    end
-  end
-
-  defp subscribe_transport_topic(socket, topic) when is_binary(topic) do
-    pubsub = endpoint_pubsub!(socket)
-    :ok = Phoenix.PubSub.subscribe(pubsub, topic)
-    socket
-  end
-
-  defp unsubscribe_transport_topic(socket, topic) when is_binary(topic) do
-    pubsub = endpoint_pubsub!(socket)
-    :ok = Phoenix.PubSub.unsubscribe(pubsub, topic)
-    socket
-  end
-
-  defp subscribe_dynamic_topic(socket, topic) do
-    state = alva_state(socket)
-    refs = Map.get(state, :dynamic_subscription_refs, %{})
-    count = Map.get(refs, topic, 0)
-
-    socket =
-      if count == 0 do
-        subscribe_transport_topic(socket, topic)
-      else
-        socket
-      end
-
-    update_alva(socket, fn state ->
-      Map.put(state, :dynamic_subscription_refs, Map.put(refs, topic, count + 1))
-    end)
-  end
-
-  defp unsubscribe_dynamic_topic(socket, topic) do
-    state = alva_state(socket)
-    refs = Map.get(state, :dynamic_subscription_refs, %{})
-    count = Map.get(refs, topic, 0)
-
-    if count > 0 do
-      new_count = count - 1
-      refs = if new_count == 0, do: Map.delete(refs, topic), else: Map.put(refs, topic, new_count)
-
-      socket =
-        update_alva(socket, fn state -> Map.put(state, :dynamic_subscription_refs, refs) end)
-
-      if new_count == 0 do
-        unsubscribe_transport_topic(socket, topic)
-      else
-        socket
-      end
-    else
-      socket
     end
   end
 
@@ -734,6 +697,13 @@ defmodule Alva.LiveView do
 
   defp publication_matches?(%{action: action}, %{name: action}) when not is_nil(action), do: true
 
+  defp publication_matches?(%{type: type, except: except}, %{type: type, name: name})
+       when not is_nil(type) do
+    name not in List.wrap(except)
+  end
+
+  defp publication_matches?(_publication, _action), do: false
+
   defp record_in_scope?(socket, stream_meta, record) do
     resource = stream_meta.resource
     primary_keys = Ash.Resource.Info.primary_key(resource)
@@ -754,12 +724,7 @@ defmodule Alva.LiveView do
     end
   end
 
-  defp publication_matches?(%{type: type, except: except}, %{type: type, name: name})
-       when not is_nil(type) do
-    name not in List.wrap(except)
-  end
-
-  defp pubsub_topics(resource, actions, payload \\ %{}) do
+  defp pubsub_topics(resource, actions, payload) do
     prefix = Ash.Notifier.PubSub.Info.prefix(resource) || ""
     delimiter = Ash.Notifier.PubSub.Info.delimiter(resource)
 
@@ -780,8 +745,6 @@ defmodule Alva.LiveView do
     end)
     |> Enum.uniq()
   end
-
-  defp publication_matches?(_publication, _action), do: false
 
   defp publication_occurrence_key(%{action: action}) when not is_nil(action), do: action
   defp publication_occurrence_key(%{type: type}) when not is_nil(type), do: type

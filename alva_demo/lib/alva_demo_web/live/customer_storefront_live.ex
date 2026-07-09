@@ -25,7 +25,7 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
     ]
 
   def handle_params(params, _uri, socket) do
-    {:noreply, assign(socket, storefront_route_assigns(params))}
+    {:noreply, socket |> assign(storefront_route_assigns(params)) |> Alva.LiveView.reconfigure_streams(params)}
   end
 
   def render(assigns) do

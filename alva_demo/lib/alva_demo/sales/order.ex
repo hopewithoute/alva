@@ -1,7 +1,5 @@
 defmodule AlvaDemo.Sales.Order do
   require Ash.Query
-  alias AlvaDemo.Subscriptions, as: DemoSubscriptions
-  alias AlvaDemoWeb.ParamHelpers
 
   use Ash.Resource,
     domain: AlvaDemo.Sales,

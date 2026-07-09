@@ -1,6 +1,4 @@
 defmodule AlvaDemo.Support.SupportMessage do
-  alias AlvaDemo.Subscriptions, as: DemoSubscriptions
-  alias AlvaDemoWeb.ParamHelpers
 
   use Ash.Resource,
     domain: AlvaDemo.Support,

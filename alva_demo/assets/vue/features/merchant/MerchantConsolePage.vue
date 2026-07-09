@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { useAlvaStream } from "alva";
 import type { Order, Product, Conversation, SupportMessage } from "../../../js/alva/types";
 import type { AlvaSubscriptions } from "../../../js/alva/subscriptions";
 import MerchantOrdersTab from "../sales/MerchantOrdersTab.vue";
@@ -30,36 +29,6 @@ const props = defineProps<{
   conversation_filters?: ConversationFilters;
 }>();
 
-useAlvaStream<AlvaSubscriptions>("products", () => ({
-  sort: "stock",
-  query: props.inventory_filters?.query || "",
-  max_stock: props.inventory_filters?.low_stock ? 25 : null
-}));
-
-useAlvaStream<AlvaSubscriptions>("sales_orders", () => {
-  let salesOrderStatus: string | null = props.order_filters?.status || null;
-
-  if (!["new", "processing", "fulfilled"].includes(salesOrderStatus || "")) {
-    salesOrderStatus = null;
-  }
-
-  return {
-    sort: "-created_at",
-    status: salesOrderStatus,
-    customer_query: props.order_filters?.customer || "",
-    product_query: props.order_filters?.product || ""
-  };
-});
-
-useAlvaStream<AlvaSubscriptions>("conversations", () => ({
-  sort: "-last_message_at",
-  customer_query: props.conversation_filters?.customer || "",
-  needs_merchant_reply: props.conversation_filters?.waiting ? true : null
-}));
-
-useAlvaStream<AlvaSubscriptions>("support_messages", () => ({
-  conversation_id: props.active_conversation_id || ""
-}));
 
 const active_tab = ref<MerchantConsoleTab>("orders");
 

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useAlvaStream } from "alva";
 import { ashCall } from "../../../js/alva/client";
 
 type ChatMessage = {
@@ -13,8 +12,6 @@ type ChatMessage = {
 const props = defineProps<{
   chat_messages?: ChatMessage[];
 }>();
-
-useAlvaStream("chat_messages", {});
 
 
 const author = ref("Developer");

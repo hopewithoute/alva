@@ -6,13 +6,10 @@ vi.mock("live_vue", () => ({
 }));
 
 import * as alva from "./index";
-import { useAlvaSubscriptions } from "./useAlvaSubscriptions";
+
 import { ash } from "./ash";
 
 describe("package root exports", () => {
-    it("re-exports useAlvaSubscriptions for compatibility consumers", () => {
-        expect(alva.useAlvaSubscriptions).toBe(useAlvaSubscriptions);
-    });
 
     it("re-exports ash", () => {
         expect(alva.ash).toBe(ash);

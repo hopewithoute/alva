@@ -1,0 +1,308 @@
+commit 1e7ed0b3c6ddce0234117329fc6bc612eda5210d
+Author: hopewithoute <anggi.wibiyanto@gmail.com>
+Date:   Thu Jul 9 18:46:23 2026 +0700
+
+    fix(live_view): enforce stream scope and forward signal messages
+
+diff --git a/alva/lib/alva/live_view.ex b/alva/lib/alva/live_view.ex
+index e18feed..127925d 100644
+--- a/alva/lib/alva/live_view.ex
++++ b/alva/lib/alva/live_view.ex
+@@ -105,17 +105,7 @@ defmodule Alva.LiveView do
+     # 5. Subscribe to PubSub
+     socket =
+       if Ash.Resource.Info.notifiers(resource) |> Enum.member?(Ash.Notifier.PubSub) do
+-        prefix = Ash.Notifier.PubSub.Info.prefix(resource) || ""
+-        delimiter = Ash.Notifier.PubSub.Info.delimiter(resource)
+-
+-        topics =
+-          Ash.Notifier.PubSub.Info.publications(resource)
+-          |> Enum.filter(&(&1.action in sync_on))
+-          |> Enum.map(fn pub ->
+-            topic_suffix = Enum.join(pub.topic, delimiter)
+-            if prefix == "", do: topic_suffix, else: "#{prefix}#{delimiter}#{topic_suffix}"
+-          end)
+-          |> Enum.uniq()
++        topics = pubsub_topics(resource, sync_on, scope_args)
+ 
+         pubsub = endpoint_pubsub!(socket)
+ 
+@@ -260,12 +250,16 @@ defmodule Alva.LiveView do
+   end
+ 
+   defp apply_stream_operation(socket, name, %{op: :update} = operation, data) do
+-    Phoenix.LiveView.stream_insert(
+-      socket,
+-      name,
+-      Alva.Serializer.strip_metadata(data),
+-      stream_operation_opts(operation, update_only: true)
+-    )
++    if record_in_scope?(socket, operation.meta, data) do
++      Phoenix.LiveView.stream_insert(
++        socket,
++        name,
++        Alva.Serializer.strip_metadata(data),
++        stream_operation_opts(operation, update_only: true)
++      )
++    else
++      Phoenix.LiveView.stream_delete(socket, name, Alva.Serializer.strip_metadata(data))
++    end
+   end
+ 
+   defp apply_stream_operation(socket, name, %{op: :insert} = operation, data) do
+@@ -429,16 +423,29 @@ defmodule Alva.LiveView do
+                 _ -> :update
+               end
+ 
+-            {stream_name, %{op: op_type}}
++            {stream_name, %{op: op_type, meta: stream_meta}}
+           end)
+         else
+           []
+         end
+       end)
+ 
+-    # Check signals (legacy signals used active_subscription_keys, keep it for now if needed, or just return empty)
+-    # Actually, signals will be handled dynamically later via alva:subscribe_signal. For now just empty.
+-    %{streams: stream_ops, signals: []}
++    active_signals = Map.get(state, :active_signals, %{})
++
++    signal_ops =
++      Enum.flat_map(active_signals, fn {signal_name, meta} ->
++        if meta.resource == notification_resource do
++          if Enum.any?(occurrence_keys, fn action_name -> action_name in meta.signal.on end) do
++            [{signal_name, meta.signal}]
++          else
++            []
++          end
++        else
++          []
++        end
++      end)
++
++    %{streams: stream_ops, signals: signal_ops}
+   end
+ 
+   defp handle_subscribe_signal(params, sock, otp_app) do
+@@ -450,45 +457,21 @@ defmodule Alva.LiveView do
+         actor = sock.assigns[:current_user] || sock.assigns[:current_actor]
+         tenant = sock.assigns[:current_tenant]
+ 
+-        authorized? =
+-          if signal.authorize_with do
+-            action = Ash.Resource.Info.action(resource, signal.authorize_with)
+-
+-            subject =
+-              case action.type do
+-                :read -> Ash.Query.for_read(resource, action.name, payload)
+-                :create -> Ash.Changeset.for_create(resource, action.name, payload)
+-                :update -> Ash.Changeset.for_update(resource, action.name, payload)
+-                :destroy -> Ash.Changeset.for_destroy(resource, action.name, payload)
+-                :action -> Ash.ActionInput.for_action(resource, action.name, payload)
+-              end
++        action = Ash.Resource.Info.action(resource, signal.authorize_with)
+ 
+-            Ash.can?(subject, actor, tenant: tenant, maybe_is: false)
+-          else
+-            true
++        subject =
++          case action.type do
++            :read -> Ash.Query.for_read(resource, action.name, payload)
++            :create -> Ash.Changeset.for_create(resource, action.name, payload)
++            :update -> Ash.Changeset.for_update(resource, action.name, payload)
++            :destroy -> Ash.Changeset.for_destroy(resource, action.name, payload)
++            :action -> Ash.ActionInput.for_action(resource, action.name, payload)
+           end
+ 
++        authorized? = Ash.can?(subject, actor, tenant: tenant, maybe_is: false)
++
+         if authorized? do
+-          prefix = Ash.Notifier.PubSub.Info.prefix(resource) || ""
+-          delimiter = Ash.Notifier.PubSub.Info.delimiter(resource)
+-
+-          topics =
+-            Ash.Notifier.PubSub.Info.publications(resource)
+-            |> Enum.filter(&(&1.action in signal.on))
+-            |> Enum.map(fn pub ->
+-              topic_parts =
+-                Enum.map(pub.topic, fn
+-                  part when is_atom(part) ->
+-                    Map.get(payload, to_string(part)) || Map.get(payload, part) || to_string(part)
+-
+-                  part ->
+-                    part
+-                end)
+-
+-              topic_suffix = Enum.join(topic_parts, delimiter)
+-              if prefix == "", do: topic_suffix, else: "#{prefix}#{delimiter}#{topic_suffix}"
+-            end)
+-            |> Enum.uniq()
++          topics = pubsub_topics(resource, signal.on, payload)
+ 
+           pubsub = endpoint_pubsub!(sock)
+ 
+@@ -502,7 +485,15 @@ defmodule Alva.LiveView do
+           sock =
+             update_alva(sock, fn state ->
+               active_signals = Map.get(state, :active_signals, %{})
+-              Map.put(state, :active_signals, Map.put(active_signals, signal_name, topics))
++
++              signal_meta = %{
++                resource: resource,
++                signal: signal,
++                topics: topics,
++                params: payload
++              }
++
++              Map.put(state, :active_signals, Map.put(active_signals, signal_name, signal_meta))
+             end)
+ 
+           {:halt, %{ok: true}, sock}
+@@ -743,11 +734,53 @@ defmodule Alva.LiveView do
+ 
+   defp publication_matches?(%{action: action}, %{name: action}) when not is_nil(action), do: true
+ 
++  defp record_in_scope?(socket, stream_meta, record) do
++    resource = stream_meta.resource
++    primary_keys = Ash.Resource.Info.primary_key(resource)
++    filter_args = Map.take(record, primary_keys) |> Map.to_list()
++
++    query =
++      resource
++      |> Ash.Query.for_read(stream_meta.source, stream_meta.scope_args)
++      |> Ash.Query.filter_input(filter_args)
++
++    tenant = socket.assigns[:current_tenant]
++    actor = socket.assigns[:current_user] || socket.assigns[:current_actor]
++
++    case Ash.read(query, tenant: tenant, actor: actor) do
++      {:ok, []} -> false
++      {:ok, _} -> true
++      _ -> false
++    end
++  end
++
+   defp publication_matches?(%{type: type, except: except}, %{type: type, name: name})
+        when not is_nil(type) do
+     name not in List.wrap(except)
+   end
+ 
++  defp pubsub_topics(resource, actions, payload \\ %{}) do
++    prefix = Ash.Notifier.PubSub.Info.prefix(resource) || ""
++    delimiter = Ash.Notifier.PubSub.Info.delimiter(resource)
++
++    Ash.Notifier.PubSub.Info.publications(resource)
++    |> Enum.filter(&(&1.action in actions))
++    |> Enum.map(fn pub ->
++      topic_parts =
++        Enum.map(pub.topic, fn
++          part when is_atom(part) ->
++            Map.get(payload, to_string(part)) || Map.get(payload, part) || to_string(part)
++
++          part ->
++            part
++        end)
++
++      topic_suffix = Enum.join(topic_parts, delimiter)
++      if prefix == "", do: topic_suffix, else: "#{prefix}#{delimiter}#{topic_suffix}"
++    end)
++    |> Enum.uniq()
++  end
++
+   defp publication_matches?(_publication, _action), do: false
+ 
+   defp publication_occurrence_key(%{action: action}) when not is_nil(action), do: action
+diff --git a/alva/test/alva/resource/verifiers/verify_actions_test.exs b/alva/test/alva/resource/verifiers/verify_actions_test.exs
+index fe76d3c..c120228 100644
+--- a/alva/test/alva/resource/verifiers/verify_actions_test.exs
++++ b/alva/test/alva/resource/verifiers/verify_actions_test.exs
+@@ -2,6 +2,25 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
+   use ExUnit.Case, async: false
+   import ExUnit.CaptureLog
+ 
++  defp mock_dsl_state(events, action_defs) do
++    # Create a mock DSL state that VerifyActions can read
++    # We just need it to return our mock entities
++    %{
++      persisted: %{module: MockModule},
++      entities: [
++        %{
++          path: [:live_vue],
++          entities: events
++        }
++      ],
++      actions: action_defs
++    }
++  end
++
++  defmodule MockModule do
++    # Just a dummy module name for errors
++  end
++
+   # We need to stub Spark.Dsl.Extension for our test since the real one expects a real struct.
+   # But VerifyActions calls Spark.Dsl.Extension.get_entities and get_persisted, and Ash.Resource.Info.action.
+   # It's easier to just build a real module and capture the error!
+diff --git a/alva_demo/test/alva_demo_web/live/console_live_test.exs b/alva_demo/test/alva_demo_web/live/console_live_test.exs
+index a3988e3..8c15d18 100644
+--- a/alva_demo/test/alva_demo_web/live/console_live_test.exs
++++ b/alva_demo/test/alva_demo_web/live/console_live_test.exs
+@@ -161,4 +161,5 @@ defmodule AlvaDemoWeb.MerchantConsoleLiveTest do
+                false
+            end)
+   end
++
+ end
+diff --git a/alva_demo/test/alva_demo_web/live/storefront_live_test.exs b/alva_demo/test/alva_demo_web/live/storefront_live_test.exs
+index 4b4f932..9d09601 100644
+--- a/alva_demo/test/alva_demo_web/live/storefront_live_test.exs
++++ b/alva_demo/test/alva_demo_web/live/storefront_live_test.exs
+@@ -22,12 +22,7 @@ defmodule AlvaDemoWeb.CustomerStorefrontLiveTest do
+     disconnected_vue = LiveVueTest.get_vue(disconnected_html, id: "customer-storefront-page")
+ 
+     assert_stream_reset(disconnected_vue, "sales_orders")
+-
+-    assert_stream_contains(disconnected_vue, "products", %{
+-      "name" => "Test Product",
+-      "stock" => 10
+-    })
+-
++    assert_stream_contains(disconnected_vue, "products", %{"name" => "Test Product", "stock" => 10})
+     assert_stream_reset(disconnected_vue, "support_messages")
+ 
+     _html =
+@@ -83,10 +78,7 @@ defmodule AlvaDemoWeb.CustomerStorefrontLiveTest do
+     })
+ 
+     {:ok, page_live, _html} =
+-      live(
+-        conn,
+-        "/storefront?customer_name=#{conversation.customer_name}&conversation_id=#{conversation.id}"
+-      )
++      live(conn, "/storefront?customer_name=#{conversation.customer_name}&conversation_id=#{conversation.id}")
+ 
+     vue = LiveVueTest.get_vue(render(page_live), id: "customer-storefront-page")
+ 
+diff --git a/alva_demo/test/alva_demo_web/live/synchronization_test.exs b/alva_demo/test/alva_demo_web/live/synchronization_test.exs
+index 6d3dddc..659cc71 100644
+--- a/alva_demo/test/alva_demo_web/live/synchronization_test.exs
++++ b/alva_demo/test/alva_demo_web/live/synchronization_test.exs
+@@ -276,4 +276,5 @@ defmodule AlvaDemoWeb.SynchronizationTest do
+ 
+     result.data
+   end
++
+ end
+diff --git a/alva_demo/test_script.exs b/alva_demo/test_script.exs
+deleted file mode 100644
+index e1b2c2d..0000000
+--- a/alva_demo/test_script.exs
++++ /dev/null
+@@ -1 +0,0 @@
+-IO.inspect(Ash.Notifier.PubSub.Info.publications(AlvaDemo.Sales.Order))
+diff --git a/scratch.exs b/scratch.exs
+deleted file mode 100644
+index 83c831f..0000000
+--- a/scratch.exs
++++ /dev/null
+@@ -1 +0,0 @@
+-# test

@@ -29,29 +29,6 @@ defmodule Alva.Resource do
   Spark DSL Extension for LiveVue configuration in Ash Resources.
   """
 
-  @subscription_operation_schema [
-    on: [
-      type: {:or, [:atom, :string]},
-      required: true,
-      doc: "The Ash PubSub occurrence key that triggers this collection operation."
-    ],
-    at: [
-      type: :integer,
-      required: false,
-      doc: "Optional position passed to Phoenix.LiveView.stream_insert/4."
-    ],
-    limit: [
-      type: :integer,
-      required: false,
-      doc: "Optional limit passed to Phoenix.LiveView.stream_insert/4."
-    ],
-    update_only: [
-      type: :boolean,
-      required: false,
-      doc: "Optional update_only flag passed to Phoenix.LiveView.stream_insert/4."
-    ]
-  ]
-
   @event %Spark.Dsl.Entity{
     name: :event,
     describe: "A LiveVue event mapped to an Ash action",
@@ -125,7 +102,7 @@ defmodule Alva.Resource do
       ],
       authorize_with: [
         type: :atom,
-        required: false,
+        required: true,
         doc: "The action to use with Ash.can? for authorization."
       ],
       on: [

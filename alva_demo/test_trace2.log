@@ -1,0 +1,1103 @@
+==> alva
+Compiling 1 file (.ex)
+     warning: clauses with the same name and arity (number of arguments) should be grouped together, "defp publication_matches?/2" was previously defined (lib/alva/live_view.ex:743)
+     │
+ 765 │   defp publication_matches?(%{type: type, except: except}, %{type: type, name: name})
+     │        ~
+     │
+     └─ lib/alva/live_view.ex:765:8
+
+     warning: clauses with the same name and arity (number of arguments) should be grouped together, "defp publication_matches?/2" was previously defined (lib/alva/live_view.ex:743)
+     │
+ 792 │   defp publication_matches?(_publication, _action), do: false
+     │        ~
+     │
+     └─ lib/alva/live_view.ex:792:8
+
+     warning: function unsubscribe_transport_topic/2 is unused
+     │
+ 352 │   defp unsubscribe_transport_topic(socket, topic) when is_binary(topic) do
+     │        ~
+     │
+     └─ lib/alva/live_view.ex:352:8: Alva.LiveView (module)
+
+     warning: function unsubscribe_dynamic_topic/2 is unused
+     │
+ 375 │   defp unsubscribe_dynamic_topic(socket, topic) do
+     │        ~
+     │
+     └─ lib/alva/live_view.ex:375:8: Alva.LiveView (module)
+
+     warning: function subscribe_transport_topic/2 is unused
+     │
+ 346 │   defp subscribe_transport_topic(socket, topic) when is_binary(topic) do
+     │        ~
+     │
+     └─ lib/alva/live_view.ex:346:8: Alva.LiveView (module)
+
+     warning: function subscribe_dynamic_topic/2 is unused
+     │
+ 358 │   defp subscribe_dynamic_topic(socket, topic) do
+     │        ~
+     │
+     └─ lib/alva/live_view.ex:358:8: Alva.LiveView (module)
+
+     warning: default values for the optional arguments in the private function pubsub_topics/3 are never used
+     │
+ 770 │   defp pubsub_topics(resource, actions, payload \\ %{}) do
+     │        ~
+     │
+     └─ lib/alva/live_view.ex:770:8: Alva.LiveView (module)
+
+    warning: module attribute @err_streams_removed was set but never used
+    │
+ 15 │   @err_streams_removed "Alva declarative page activation no longer accepts top-level `streams:`. For the supported V2 path, expose typed `subscription` capabilities and activate them with `subscriptions:`."
+    │   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    │
+    └─ lib/alva/live_view.ex:15: Alva.LiveView (module)
+
+    warning: module attribute @public_subscription_option_keys was set but never used
+    │
+ 11 │   @public_subscription_option_keys [:activate]
+    │   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    │
+    └─ lib/alva/live_view.ex:11: Alva.LiveView (module)
+
+    warning: module attribute @subscription_operation_schema was set but never used
+    │
+ 32 │   @subscription_operation_schema [
+    │   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    │
+    └─ lib/alva/resource.ex:32: Alva.Resource (module)
+
+==> alva_demo
+Compiling 5 files (.ex)
+    warning: unused alias DemoSubscriptions
+    │
+  2 │   alias AlvaDemo.Subscriptions, as: DemoSubscriptions
+    │   ~
+    │
+    └─ lib/alva_demo/demos/feed_entry.ex:2:3
+
+    warning: unused alias DemoSubscriptions
+    │
+  3 │   alias AlvaDemo.Subscriptions, as: DemoSubscriptions
+    │   ~
+    │
+    └─ lib/alva_demo/catalog/product.ex:3:3
+
+    warning: unused alias ParamHelpers
+    │
+  4 │   alias AlvaDemoWeb.ParamHelpers
+    │   ~
+    │
+    └─ lib/alva_demo/catalog/product.ex:4:3
+
+    warning: unused alias DemoSubscriptions
+    │
+  2 │   alias AlvaDemo.Subscriptions, as: DemoSubscriptions
+    │   ~
+    │
+    └─ lib/alva_demo/demos/chat_message.ex:2:3
+
+    warning: unused alias DemoSubscriptions
+    │
+  3 │   alias AlvaDemo.Subscriptions, as: DemoSubscriptions
+    │   ~
+    │
+    └─ lib/alva_demo/sales/order.ex:3:3
+
+    warning: unused alias ParamHelpers
+    │
+  4 │   alias AlvaDemoWeb.ParamHelpers
+    │   ~
+    │
+    └─ lib/alva_demo/sales/order.ex:4:3
+
+    warning: unused alias DemoSubscriptions
+    │
+  2 │   alias AlvaDemo.Subscriptions, as: DemoSubscriptions
+    │   ~
+    │
+    └─ lib/alva_demo/support/support_message.ex:2:3
+
+    warning: unused alias ParamHelpers
+    │
+  3 │   alias AlvaDemoWeb.ParamHelpers
+    │   ~
+    │
+    └─ lib/alva_demo/support/support_message.ex:3:3
+
+    warning: unused alias DemoSubscriptions
+    │
+  3 │   alias AlvaDemo.Subscriptions, as: DemoSubscriptions
+    │   ~
+    │
+    └─ lib/alva_demo/support/conversation.ex:3:3
+
+    warning: unused alias ParamHelpers
+    │
+  4 │   alias AlvaDemoWeb.ParamHelpers
+    │   ~
+    │
+    └─ lib/alva_demo/support/conversation.ex:4:3
+
+Running ExUnit with seed: 559594, max_cases: 24
+Excluding tags: [:test]
+Including tags: [location: {"test/alva_demo_web/live/synchronization_test.exs", 30}]
+
+LIVE_VUE_STREAMS: %{
+  sales_orders: %Phoenix.LiveView.LiveStream{
+    name: :sales_orders,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "0",
+    inserts: [],
+    deletes: [],
+    reset?: true,
+    consumable?: false
+  },
+  products: %Phoenix.LiveView.LiveStream{
+    name: :products,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "1",
+    inserts: [
+      {"products-14bbaa3f-9858-4e94-a56d-3c21b487772c", -1,
+       %{
+         id: "14bbaa3f-9858-4e94-a56d-3c21b487772c",
+         name: "Sync Test Product",
+         description: "Test desc",
+         stock: 10,
+         media_reference: "sync.jpg",
+         price: 1000
+       }, nil, false},
+      {"products-3283c9b2-bcb2-4ff1-bb04-903a54475637", -1,
+       %{
+         id: "3283c9b2-bcb2-4ff1-bb04-903a54475637",
+         name: "Alva Tote",
+         description: "A natural canvas tote for notebooks, chargers, and daily carry.",
+         stock: 65,
+         media_reference: "alva-tote.png",
+         price: 2800
+       }, nil, false},
+      {"products-01cb43da-dcc9-463d-81f6-dd7d7484e140", -1,
+       %{
+         id: "01cb43da-dcc9-463d-81f6-dd7d7484e140",
+         name: "Alva T-Shirt",
+         description: "A soft cotton t-shirt with a minimal mark for everyday product teams.",
+         stock: 100,
+         media_reference: "alva-tshirt.png",
+         price: 2500
+       }, nil, false},
+      {"products-f27edbd8-86be-4792-80f4-1e40168c4e53", -1,
+       %{
+         id: "f27edbd8-86be-4792-80f4-1e40168c4e53",
+         name: "Alva Notebook",
+         description: "A matte notebook and pen set for sketches, specs, and release notes.",
+         stock: 80,
+         media_reference: "alva-notebook.png",
+         price: 1800
+       }, nil, false},
+      {"products-adaa76b4-8860-4f77-a41d-a7da588ebdb4", -1,
+       %{
+         id: "adaa76b4-8860-4f77-a41d-a7da588ebdb4",
+         name: "Alva Mug",
+         description: "A sturdy ceramic mug for daily coffee, tea, or late-night debugging.",
+         stock: 50,
+         media_reference: "alva-mug.png",
+         price: 1500
+       }, nil, false},
+      {"products-b25552f2-6a19-46f4-897f-7173de3e98d3", -1,
+       %{
+         id: "b25552f2-6a19-46f4-897f-7173de3e98d3",
+         name: "Alva Laptop Stand",
+         description: "A foldable aluminum stand for a cleaner and more ergonomic setup.",
+         stock: 42,
+         media_reference: "alva-laptop-stand.png",
+         price: 5200
+       }, nil, false},
+      {"products-de41bdd4-976f-4ff8-ac65-4f52f03ea5ac", -1,
+       %{
+         id: "de41bdd4-976f-4ff8-ac65-4f52f03ea5ac",
+         name: "Alva Keyboard",
+         description: "A compact mechanical keyboard with a quiet, precise desk presence.",
+         stock: 35,
+         media_reference: "alva-keyboard.png",
+         price: 8900
+       }, nil, false},
+      {"products-d90ab329-3680-4135-b505-17710374d790", -1,
+       %{
+         id: "d90ab329-3680-4135-b505-17710374d790",
+         name: "Alva Hoodie",
+         description: "A warm heather hoodie for focused work sessions and cooler rooms.",
+         stock: 75,
+         media_reference: "alva-hoodie.png",
+         price: 4500
+       }, nil, false},
+      {"products-0dd870b2-1ab2-48c1-972a-0ab41200b185", -1,
+       %{
+         id: "0dd870b2-1ab2-48c1-972a-0ab41200b185",
+         name: "Alva Desk Lamp",
+         description: "A compact adjustable desk lamp for warm, focused evening work.",
+         stock: 24,
+         media_reference: "alva-desk-lamp.png",
+         price: 6400
+       }, nil, false},
+      {"products-16ce9cb7-c54f-446d-8af0-917781eda7e2", -1,
+       %{
+         id: "16ce9cb7-c54f-446d-8af0-917781eda7e2",
+         name: "Alva Bottle",
+         description: "An insulated stainless bottle built for long days at the workstation.",
+         stock: 60,
+         media_reference: "alva-bottle.png",
+         price: 3200
+       }, nil, false},
+      {"products-14bbaa3f-9858-4e94-a56d-3c21b487772c", -1,
+       %{
+         id: "14bbaa3f-9858-4e94-a56d-3c21b487772c",
+         name: "Sync Test Product",
+         description: "Test desc",
+         stock: 10,
+         media_reference: "sync.jpg",
+         price: 1000
+       }, nil, nil},
+      {"products-3283c9b2-bcb2-4ff1-bb04-903a54475637", -1,
+       %{
+         id: "3283c9b2-bcb2-4ff1-bb04-903a54475637",
+         name: "Alva Tote",
+         description: "A natural canvas tote for notebooks, chargers, and daily carry.",
+         stock: 65,
+         media_reference: "alva-tote.png",
+         price: 2800
+       }, nil, nil},
+      {"products-01cb43da-dcc9-463d-81f6-dd7d7484e140", -1,
+       %{
+         id: "01cb43da-dcc9-463d-81f6-dd7d7484e140",
+         name: "Alva T-Shirt",
+         description: "A soft cotton t-shirt with a minimal mark for everyday product teams.",
+         stock: 100,
+         media_reference: "alva-tshirt.png",
+         price: 2500
+       }, nil, nil},
+      {"products-f27edbd8-86be-4792-80f4-1e40168c4e53", -1,
+       %{
+         id: "f27edbd8-86be-4792-80f4-1e40168c4e53",
+         name: "Alva Notebook",
+         description: "A matte notebook and pen set for sketches, specs, and release notes.",
+         stock: 80,
+         media_reference: "alva-notebook.png",
+         price: 1800
+       }, nil, nil},
+      {"products-adaa76b4-8860-4f77-a41d-a7da588ebdb4", -1,
+       %{
+         id: "adaa76b4-8860-4f77-a41d-a7da588ebdb4",
+         name: "Alva Mug",
+         description: "A sturdy ceramic mug for daily coffee, tea, or late-night debugging.",
+         stock: 50,
+         media_reference: "alva-mug.png",
+         price: 1500
+       }, nil, nil},
+      {"products-b25552f2-6a19-46f4-897f-7173de3e98d3", -1,
+       %{
+         id: "b25552f2-6a19-46f4-897f-7173de3e98d3",
+         name: "Alva Laptop Stand",
+         description: "A foldable aluminum stand for a cleaner and more ergonomic setup.",
+         ...
+       }, ...},
+      ...
+    ],
+    ...
+  },
+  ...
+}
+LIVE_VUE_STREAMS: %{}
+LIVE_VUE_STREAMS: %{
+  sales_orders: %Phoenix.LiveView.LiveStream{
+    name: :sales_orders,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "0",
+    inserts: [],
+    deletes: [],
+    reset?: true,
+    consumable?: false
+  },
+  products: %Phoenix.LiveView.LiveStream{
+    name: :products,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "1",
+    inserts: [
+      {"products-14bbaa3f-9858-4e94-a56d-3c21b487772c", -1,
+       %{
+         id: "14bbaa3f-9858-4e94-a56d-3c21b487772c",
+         name: "Sync Test Product",
+         description: "Test desc",
+         stock: 10,
+         media_reference: "sync.jpg",
+         price: 1000
+       }, nil, false},
+      {"products-3283c9b2-bcb2-4ff1-bb04-903a54475637", -1,
+       %{
+         id: "3283c9b2-bcb2-4ff1-bb04-903a54475637",
+         name: "Alva Tote",
+         description: "A natural canvas tote for notebooks, chargers, and daily carry.",
+         stock: 65,
+         media_reference: "alva-tote.png",
+         price: 2800
+       }, nil, false},
+      {"products-01cb43da-dcc9-463d-81f6-dd7d7484e140", -1,
+       %{
+         id: "01cb43da-dcc9-463d-81f6-dd7d7484e140",
+         name: "Alva T-Shirt",
+         description: "A soft cotton t-shirt with a minimal mark for everyday product teams.",
+         stock: 100,
+         media_reference: "alva-tshirt.png",
+         price: 2500
+       }, nil, false},
+      {"products-f27edbd8-86be-4792-80f4-1e40168c4e53", -1,
+       %{
+         id: "f27edbd8-86be-4792-80f4-1e40168c4e53",
+         name: "Alva Notebook",
+         description: "A matte notebook and pen set for sketches, specs, and release notes.",
+         stock: 80,
+         media_reference: "alva-notebook.png",
+         price: 1800
+       }, nil, false},
+      {"products-adaa76b4-8860-4f77-a41d-a7da588ebdb4", -1,
+       %{
+         id: "adaa76b4-8860-4f77-a41d-a7da588ebdb4",
+         name: "Alva Mug",
+         description: "A sturdy ceramic mug for daily coffee, tea, or late-night debugging.",
+         stock: 50,
+         media_reference: "alva-mug.png",
+         price: 1500
+       }, nil, false},
+      {"products-b25552f2-6a19-46f4-897f-7173de3e98d3", -1,
+       %{
+         id: "b25552f2-6a19-46f4-897f-7173de3e98d3",
+         name: "Alva Laptop Stand",
+         description: "A foldable aluminum stand for a cleaner and more ergonomic setup.",
+         stock: 42,
+         media_reference: "alva-laptop-stand.png",
+         price: 5200
+       }, nil, false},
+      {"products-de41bdd4-976f-4ff8-ac65-4f52f03ea5ac", -1,
+       %{
+         id: "de41bdd4-976f-4ff8-ac65-4f52f03ea5ac",
+         name: "Alva Keyboard",
+         description: "A compact mechanical keyboard with a quiet, precise desk presence.",
+         stock: 35,
+         media_reference: "alva-keyboard.png",
+         price: 8900
+       }, nil, false},
+      {"products-d90ab329-3680-4135-b505-17710374d790", -1,
+       %{
+         id: "d90ab329-3680-4135-b505-17710374d790",
+         name: "Alva Hoodie",
+         description: "A warm heather hoodie for focused work sessions and cooler rooms.",
+         stock: 75,
+         media_reference: "alva-hoodie.png",
+         price: 4500
+       }, nil, false},
+      {"products-0dd870b2-1ab2-48c1-972a-0ab41200b185", -1,
+       %{
+         id: "0dd870b2-1ab2-48c1-972a-0ab41200b185",
+         name: "Alva Desk Lamp",
+         description: "A compact adjustable desk lamp for warm, focused evening work.",
+         stock: 24,
+         media_reference: "alva-desk-lamp.png",
+         price: 6400
+       }, nil, false},
+      {"products-16ce9cb7-c54f-446d-8af0-917781eda7e2", -1,
+       %{
+         id: "16ce9cb7-c54f-446d-8af0-917781eda7e2",
+         name: "Alva Bottle",
+         description: "An insulated stainless bottle built for long days at the workstation.",
+         stock: 60,
+         media_reference: "alva-bottle.png",
+         price: 3200
+       }, nil, false},
+      {"products-14bbaa3f-9858-4e94-a56d-3c21b487772c", -1,
+       %{
+         id: "14bbaa3f-9858-4e94-a56d-3c21b487772c",
+         name: "Sync Test Product",
+         description: "Test desc",
+         stock: 10,
+         media_reference: "sync.jpg",
+         price: 1000
+       }, nil, nil},
+      {"products-3283c9b2-bcb2-4ff1-bb04-903a54475637", -1,
+       %{
+         id: "3283c9b2-bcb2-4ff1-bb04-903a54475637",
+         name: "Alva Tote",
+         description: "A natural canvas tote for notebooks, chargers, and daily carry.",
+         stock: 65,
+         media_reference: "alva-tote.png",
+         price: 2800
+       }, nil, nil},
+      {"products-01cb43da-dcc9-463d-81f6-dd7d7484e140", -1,
+       %{
+         id: "01cb43da-dcc9-463d-81f6-dd7d7484e140",
+         name: "Alva T-Shirt",
+         description: "A soft cotton t-shirt with a minimal mark for everyday product teams.",
+         stock: 100,
+         media_reference: "alva-tshirt.png",
+         price: 2500
+       }, nil, nil},
+      {"products-f27edbd8-86be-4792-80f4-1e40168c4e53", -1,
+       %{
+         id: "f27edbd8-86be-4792-80f4-1e40168c4e53",
+         name: "Alva Notebook",
+         description: "A matte notebook and pen set for sketches, specs, and release notes.",
+         stock: 80,
+         media_reference: "alva-notebook.png",
+         price: 1800
+       }, nil, nil},
+      {"products-adaa76b4-8860-4f77-a41d-a7da588ebdb4", -1,
+       %{
+         id: "adaa76b4-8860-4f77-a41d-a7da588ebdb4",
+         name: "Alva Mug",
+         description: "A sturdy ceramic mug for daily coffee, tea, or late-night debugging.",
+         stock: 50,
+         media_reference: "alva-mug.png",
+         price: 1500
+       }, nil, nil},
+      {"products-b25552f2-6a19-46f4-897f-7173de3e98d3", -1,
+       %{
+         id: "b25552f2-6a19-46f4-897f-7173de3e98d3",
+         name: "Alva Laptop Stand",
+         description: "A foldable aluminum stand for a cleaner and more ergonomic setup.",
+         ...
+       }, ...},
+      ...
+    ],
+    ...
+  },
+  ...
+}
+LIVE_VUE_STREAMS: %{
+  sales_orders: %Phoenix.LiveView.LiveStream{
+    name: :sales_orders,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "0",
+    inserts: [],
+    deletes: [],
+    reset?: true,
+    consumable?: false
+  },
+  products: %Phoenix.LiveView.LiveStream{
+    name: :products,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "1",
+    inserts: [
+      {"products-14bbaa3f-9858-4e94-a56d-3c21b487772c", -1,
+       %{
+         id: "14bbaa3f-9858-4e94-a56d-3c21b487772c",
+         name: "Sync Test Product",
+         description: "Test desc",
+         stock: 10,
+         media_reference: "sync.jpg",
+         price: 1000
+       }, nil, false},
+      {"products-3283c9b2-bcb2-4ff1-bb04-903a54475637", -1,
+       %{
+         id: "3283c9b2-bcb2-4ff1-bb04-903a54475637",
+         name: "Alva Tote",
+         description: "A natural canvas tote for notebooks, chargers, and daily carry.",
+         stock: 65,
+         media_reference: "alva-tote.png",
+         price: 2800
+       }, nil, false},
+      {"products-01cb43da-dcc9-463d-81f6-dd7d7484e140", -1,
+       %{
+         id: "01cb43da-dcc9-463d-81f6-dd7d7484e140",
+         name: "Alva T-Shirt",
+         description: "A soft cotton t-shirt with a minimal mark for everyday product teams.",
+         stock: 100,
+         media_reference: "alva-tshirt.png",
+         price: 2500
+       }, nil, false},
+      {"products-f27edbd8-86be-4792-80f4-1e40168c4e53", -1,
+       %{
+         id: "f27edbd8-86be-4792-80f4-1e40168c4e53",
+         name: "Alva Notebook",
+         description: "A matte notebook and pen set for sketches, specs, and release notes.",
+         stock: 80,
+         media_reference: "alva-notebook.png",
+         price: 1800
+       }, nil, false},
+      {"products-adaa76b4-8860-4f77-a41d-a7da588ebdb4", -1,
+       %{
+         id: "adaa76b4-8860-4f77-a41d-a7da588ebdb4",
+         name: "Alva Mug",
+         description: "A sturdy ceramic mug for daily coffee, tea, or late-night debugging.",
+         stock: 50,
+         media_reference: "alva-mug.png",
+         price: 1500
+       }, nil, false},
+      {"products-b25552f2-6a19-46f4-897f-7173de3e98d3", -1,
+       %{
+         id: "b25552f2-6a19-46f4-897f-7173de3e98d3",
+         name: "Alva Laptop Stand",
+         description: "A foldable aluminum stand for a cleaner and more ergonomic setup.",
+         stock: 42,
+         media_reference: "alva-laptop-stand.png",
+         price: 5200
+       }, nil, false},
+      {"products-de41bdd4-976f-4ff8-ac65-4f52f03ea5ac", -1,
+       %{
+         id: "de41bdd4-976f-4ff8-ac65-4f52f03ea5ac",
+         name: "Alva Keyboard",
+         description: "A compact mechanical keyboard with a quiet, precise desk presence.",
+         stock: 35,
+         media_reference: "alva-keyboard.png",
+         price: 8900
+       }, nil, false},
+      {"products-d90ab329-3680-4135-b505-17710374d790", -1,
+       %{
+         id: "d90ab329-3680-4135-b505-17710374d790",
+         name: "Alva Hoodie",
+         description: "A warm heather hoodie for focused work sessions and cooler rooms.",
+         stock: 75,
+         media_reference: "alva-hoodie.png",
+         price: 4500
+       }, nil, false},
+      {"products-0dd870b2-1ab2-48c1-972a-0ab41200b185", -1,
+       %{
+         id: "0dd870b2-1ab2-48c1-972a-0ab41200b185",
+         name: "Alva Desk Lamp",
+         description: "A compact adjustable desk lamp for warm, focused evening work.",
+         stock: 24,
+         media_reference: "alva-desk-lamp.png",
+         price: 6400
+       }, nil, false},
+      {"products-16ce9cb7-c54f-446d-8af0-917781eda7e2", -1,
+       %{
+         id: "16ce9cb7-c54f-446d-8af0-917781eda7e2",
+         name: "Alva Bottle",
+         description: "An insulated stainless bottle built for long days at the workstation.",
+         stock: 60,
+         media_reference: "alva-bottle.png",
+         price: 3200
+       }, nil, false},
+      {"products-14bbaa3f-9858-4e94-a56d-3c21b487772c", -1,
+       %{
+         id: "14bbaa3f-9858-4e94-a56d-3c21b487772c",
+         name: "Sync Test Product",
+         description: "Test desc",
+         stock: 10,
+         media_reference: "sync.jpg",
+         price: 1000
+       }, nil, nil},
+      {"products-3283c9b2-bcb2-4ff1-bb04-903a54475637", -1,
+       %{
+         id: "3283c9b2-bcb2-4ff1-bb04-903a54475637",
+         name: "Alva Tote",
+         description: "A natural canvas tote for notebooks, chargers, and daily carry.",
+         stock: 65,
+         media_reference: "alva-tote.png",
+         price: 2800
+       }, nil, nil},
+      {"products-01cb43da-dcc9-463d-81f6-dd7d7484e140", -1,
+       %{
+         id: "01cb43da-dcc9-463d-81f6-dd7d7484e140",
+         name: "Alva T-Shirt",
+         description: "A soft cotton t-shirt with a minimal mark for everyday product teams.",
+         stock: 100,
+         media_reference: "alva-tshirt.png",
+         price: 2500
+       }, nil, nil},
+      {"products-f27edbd8-86be-4792-80f4-1e40168c4e53", -1,
+       %{
+         id: "f27edbd8-86be-4792-80f4-1e40168c4e53",
+         name: "Alva Notebook",
+         description: "A matte notebook and pen set for sketches, specs, and release notes.",
+         stock: 80,
+         media_reference: "alva-notebook.png",
+         price: 1800
+       }, nil, nil},
+      {"products-adaa76b4-8860-4f77-a41d-a7da588ebdb4", -1,
+       %{
+         id: "adaa76b4-8860-4f77-a41d-a7da588ebdb4",
+         name: "Alva Mug",
+         description: "A sturdy ceramic mug for daily coffee, tea, or late-night debugging.",
+         stock: 50,
+         media_reference: "alva-mug.png",
+         price: 1500
+       }, nil, nil},
+      {"products-b25552f2-6a19-46f4-897f-7173de3e98d3", -1,
+       %{
+         id: "b25552f2-6a19-46f4-897f-7173de3e98d3",
+         name: "Alva Laptop Stand",
+         description: "A foldable aluminum stand for a cleaner and more ergonomic setup.",
+         ...
+       }, ...},
+      ...
+    ],
+    ...
+  },
+  ...
+}
+LIVE_VUE_STREAMS: %{}
+LIVE_VUE_STREAMS: %{
+  sales_orders: %Phoenix.LiveView.LiveStream{
+    name: :sales_orders,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "0",
+    inserts: [],
+    deletes: [],
+    reset?: true,
+    consumable?: false
+  },
+  products: %Phoenix.LiveView.LiveStream{
+    name: :products,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "1",
+    inserts: [
+      {"products-14bbaa3f-9858-4e94-a56d-3c21b487772c", -1,
+       %{
+         id: "14bbaa3f-9858-4e94-a56d-3c21b487772c",
+         name: "Sync Test Product",
+         description: "Test desc",
+         stock: 10,
+         media_reference: "sync.jpg",
+         price: 1000
+       }, nil, false},
+      {"products-3283c9b2-bcb2-4ff1-bb04-903a54475637", -1,
+       %{
+         id: "3283c9b2-bcb2-4ff1-bb04-903a54475637",
+         name: "Alva Tote",
+         description: "A natural canvas tote for notebooks, chargers, and daily carry.",
+         stock: 65,
+         media_reference: "alva-tote.png",
+         price: 2800
+       }, nil, false},
+      {"products-01cb43da-dcc9-463d-81f6-dd7d7484e140", -1,
+       %{
+         id: "01cb43da-dcc9-463d-81f6-dd7d7484e140",
+         name: "Alva T-Shirt",
+         description: "A soft cotton t-shirt with a minimal mark for everyday product teams.",
+         stock: 100,
+         media_reference: "alva-tshirt.png",
+         price: 2500
+       }, nil, false},
+      {"products-f27edbd8-86be-4792-80f4-1e40168c4e53", -1,
+       %{
+         id: "f27edbd8-86be-4792-80f4-1e40168c4e53",
+         name: "Alva Notebook",
+         description: "A matte notebook and pen set for sketches, specs, and release notes.",
+         stock: 80,
+         media_reference: "alva-notebook.png",
+         price: 1800
+       }, nil, false},
+      {"products-adaa76b4-8860-4f77-a41d-a7da588ebdb4", -1,
+       %{
+         id: "adaa76b4-8860-4f77-a41d-a7da588ebdb4",
+         name: "Alva Mug",
+         description: "A sturdy ceramic mug for daily coffee, tea, or late-night debugging.",
+         stock: 50,
+         media_reference: "alva-mug.png",
+         price: 1500
+       }, nil, false},
+      {"products-b25552f2-6a19-46f4-897f-7173de3e98d3", -1,
+       %{
+         id: "b25552f2-6a19-46f4-897f-7173de3e98d3",
+         name: "Alva Laptop Stand",
+         description: "A foldable aluminum stand for a cleaner and more ergonomic setup.",
+         stock: 42,
+         media_reference: "alva-laptop-stand.png",
+         price: 5200
+       }, nil, false},
+      {"products-de41bdd4-976f-4ff8-ac65-4f52f03ea5ac", -1,
+       %{
+         id: "de41bdd4-976f-4ff8-ac65-4f52f03ea5ac",
+         name: "Alva Keyboard",
+         description: "A compact mechanical keyboard with a quiet, precise desk presence.",
+         stock: 35,
+         media_reference: "alva-keyboard.png",
+         price: 8900
+       }, nil, false},
+      {"products-d90ab329-3680-4135-b505-17710374d790", -1,
+       %{
+         id: "d90ab329-3680-4135-b505-17710374d790",
+         name: "Alva Hoodie",
+         description: "A warm heather hoodie for focused work sessions and cooler rooms.",
+         stock: 75,
+         media_reference: "alva-hoodie.png",
+         price: 4500
+       }, nil, false},
+      {"products-0dd870b2-1ab2-48c1-972a-0ab41200b185", -1,
+       %{
+         id: "0dd870b2-1ab2-48c1-972a-0ab41200b185",
+         name: "Alva Desk Lamp",
+         description: "A compact adjustable desk lamp for warm, focused evening work.",
+         stock: 24,
+         media_reference: "alva-desk-lamp.png",
+         price: 6400
+       }, nil, false},
+      {"products-16ce9cb7-c54f-446d-8af0-917781eda7e2", -1,
+       %{
+         id: "16ce9cb7-c54f-446d-8af0-917781eda7e2",
+         name: "Alva Bottle",
+         description: "An insulated stainless bottle built for long days at the workstation.",
+         stock: 60,
+         media_reference: "alva-bottle.png",
+         price: 3200
+       }, nil, false},
+      {"products-14bbaa3f-9858-4e94-a56d-3c21b487772c", -1,
+       %{
+         id: "14bbaa3f-9858-4e94-a56d-3c21b487772c",
+         name: "Sync Test Product",
+         description: "Test desc",
+         stock: 10,
+         media_reference: "sync.jpg",
+         price: 1000
+       }, nil, nil},
+      {"products-3283c9b2-bcb2-4ff1-bb04-903a54475637", -1,
+       %{
+         id: "3283c9b2-bcb2-4ff1-bb04-903a54475637",
+         name: "Alva Tote",
+         description: "A natural canvas tote for notebooks, chargers, and daily carry.",
+         stock: 65,
+         media_reference: "alva-tote.png",
+         price: 2800
+       }, nil, nil},
+      {"products-01cb43da-dcc9-463d-81f6-dd7d7484e140", -1,
+       %{
+         id: "01cb43da-dcc9-463d-81f6-dd7d7484e140",
+         name: "Alva T-Shirt",
+         description: "A soft cotton t-shirt with a minimal mark for everyday product teams.",
+         stock: 100,
+         media_reference: "alva-tshirt.png",
+         price: 2500
+       }, nil, nil},
+      {"products-f27edbd8-86be-4792-80f4-1e40168c4e53", -1,
+       %{
+         id: "f27edbd8-86be-4792-80f4-1e40168c4e53",
+         name: "Alva Notebook",
+         description: "A matte notebook and pen set for sketches, specs, and release notes.",
+         stock: 80,
+         media_reference: "alva-notebook.png",
+         price: 1800
+       }, nil, nil},
+      {"products-adaa76b4-8860-4f77-a41d-a7da588ebdb4", -1,
+       %{
+         id: "adaa76b4-8860-4f77-a41d-a7da588ebdb4",
+         name: "Alva Mug",
+         description: "A sturdy ceramic mug for daily coffee, tea, or late-night debugging.",
+         stock: 50,
+         media_reference: "alva-mug.png",
+         price: 1500
+       }, nil, nil},
+      {"products-b25552f2-6a19-46f4-897f-7173de3e98d3", -1,
+       %{
+         id: "b25552f2-6a19-46f4-897f-7173de3e98d3",
+         name: "Alva Laptop Stand",
+         description: "A foldable aluminum stand for a cleaner and more ergonomic setup.",
+         ...
+       }, ...},
+      ...
+    ],
+    ...
+  },
+  ...
+}
+LIVE_VUE_STREAMS: %{
+  sales_orders: %Phoenix.LiveView.LiveStream{
+    name: :sales_orders,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "0",
+    inserts: [
+      {"sales_orders-0d255beb-c8c6-4879-b473-86c5e40424b5", -1,
+       %{
+         id: "0d255beb-c8c6-4879-b473-86c5e40424b5",
+         product: %{
+           id: "14bbaa3f-9858-4e94-a56d-3c21b487772c",
+           name: "Sync Test Product",
+           description: "Test desc",
+           stock: 10,
+           media_reference: "sync.jpg",
+           price: 1000
+         },
+         lifecycle_status: "new",
+         created_at: "2026-07-09T12:34:12.006444Z",
+         customer_name: "Sync Shopper",
+         product_id: "14bbaa3f-9858-4e94-a56d-3c21b487772c",
+         quantity: 2
+       }, nil, false}
+    ],
+    deletes: [],
+    reset?: false,
+    consumable?: false
+  },
+  products: %Phoenix.LiveView.LiveStream{
+    name: :products,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "1",
+    inserts: [],
+    deletes: [],
+    reset?: false,
+    consumable?: false
+  },
+  support_messages: %Phoenix.LiveView.LiveStream{
+    name: :support_messages,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "2",
+    inserts: [],
+    deletes: [],
+    reset?: false,
+    consumable?: false
+  }
+}
+LIVE_VUE_STREAMS: %{
+  sales_orders: %Phoenix.LiveView.LiveStream{
+    name: :sales_orders,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "0",
+    inserts: [
+      {"sales_orders-0d255beb-c8c6-4879-b473-86c5e40424b5", -1,
+       %{
+         id: "0d255beb-c8c6-4879-b473-86c5e40424b5",
+         product: %{
+           id: "14bbaa3f-9858-4e94-a56d-3c21b487772c",
+           name: "Sync Test Product",
+           description: "Test desc",
+           stock: 10,
+           media_reference: "sync.jpg",
+           price: 1000
+         },
+         lifecycle_status: "new",
+         created_at: "2026-07-09T12:34:12.006444Z",
+         customer_name: "Sync Shopper",
+         product_id: "14bbaa3f-9858-4e94-a56d-3c21b487772c",
+         quantity: 2
+       }, nil, false}
+    ],
+    deletes: [],
+    reset?: false,
+    consumable?: false
+  },
+  products: %Phoenix.LiveView.LiveStream{
+    name: :products,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "1",
+    inserts: [],
+    deletes: [],
+    reset?: false,
+    consumable?: false
+  },
+  conversations: %Phoenix.LiveView.LiveStream{
+    name: :conversations,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "2",
+    inserts: [],
+    deletes: [],
+    reset?: false,
+    consumable?: false
+  },
+  support_messages: %Phoenix.LiveView.LiveStream{
+    name: :support_messages,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "3",
+    inserts: [],
+    deletes: [],
+    reset?: false,
+    consumable?: false
+  }
+}
+LIVE_VUE_STREAMS: %{
+  sales_orders: %Phoenix.LiveView.LiveStream{
+    name: :sales_orders,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "0",
+    inserts: [
+      {"sales_orders-0d255beb-c8c6-4879-b473-86c5e40424b5", -1,
+       %{
+         id: "0d255beb-c8c6-4879-b473-86c5e40424b5",
+         product: %{
+           id: "14bbaa3f-9858-4e94-a56d-3c21b487772c",
+           name: "Sync Test Product",
+           description: "Test desc",
+           stock: 10,
+           media_reference: "sync.jpg",
+           price: 1000
+         },
+         lifecycle_status: "new",
+         created_at: "2026-07-09T12:34:12.006444Z",
+         customer_name: "Sync Shopper",
+         product_id: "14bbaa3f-9858-4e94-a56d-3c21b487772c",
+         quantity: 2
+       }, nil, false}
+    ],
+    deletes: [],
+    reset?: false,
+    consumable?: false
+  },
+  products: %Phoenix.LiveView.LiveStream{
+    name: :products,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "1",
+    inserts: [],
+    deletes: [],
+    reset?: false,
+    consumable?: false
+  },
+  support_messages: %Phoenix.LiveView.LiveStream{
+    name: :support_messages,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "2",
+    inserts: [],
+    deletes: [],
+    reset?: false,
+    consumable?: false
+  }
+}
+LIVE_VUE_STREAMS: %{
+  sales_orders: %Phoenix.LiveView.LiveStream{
+    name: :sales_orders,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "0",
+    inserts: [
+      {"sales_orders-0d255beb-c8c6-4879-b473-86c5e40424b5", -1,
+       %{
+         id: "0d255beb-c8c6-4879-b473-86c5e40424b5",
+         product: %{
+           id: "14bbaa3f-9858-4e94-a56d-3c21b487772c",
+           name: "Sync Test Product",
+           description: "Test desc",
+           stock: 10,
+           media_reference: "sync.jpg",
+           price: 1000
+         },
+         lifecycle_status: "new",
+         created_at: "2026-07-09T12:34:12.006444Z",
+         customer_name: "Sync Shopper",
+         product_id: "14bbaa3f-9858-4e94-a56d-3c21b487772c",
+         quantity: 2
+       }, nil, false}
+    ],
+    deletes: [],
+    reset?: false,
+    consumable?: false
+  },
+  products: %Phoenix.LiveView.LiveStream{
+    name: :products,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "1",
+    inserts: [],
+    deletes: [],
+    reset?: false,
+    consumable?: false
+  },
+  conversations: %Phoenix.LiveView.LiveStream{
+    name: :conversations,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "2",
+    inserts: [],
+    deletes: [],
+    reset?: false,
+    consumable?: false
+  },
+  support_messages: %Phoenix.LiveView.LiveStream{
+    name: :support_messages,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "3",
+    inserts: [],
+    deletes: [],
+    reset?: false,
+    consumable?: false
+  }
+}
+19:34:12.046 [error] GenServer #PID<0.496.0> terminating
+** (KeyError) key :name not found in:
+
+    %{
+      resource: AlvaDemo.Sales.Order,
+      source: :list,
+      sync_on: [:create, :begin_processing, :fulfill],
+      scope_args: %{}
+    }
+
+    (alva 0.1.0) lib/alva/live_view.ex:760: Alva.LiveView.record_in_scope?/4
+    (alva 0.1.0) lib/alva/live_view.ex:272: Alva.LiveView.apply_stream_operation/4
+    (elixir 1.20.2) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+    (alva 0.1.0) lib/alva/live_view.ex:248: Alva.LiveView.handle_notification/3
+    (phoenix_live_view 1.2.5) lib/phoenix_live_view/lifecycle.ex:237: Phoenix.LiveView.Lifecycle.reduce_socket/3
+    (phoenix_live_view 1.2.5) lib/phoenix_live_view/channel.ex:550: Phoenix.LiveView.Channel.view_handle_info/2
+    (phoenix_live_view 1.2.5) lib/phoenix_live_view/channel.ex:364: Phoenix.LiveView.Channel.handle_info/2
+    (stdlib 7.2.1) gen_server.erl:2434: :gen_server.try_handle_info/3
+    (stdlib 7.2.1) gen_server.erl:2420: :gen_server.handle_msg/3
+    (stdlib 7.2.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Process Label: {Phoenix.LiveView, AlvaDemoWeb.MerchantConsoleLive, "lv:phx-GMCfKT9aGIiexD6B"}
+Last message: %Phoenix.Socket.Broadcast{topic: "order:updated", event: "begin_processing", payload: %Ash.Notifier.Notification{resource: AlvaDemo.Sales.Order, domain: AlvaDemo.Sales, action: %Ash.Resource.Actions.Update{name: :begin_processing, primary?: false, description: nil, error_handler: nil, multitenancy: :enforce, accept: [], require_attributes: [], allow_nil_input: [], skip_unknown_inputs: [], manual: nil, manual?: false, require_atomic?: false, atomic_upgrade?: false, atomic_upgrade_with: nil, action_select: nil, notifiers: [], atomics: [], delay_global_validations?: false, skip_global_validations?: false, arguments: [], changes: [%Ash.Resource.Validation{validation: {AlvaDemo.Sales.Validations.TransitionFrom, [state: :new]}, module: AlvaDemo.Sales.Validations.TransitionFrom, opts: [state: :new], only_when_valid?: false, description: nil, message: nil, before_action?: false, always_atomic?: false, where: [], on: [], __spark_metadata__: %Spark.Dsl.Entity.Meta{anno: [file: ~c"/var/www/ash_vue/alva_demo/lib/alva_demo/sales/order.ex", location: 103], properties_anno: %{}}}, %Ash.Resource.Change{change: {Ash.Resource.Change.SetAttribute, [value: :processing, attribute: :lifecycle_status]}, on: nil, only_when_valid?: false, description: nil, always_atomic?: false, where: [], __spark_metadata__: %Spark.Dsl.Entity.Meta{anno: [file: ~c"/var/www/ash_vue/alva_demo/lib/alva_demo/sales/order.ex", location: 104], properties_anno: %{}}}], reject: [], metadata: [], transaction?: true, public?: true, touches_resources: [], type: :update, __spark_metadata__: %Spark.Dsl.Entity.Meta{anno: [end_location: {100, 30}, file: ~c"/var/www/ash_vue/alva_demo/lib/alva_demo/sales/order.ex", location: 100], properties_anno: %{public?: [file: ~c"/var/www/ash_vue/alva_demo/lib/alva_demo/sales/order.ex", location: 101], require_atomic?: [file: ~c"/var/www/ash_vue/alva_demo/lib/alva_demo/sales/order.ex", location: 102]}}}, data: %AlvaDemo.Sales.Order{id: "0d255beb-c8c6-4879-b473-86c5e40424b5", customer_name: "Sync Shopper", quantity: 2, lifecycle_status: :processing, created_at: ~U[2026-07-09 12:34:12.006444Z], product_id: "14bbaa3f-9858-4e94-a56d-3c21b487772c", product: %AlvaDemo.Catalog.Product{id: "14bbaa3f-9858-4e94-a56d-3c21b487772c", name: "Sync Test Product", description: "Test desc", price: 1000, stock: 10, media_reference: "sync.jpg", __meta__: #Ecto.Schema.Metadata<:loaded>}, __meta__: #Ecto.Schema.Metadata<:loaded>}, changeset: #Ash.Changeset<domain: AlvaDemo.Sales, action_type: :update, action: :begin_processing, attributes: %{lifecycle_status: :processing}, relationships: %{}, errors: [], data: %AlvaDemo.Sales.Order{id: "0d255beb-c8c6-4879-b473-86c5e40424b5", customer_name: "Sync Shopper", quantity: 2, lifecycle_status: :new, created_at: ~U[2026-07-09 12:34:12.006444Z], product_id: "14bbaa3f-9858-4e94-a56d-3c21b487772c", product: %AlvaDemo.Catalog.Product{id: "14bbaa3f-9858-4e94-a56d-3c21b487772c", name: "Sync Test Product", description: "Test desc", price: 1000, stock: 10, media_reference: "sync.jpg", __meta__: #Ecto.Schema.Metadata<:loaded>}, __meta__: #Ecto.Schema.Metadata<:loaded>}, context: %{changed?: true}, valid?: true>, actor: nil, for: [Ash.Notifier.PubSub], from: #PID<0.488.0>, metadata: %{}}}
+19:34:12.046 [error] GenServer #PID<0.492.0> terminating
+** (KeyError) key :name not found in:
+
+    %{
+      resource: AlvaDemo.Sales.Order,
+      source: :list_storefront,
+      sync_on: [:create, :begin_processing, :fulfill],
+      scope_args: %{customer_query: nil}
+    }
+
+    (alva 0.1.0) lib/alva/live_view.ex:760: Alva.LiveView.record_in_scope?/4
+    (alva 0.1.0) lib/alva/live_view.ex:272: Alva.LiveView.apply_stream_operation/4
+    (elixir 1.20.2) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+    (alva 0.1.0) lib/alva/live_view.ex:248: Alva.LiveView.handle_notification/3
+    (phoenix_live_view 1.2.5) lib/phoenix_live_view/lifecycle.ex:237: Phoenix.LiveView.Lifecycle.reduce_socket/3
+    (phoenix_live_view 1.2.5) lib/phoenix_live_view/channel.ex:550: Phoenix.LiveView.Channel.view_handle_info/2
+    (phoenix_live_view 1.2.5) lib/phoenix_live_view/channel.ex:364: Phoenix.LiveView.Channel.handle_info/2
+    (stdlib 7.2.1) gen_server.erl:2434: :gen_server.try_handle_info/3
+    (stdlib 7.2.1) gen_server.erl:2420: :gen_server.handle_msg/3
+    (stdlib 7.2.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Process Label: {Phoenix.LiveView, AlvaDemoWeb.CustomerStorefrontLive, "lv:phx-GMCfKTeuSFiexDjB"}
+Last message: %Phoenix.Socket.Broadcast{topic: "order:updated", event: "begin_processing", payload: %Ash.Notifier.Notification{resource: AlvaDemo.Sales.Order, domain: AlvaDemo.Sales, action: %Ash.Resource.Actions.Update{name: :begin_processing, primary?: false, description: nil, error_handler: nil, multitenancy: :enforce, accept: [], require_attributes: [], allow_nil_input: [], skip_unknown_inputs: [], manual: nil, manual?: false, require_atomic?: false, atomic_upgrade?: false, atomic_upgrade_with: nil, action_select: nil, notifiers: [], atomics: [], delay_global_validations?: false, skip_global_validations?: false, arguments: [], changes: [%Ash.Resource.Validation{validation: {AlvaDemo.Sales.Validations.TransitionFrom, [state: :new]}, module: AlvaDemo.Sales.Validations.TransitionFrom, opts: [state: :new], only_when_valid?: false, description: nil, message: nil, before_action?: false, always_atomic?: false, where: [], on: [], __spark_metadata__: %Spark.Dsl.Entity.Meta{anno: [file: ~c"/var/www/ash_vue/alva_demo/lib/alva_demo/sales/order.ex", location: 103], properties_anno: %{}}}, %Ash.Resource.Change{change: {Ash.Resource.Change.SetAttribute, [value: :processing, attribute: :lifecycle_status]}, on: nil, only_when_valid?: false, description: nil, always_atomic?: false, where: [], __spark_metadata__: %Spark.Dsl.Entity.Meta{anno: [file: ~c"/var/www/ash_vue/alva_demo/lib/alva_demo/sales/order.ex", location: 104], properties_anno: %{}}}], reject: [], metadata: [], transaction?: true, public?: true, touches_resources: [], type: :update, __spark_metadata__: %Spark.Dsl.Entity.Meta{anno: [end_location: {100, 30}, file: ~c"/var/www/ash_vue/alva_demo/lib/alva_demo/sales/order.ex", location: 100], properties_anno: %{public?: [file: ~c"/var/www/ash_vue/alva_demo/lib/alva_demo/sales/order.ex", location: 101], require_atomic?: [file: ~c"/var/www/ash_vue/alva_demo/lib/alva_demo/sales/order.ex", location: 102]}}}, data: %AlvaDemo.Sales.Order{id: "0d255beb-c8c6-4879-b473-86c5e40424b5", customer_name: "Sync Shopper", quantity: 2, lifecycle_status: :processing, created_at: ~U[2026-07-09 12:34:12.006444Z], product_id: "14bbaa3f-9858-4e94-a56d-3c21b487772c", product: %AlvaDemo.Catalog.Product{id: "14bbaa3f-9858-4e94-a56d-3c21b487772c", name: "Sync Test Product", description: "Test desc", price: 1000, stock: 10, media_reference: "sync.jpg", __meta__: #Ecto.Schema.Metadata<:loaded>}, __meta__: #Ecto.Schema.Metadata<:loaded>}, changeset: #Ash.Changeset<domain: AlvaDemo.Sales, action_type: :update, action: :begin_processing, attributes: %{lifecycle_status: :processing}, relationships: %{}, errors: [], data: %AlvaDemo.Sales.Order{id: "0d255beb-c8c6-4879-b473-86c5e40424b5", customer_name: "Sync Shopper", quantity: 2, lifecycle_status: :new, created_at: ~U[2026-07-09 12:34:12.006444Z], product_id: "14bbaa3f-9858-4e94-a56d-3c21b487772c", product: %AlvaDemo.Catalog.Product{id: "14bbaa3f-9858-4e94-a56d-3c21b487772c", name: "Sync Test Product", description: "Test desc", price: 1000, stock: 10, media_reference: "sync.jpg", __meta__: #Ecto.Schema.Metadata<:loaded>}, __meta__: #Ecto.Schema.Metadata<:loaded>}, context: %{changed?: true}, valid?: true>, actor: nil, for: [Ash.Notifier.PubSub], from: #PID<0.488.0>, metadata: %{}}}
+19:34:12.072 [error] GenServer #PID<0.489.0> terminating
+** (KeyError) key :name not found in:
+
+    %{
+      resource: AlvaDemo.Sales.Order,
+      source: :list_storefront,
+      sync_on: [:create, :begin_processing, :fulfill],
+      scope_args: %{customer_query: nil}
+    }
+
+    (alva 0.1.0) lib/alva/live_view.ex:760: Alva.LiveView.record_in_scope?/4
+    (alva 0.1.0) lib/alva/live_view.ex:272: Alva.LiveView.apply_stream_operation/4
+    (elixir 1.20.2) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+    (alva 0.1.0) lib/alva/live_view.ex:248: Alva.LiveView.handle_notification/3
+    (phoenix_live_view 1.2.5) lib/phoenix_live_view/lifecycle.ex:237: Phoenix.LiveView.Lifecycle.reduce_socket/3
+    (phoenix_live_view 1.2.5) lib/phoenix_live_view/channel.ex:550: Phoenix.LiveView.Channel.view_handle_info/2
+    (phoenix_live_view 1.2.5) lib/phoenix_live_view/channel.ex:364: Phoenix.LiveView.Channel.handle_info/2
+    (stdlib 7.2.1) gen_server.erl:2434: :gen_server.try_handle_info/3
+    (stdlib 7.2.1) gen_server.erl:2420: :gen_server.handle_msg/3
+    (stdlib 7.2.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message: {:EXIT, #PID<0.488.0>, {{:badkey, :name, %{resource: AlvaDemo.Sales.Order, source: :list_storefront, sync_on: [:create, :begin_processing, :fulfill], scope_args: %{customer_query: nil}}}, [{Alva.LiveView, :record_in_scope?, 4, [file: ~c"lib/alva/live_view.ex", line: 760]}, {Alva.LiveView, :apply_stream_operation, 4, [file: ~c"lib/alva/live_view.ex", line: 272]}, {Enum, :"-reduce/3-lists^foldl/2-0-", 3, [file: ~c"lib/enum.ex", line: 2622]}, {Alva.LiveView, :handle_notification, 3, [file: ~c"lib/alva/live_view.ex", line: 248]}, {Phoenix.LiveView.Lifecycle, :reduce_socket, 3, [file: ~c"lib/phoenix_live_view/lifecycle.ex", line: 237]}, {Phoenix.LiveView.Channel, :view_handle_info, 2, [file: ~c"lib/phoenix_live_view/channel.ex", line: 550]}, {Phoenix.LiveView.Channel, :handle_info, 2, [file: ~c"lib/phoenix_live_view/channel.ex", line: 364]}, {:gen_server, :try_handle_info, 3, [file: ~c"gen_server.erl", line: 2434]}, {:gen_server, :handle_msg, 3, [file: ~c"gen_server.erl", line: 2420]}, {:proc_lib, :init_p_do_apply, 3, [file: ~c"proc_lib.erl", line: 333]}]}}
+
+
+  1) test order updates sync across storefront and merchant console (AlvaDemoWeb.SynchronizationTest)
+     test/alva_demo_web/live/synchronization_test.exs:25
+     ** (EXIT from #PID<0.488.0>) an exception was raised:
+         ** (KeyError) key :name not found in:
+
+         %{
+           resource: AlvaDemo.Sales.Order,
+           source: :list_storefront,
+           sync_on: [:create, :begin_processing, :fulfill],
+           scope_args: %{customer_query: nil}
+         }
+
+             (alva 0.1.0) lib/alva/live_view.ex:760: Alva.LiveView.record_in_scope?/4
+             (alva 0.1.0) lib/alva/live_view.ex:272: Alva.LiveView.apply_stream_operation/4
+             (elixir 1.20.2) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+             (alva 0.1.0) lib/alva/live_view.ex:248: Alva.LiveView.handle_notification/3
+             (phoenix_live_view 1.2.5) lib/phoenix_live_view/lifecycle.ex:237: Phoenix.LiveView.Lifecycle.reduce_socket/3
+             (phoenix_live_view 1.2.5) lib/phoenix_live_view/channel.ex:550: Phoenix.LiveView.Channel.view_handle_info/2
+             (phoenix_live_view 1.2.5) lib/phoenix_live_view/channel.ex:364: Phoenix.LiveView.Channel.handle_info/2
+             (stdlib 7.2.1) gen_server.erl:2434: :gen_server.try_handle_info/3
+             (stdlib 7.2.1) gen_server.erl:2420: :gen_server.handle_msg/3
+             (stdlib 7.2.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+
+
+Finished in 0.4 seconds (0.00s async, 0.4s sync)
+
+Result: 0/1 passed, 7 excluded
+Failed: 1 test

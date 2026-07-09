@@ -1,0 +1,820 @@
+warning: the following files do not match any of the configured `:test_load_filters` / `:test_ignore_filters`:
+
+test/endpoint.ex
+
+This might indicate a typo in a test file name (for example, using "foo_tests.exs" instead of "foo_test.exs").
+
+See the configuration for `:test_pattern` under `mix help test` for more information.
+
+Running ExUnit with seed: 419533, max_cases: 24
+
+    warning: function refute_stream_contains/3 is unused
+    │
+ 26 │   defp refute_stream_contains(vue, stream_name, expected_subset) do
+    │        ~
+    │
+    └─ test/alva_demo_web/live/demo_stream_pipeline_test.exs:26:8: AlvaDemoWeb.DemoStreamPipelineTest (module)
+
+....
+
+  1) test Customer Storefront route injects the LiveVue host page into the persistent layout (AlvaDemoWeb.ShowcaseShellTest)
+     test/alva_demo_web/live/showcase_shell_test.exs:16
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: {:ok, _view, html} = live(conn, ~p"/storefront")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/customer_storefront_live.ex:28: AlvaDemoWeb.CustomerStorefrontLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/showcase_shell_test.exs:19: (test)
+
+LIVE_VUE_STREAMS: %{
+  chat_messages: %Phoenix.LiveView.LiveStream{
+    name: :chat_messages,
+    dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+    ref: "0",
+    inserts: [
+      {"chat_messages-75e09535-769c-4cfa-9b35-4e66ceb4e5e8", -1,
+       %AlvaDemo.Demos.ChatMessage{
+         id: "75e09535-769c-4cfa-9b35-4e66ceb4e5e8",
+         author: "Teammate",
+         text: "Open this page in two tabs to watch the list stay in sync.",
+         created_at: ~U[2026-07-09 12:41:20.393742Z],
+         __meta__: #Ecto.Schema.Metadata<:loaded>
+       }, nil, nil},
+      {"chat_messages-55b342d4-1d0b-4c77-98c7-00b97c081c78", -1,
+       %AlvaDemo.Demos.ChatMessage{
+         id: "55b342d4-1d0b-4c77-98c7-00b97c081c78",
+         author: "Guide",
+         text: "Streams append to both open pages as soon as messages land.",
+         created_at: ~U[2026-07-09 12:41:20.393640Z],
+         __meta__: #Ecto.Schema.Metadata<:loaded>
+       }, nil, nil}
+    ],
+    deletes: [],
+    reset?: false,
+    consumable?: false
+  }
+}
+
+
+  2) test Merchant Console route injects the LiveVue host page into the persistent layout (AlvaDemoWeb.ShowcaseShellTest)
+     test/alva_demo_web/live/showcase_shell_test.exs:28
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: {:ok, _view, html} = live(conn, ~p"/console")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/merchant_console_live.ex:35: AlvaDemoWeb.MerchantConsoleLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/showcase_shell_test.exs:31: (test)
+
+LIVE_VUE_STREAMS: %{}
+LIVE_VUE_STREAMS: %{}
+LIVE_VUE_STREAMS: %{}
+LIVE_VUE_STREAMS: %{}
+LIVE_VUE_STREAMS: %{}
+
+
+  3) test legacy demo routes are still available in the showcase (AlvaDemoWeb.LegacyDemoRoutesTest)
+     test/alva_demo_web/live/demo_primitives_live_test.exs:4
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Demos.FeedEntry, source: :list, sync_on: [], scope_args: %{page_limit: nil}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: Enum.each(["/demo/chat", "/demo/notifications", "/demo/load-more"], fn path ->
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/demo_load_more_live.ex:21: AlvaDemoWeb.DemoLoadMoreLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/demo_primitives_live_test.exs:6: anonymous fn/1 in AlvaDemoWeb.LegacyDemoRoutesTest."test legacy demo routes are still available in the showcase"/1
+       (elixir 1.20.2) lib/enum.ex:983: Enum."-each/2-lists^foreach/1-0-"/2
+       test/alva_demo_web/live/demo_primitives_live_test.exs:5: (test)
+
+LIVE_VUE_STREAMS: %{}
+......
+
+  4) test feed entries stream mounts synchronously (AlvaDemoWeb.DemoStreamPipelineTest)
+     test/alva_demo_web/live/demo_stream_pipeline_test.exs:6
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Demos.FeedEntry, source: :list, sync_on: [], scope_args: %{page_limit: nil}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: {:ok, _page_live, html} = live(conn, "/demo/load-more")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/demo_load_more_live.ex:21: AlvaDemoWeb.DemoLoadMoreLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/demo_stream_pipeline_test.exs:7: (test)
+
+
+
+  5) test merchant console receives storefront purchases without refresh (AlvaDemoWeb.CustomerStorefrontLiveTest)
+     test/alva_demo_web/live/storefront_live_test.exs:36
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: {:ok, storefront_live, _html} = live(conn, "/storefront")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/customer_storefront_live.ex:28: AlvaDemoWeb.CustomerStorefrontLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/storefront_live_test.exs:45: (test)
+
+
+
+  6) test route params scope support chat history for the storefront surface (AlvaDemoWeb.CustomerStorefrontLiveTest)
+     test/alva_demo_web/live/storefront_live_test.exs:68
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: live(conn, "/storefront?customer_name=#{conversation.customer_name}&conversation_id=#{conversation.id}")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/customer_storefront_live.ex:28: AlvaDemoWeb.CustomerStorefrontLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/storefront_live_test.exs:81: (test)
+
+
+
+  7) test mounts into the persistent layout and sends eager stream payloads (AlvaDemoWeb.CustomerStorefrontLiveTest)
+     test/alva_demo_web/live/storefront_live_test.exs:6
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: {:ok, page_live, disconnected_html} = live(conn, "/storefront")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/customer_storefront_live.ex:28: AlvaDemoWeb.CustomerStorefrontLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/storefront_live_test.exs:15: (test)
+
+
+
+  8) test merchant console advances the order lifecycle through the route stream (AlvaDemoWeb.MerchantConsoleLiveTest)
+     test/alva_demo_web/live/console_live_test.exs:76
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: {:ok, page_live, _html} = live(conn, "/console")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/merchant_console_live.ex:35: AlvaDemoWeb.MerchantConsoleLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/console_live_test.exs:94: (test)
+
+
+
+  9) test adjusting stock pushes the updated product through the products stream (AlvaDemoWeb.MerchantConsoleLiveTest)
+     test/alva_demo_web/live/console_live_test.exs:39
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: {:ok, page_live, _html} = live(conn, "/console")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/merchant_console_live.ex:35: AlvaDemoWeb.MerchantConsoleLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/console_live_test.exs:48: (test)
+
+
+
+ 10) test passes the live upload config into the merchant console page (AlvaDemoWeb.MerchantConsoleLiveTest)
+     test/alva_demo_web/live/console_live_test.exs:60
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: {:ok, _page_live, html} = live(conn, "/console")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/merchant_console_live.ex:35: AlvaDemoWeb.MerchantConsoleLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/console_live_test.exs:61: (test)
+
+
+
+ 11) test mounts into the persistent layout and sends eager stream payloads (AlvaDemoWeb.MerchantConsoleLiveTest)
+     test/alva_demo_web/live/console_live_test.exs:6
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: {:ok, _page_live, disconnected_html} = live(conn, "/console")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/merchant_console_live.ex:35: AlvaDemoWeb.MerchantConsoleLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/console_live_test.exs:25: (test)
+
+19:41:21.191 [warning] Alva Extension: Dispatching event "sales.fulfill" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.193 [warning] Alva Extension: Dispatching event "sales.fulfill" without a tenant. Expected socket.assigns.current_tenant to be set.
+
+
+ 12) test route params scope the active merchant conversation transcript (AlvaDemoWeb.MerchantConsoleLiveTest)
+     test/alva_demo_web/live/console_live_test.exs:119
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: {:ok, page_live, _html} = live(conn, "/console?conversation_id=#{second_conversation.id}")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/merchant_console_live.ex:35: AlvaDemoWeb.MerchantConsoleLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/console_live_test.exs:144: (test)
+
+.19:41:21.200 [warning] Alva Extension: Dispatching event "sales.fulfill" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.200 [warning] Alva Extension: Dispatching event "sales.fulfill" without a tenant. Expected socket.assigns.current_tenant to be set.
+.19:41:21.203 [warning] Alva Extension: Dispatching event "sales.list_orders" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.203 [warning] Alva Extension: Dispatching event "sales.list_orders" without a tenant. Expected socket.assigns.current_tenant to be set.
+19:41:21.203 [warning] Alva Dispatcher: Action list on AlvaDemo.Sales.Order returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads.
+.19:41:21.205 [warning] Alva Extension: Dispatching event "sales.create_order" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.205 [warning] Alva Extension: Dispatching event "sales.create_order" without a tenant. Expected socket.assigns.current_tenant to be set.
+.19:41:21.208 [warning] Alva Extension: Dispatching event "sales.create_order" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.208 [warning] Alva Extension: Dispatching event "sales.create_order" without a tenant. Expected socket.assigns.current_tenant to be set.
+.19:41:21.211 [warning] Alva Extension: Dispatching event "sales.create_order" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.211 [warning] Alva Extension: Dispatching event "sales.create_order" without a tenant. Expected socket.assigns.current_tenant to be set.
+.19:41:21.215 [warning] Alva Extension: Dispatching event "sales.list_orders" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.215 [warning] Alva Extension: Dispatching event "sales.list_orders" without a tenant. Expected socket.assigns.current_tenant to be set.
+19:41:21.215 [warning] Alva Dispatcher: Action list on AlvaDemo.Sales.Order returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads.
+19:41:21.216 [warning] Alva Extension: Dispatching event "sales.list_orders" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.216 [warning] Alva Extension: Dispatching event "sales.list_orders" without a tenant. Expected socket.assigns.current_tenant to be set.
+19:41:21.216 [warning] Alva Dispatcher: Action list on AlvaDemo.Sales.Order returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads.
+19:41:21.222 [warning] Alva Extension: Dispatching event "sales.list_orders" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.222 [warning] Alva Extension: Dispatching event "sales.list_orders" without a tenant. Expected socket.assigns.current_tenant to be set.
+19:41:21.222 [warning] Alva Dispatcher: Action list on AlvaDemo.Sales.Order returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads.
+.19:41:21.229 [warning] Alva Extension: Dispatching event "sales.begin_processing" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.229 [warning] Alva Extension: Dispatching event "sales.begin_processing" without a tenant. Expected socket.assigns.current_tenant to be set.
+..19:41:21.236 [warning] Alva Extension: Dispatching event "catalog.list_products" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.236 [warning] Alva Extension: Dispatching event "catalog.list_products" without a tenant. Expected socket.assigns.current_tenant to be set.
+19:41:21.236 [warning] Alva Dispatcher: Action list on AlvaDemo.Catalog.Product returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads.
+19:41:21.237 [warning] Alva Extension: Dispatching event "catalog.list_products" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.237 [warning] Alva Extension: Dispatching event "catalog.list_products" without a tenant. Expected socket.assigns.current_tenant to be set.
+19:41:21.237 [warning] Alva Dispatcher: Action list on AlvaDemo.Catalog.Product returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads.
+.19:41:21.238 [warning] Alva Extension: Dispatching event "catalog.adjust_stock" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.238 [warning] Alva Extension: Dispatching event "catalog.adjust_stock" without a tenant. Expected socket.assigns.current_tenant to be set.
+.19:41:21.261 [warning] Alva Extension: Dispatching event "catalog.list_products" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.261 [warning] Alva Extension: Dispatching event "catalog.list_products" without a tenant. Expected socket.assigns.current_tenant to be set.
+19:41:21.261 [warning] Alva Dispatcher: Action list on AlvaDemo.Catalog.Product returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads.
+.
+
+ 13) test support message history and live updates stay route-scoped for both chat surfaces (AlvaDemoWeb.SynchronizationTest)
+     test/alva_demo_web/live/synchronization_test.exs:210
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: live(
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/customer_storefront_live.ex:28: AlvaDemoWeb.CustomerStorefrontLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/synchronization_test.exs:220: (test)
+
+
+
+ 14) test storefront does not subscribe to inactive conversation collection broadcasts (AlvaDemoWeb.SynchronizationTest)
+     test/alva_demo_web/live/synchronization_test.exs:191
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: {:ok, _storefront_live, _html} = live(conn, "/storefront")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/customer_storefront_live.ex:28: AlvaDemoWeb.CustomerStorefrontLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/synchronization_test.exs:194: (test)
+
+
+
+ 15) test product inventory updates sync across storefront and merchant console (AlvaDemoWeb.SynchronizationTest)
+     test/alva_demo_web/live/synchronization_test.exs:109
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: {:ok, storefront_live, _html} = live(conn, "/storefront")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/customer_storefront_live.ex:28: AlvaDemoWeb.CustomerStorefrontLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/synchronization_test.exs:114: (test)
+
+
+
+ 16) test order command updates the active storefront without a refresh (AlvaDemoWeb.SynchronizationTest)
+     test/alva_demo_web/live/synchronization_test.exs:68
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: {:ok, storefront_live, _html} = live(conn, "/storefront?customer_name=Hook%20Shopper")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/customer_storefront_live.ex:28: AlvaDemoWeb.CustomerStorefrontLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/synchronization_test.exs:72: (test)
+
+
+
+ 17) test merchant console lifecycle actions sync back to the storefront without a refresh (AlvaDemoWeb.SynchronizationTest)
+     test/alva_demo_web/live/synchronization_test.exs:83
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: {:ok, storefront_live, _html} = live(conn, "/storefront?customer_name=Console%20Sync%20Shopper")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/customer_storefront_live.ex:28: AlvaDemoWeb.CustomerStorefrontLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/synchronization_test.exs:96: (test)
+
+
+
+ 18) test order updates sync across storefront and merchant console (AlvaDemoWeb.SynchronizationTest)
+     test/alva_demo_web/live/synchronization_test.exs:25
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: {:ok, storefront_live, _html} = live(conn, "/storefront?customer_name=Sync%20Shopper")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/customer_storefront_live.ex:28: AlvaDemoWeb.CustomerStorefrontLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/synchronization_test.exs:30: (test)
+
+19:41:21.288 [warning] Alva Extension: Dispatching event "support.send_message" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.288 [warning] Alva Extension: Dispatching event "support.send_message" without a tenant. Expected socket.assigns.current_tenant to be set.
+
+
+ 19) test product media updates sync across storefront and merchant console (AlvaDemoWeb.SynchronizationTest)
+     test/alva_demo_web/live/synchronization_test.exs:136
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: {:ok, storefront_live, _html} = live(conn, "/storefront")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/customer_storefront_live.ex:28: AlvaDemoWeb.CustomerStorefrontLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/synchronization_test.exs:140: (test)
+
+19:41:21.292 [warning] Alva Extension: Dispatching event "support.send_message" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.292 [warning] Alva Extension: Dispatching event "support.send_message" without a tenant. Expected socket.assigns.current_tenant to be set.
+19:41:21.293 [warning] Alva Extension: Dispatching event "support.list_messages" without an actor. Expected socket.assigns.current_user to be set.
+
+
+19:41:21.293 [warning] Alva Extension: Dispatching event "support.list_messages" without a tenant. Expected socket.assigns.current_tenant to be set.
+ 20) test support conversation creates sync to merchant console without a refresh (AlvaDemoWeb.SynchronizationTest)
+     test/alva_demo_web/live/synchronization_test.exs:174
+     ** (FunctionClauseError) no function clause matching in Keyword.fetch!/2
+
+     The following arguments were given to Keyword.fetch!/2:
+
+         # 1
+         %{resource: AlvaDemo.Catalog.Product, source: :list, sync_on: [:adjust_stock, :upload_media], scope_args: %{}}
+
+         # 2
+         :resource
+
+     Attempted function clauses (showing 1 out of 1):
+
+         def fetch!(keywords, key) when -is_list(keywords)- and is_atom(key)
+
+     code: {:ok, console_live, _html} = live(conn, "/console")
+     stacktrace:
+       (elixir 1.20.2) lib/keyword.ex:615: Keyword.fetch!/2
+       (alva 0.1.0) lib/alva/live_view.ex:79: Alva.LiveView.configure_stream/5
+       (stdlib 7.2.1) maps.erl:894: :maps.fold_1/4
+       (alva_demo 0.1.0) lib/alva_demo_web/live/merchant_console_live.ex:35: AlvaDemoWeb.MerchantConsoleLive.handle_params/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/utils.ex:465: anonymous fn/5 in Phoenix.LiveView.Utils.call_handle_params!/5
+       (telemetry 1.4.2) /var/www/ash_vue/alva_demo/deps/telemetry/src/telemetry.erl:359: :telemetry.span/3
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:325: Phoenix.LiveView.Static.call_mount_and_handle_params!/5
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/static.ex:155: Phoenix.LiveView.Static.do_render/4
+       (phoenix_live_view 1.2.5) lib/phoenix_live_view/controller.ex:39: Phoenix.LiveView.Controller.live_render/3
+       (phoenix 1.8.8) lib/phoenix/router.ex:416: Phoenix.Router.__call__/5
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.plug_builder_call/2
+       (alva_demo 0.1.0) lib/alva_demo_web/endpoint.ex:1: AlvaDemoWeb.Endpoint.call/2
+       (phoenix 1.8.8) lib/phoenix/test/conn_test.ex:225: Phoenix.ConnTest.dispatch/5
+       test/alva_demo_web/live/synchronization_test.exs:175: (test)
+
+19:41:21.293 [warning] Alva Dispatcher: Action read_for_conversation on AlvaDemo.Support.SupportMessage returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads.
+.19:41:21.294 [warning] Alva Extension: Dispatching event "support.send_message" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.294 [warning] Alva Extension: Dispatching event "support.send_message" without a tenant. Expected socket.assigns.current_tenant to be set.
+19:41:21.295 [warning] Alva Extension: Dispatching event "support.list_conversations" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.295 [warning] Alva Extension: Dispatching event "support.list_conversations" without a tenant. Expected socket.assigns.current_tenant to be set.
+19:41:21.295 [warning] Alva Dispatcher: Action list on AlvaDemo.Support.Conversation returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads.
+19:41:21.296 [warning] Alva Extension: Dispatching event "support.send_message" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.296 [warning] Alva Extension: Dispatching event "support.send_message" without a tenant. Expected socket.assigns.current_tenant to be set.
+19:41:21.297 [warning] Alva Extension: Dispatching event "support.list_conversations" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.297 [warning] Alva Extension: Dispatching event "support.list_conversations" without a tenant. Expected socket.assigns.current_tenant to be set.
+19:41:21.297 [warning] Alva Dispatcher: Action list on AlvaDemo.Support.Conversation returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads.
+19:41:21.298 [warning] Alva Extension: Dispatching event "support.list_conversations" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.298 [warning] Alva Extension: Dispatching event "support.list_conversations" without a tenant. Expected socket.assigns.current_tenant to be set.
+19:41:21.298 [warning] Alva Dispatcher: Action list on AlvaDemo.Support.Conversation returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads.
+.19:41:21.298 [warning] Alva Extension: Dispatching event "support.create" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.298 [warning] Alva Extension: Dispatching event "support.create" without a tenant. Expected socket.assigns.current_tenant to be set.
+19:41:21.299 [warning] Alva Extension: Dispatching event "support.create" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.299 [warning] Alva Extension: Dispatching event "support.create" without a tenant. Expected socket.assigns.current_tenant to be set.
+19:41:21.300 [warning] Alva Extension: Dispatching event "support.list_conversations" without an actor. Expected socket.assigns.current_user to be set.
+19:41:21.300 [warning] Alva Extension: Dispatching event "support.list_conversations" without a tenant. Expected socket.assigns.current_tenant to be set.
+19:41:21.300 [warning] Alva Dispatcher: Action list on AlvaDemo.Support.Conversation returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads.
+.
+Finished in 0.8 seconds (0.6s async, 0.1s sync)
+
+Result: 25/45 passed
+Failed: 20 tests

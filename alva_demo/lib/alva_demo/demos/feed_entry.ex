@@ -1,5 +1,4 @@
 defmodule AlvaDemo.Demos.FeedEntry do
-  alias AlvaDemo.Subscriptions, as: DemoSubscriptions
 
   use Ash.Resource,
     domain: AlvaDemo.Demos,
@@ -20,10 +19,14 @@ defmodule AlvaDemo.Demos.FeedEntry do
 
     read :list do
       public?(true)
-      pagination(offset?: true, required?: false)
+      argument(:page_limit, :integer, allow_nil?: true)
 
       prepare(fn query, _context ->
-        Ash.Query.sort(query, position: :asc)
+        limit = Ash.Query.get_argument(query, :page_limit) || 5
+
+        query
+        |> Ash.Query.sort(position: :asc)
+        |> Ash.Query.limit(limit)
       end)
     end
   end

@@ -7,7 +7,6 @@ import SupportChatWidget from "../support/SupportChatWidget.vue";
 import { ref } from "vue";
 import type { Order, Product, SupportMessage } from "../../../js/alva/types";
 import type { AlvaSubscriptions } from "../../../js/alva/subscriptions";
-import { useAlvaStream } from "alva";
 
 const props = defineProps<{
   sales_orders?: Order[];
@@ -16,16 +15,6 @@ const props = defineProps<{
   connected_customer_name?: string | null;
   support_messages?: SupportMessage[];
 }>();
-
-useAlvaStream<AlvaSubscriptions>("products", { sort: "name" });
-useAlvaStream<AlvaSubscriptions>("sales_orders", () => ({
-  sort: "-created_at",
-  customer_query: props.connected_customer_name || null,
-  require_customer: true
-}));
-useAlvaStream<AlvaSubscriptions>("support_messages", () => ({
-  conversation_id: props.active_conversation_id || ""
-}));
 
 const isOrdersOpen = ref(false);
 const orderError = ref<string | null>(null);

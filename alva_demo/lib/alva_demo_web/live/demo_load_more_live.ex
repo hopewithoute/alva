@@ -6,10 +6,20 @@ defmodule AlvaDemoWeb.DemoLoadMoreLive do
       feed_entries: [
         resource: AlvaDemo.Demos.FeedEntry,
         source: :list,
-        scope: %{},
+        scope: %{page_limit: :feed_limit},
         sync_on: []
       ]
     ]
+
+  def handle_params(params, _uri, socket) do
+    limit =
+      case Integer.parse(params["limit"] || "5") do
+        {n, _} -> n
+        :error -> 5
+      end
+
+    {:noreply, socket |> assign(feed_limit: limit) |> Alva.LiveView.reconfigure_streams(params)}
+  end
 
   def render(assigns) do
     ~H"""

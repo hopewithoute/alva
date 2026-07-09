@@ -1,5 +1,4 @@
 defmodule AlvaDemo.Demos.ChatMessage do
-  alias AlvaDemo.Subscriptions, as: DemoSubscriptions
 
   use Ash.Resource,
     domain: AlvaDemo.Demos,

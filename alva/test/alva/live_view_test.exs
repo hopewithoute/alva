@@ -243,7 +243,7 @@ defmodule Alva.LiveViewTest do
 
   defp active_signal?(socket, key) do
     socket.private.alva
-    |> Map.get(:active_signal_refs, %{})
-    |> Map.has_key?(key)
+    |> Map.get(:active_signals, %{})
+    |> Map.has_key?(to_string(key))
   end
 end
