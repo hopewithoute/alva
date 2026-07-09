@@ -3,10 +3,14 @@ defmodule Alva.Error do
   Normalizes Ash errors into a standard format for LiveVue.
   """
 
-  def format(%Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{} | _]}), do: not_found()
-  def format(%Ash.Error.Query.NotFound{}), do: not_found()
+  def format(error, stacktrace \\ nil)
 
-  def format(%Ash.Error.Invalid{} = error) do
+  def format(%Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{} | _]}, _stacktrace),
+    do: not_found()
+
+  def format(%Ash.Error.Query.NotFound{}, _stacktrace), do: not_found()
+
+  def format(%Ash.Error.Invalid{} = error, _stacktrace) do
     case find_conflict(error.errors) do
       nil ->
         validation_error(validation_fields(error.errors))
@@ -16,11 +20,11 @@ defmodule Alva.Error do
     end
   end
 
-  def format(%Ash.Error.Forbidden{} = error) do
+  def format(%Ash.Error.Forbidden{} = error, _stacktrace) do
     %{type: "forbidden", message: forbidden_message(error)}
   end
 
-  def format(error, stacktrace \\ nil) do
+  def format(error, stacktrace) do
     require Logger
 
     stacktrace =
