@@ -22,12 +22,7 @@ defmodule AlvaDemoWeb.CustomerStorefrontLiveTest do
     disconnected_vue = LiveVueTest.get_vue(disconnected_html, id: "customer-storefront-page")
 
     assert_stream_reset(disconnected_vue, "sales_orders")
-
-    assert_stream_contains(disconnected_vue, "products", %{
-      "name" => "Test Product",
-      "stock" => 10
-    })
-
+    assert_stream_contains(disconnected_vue, "products", %{"name" => "Test Product", "stock" => 10})
     assert_stream_reset(disconnected_vue, "support_messages")
 
     _html =
@@ -83,10 +78,7 @@ defmodule AlvaDemoWeb.CustomerStorefrontLiveTest do
     })
 
     {:ok, page_live, _html} =
-      live(
-        conn,
-        "/storefront?customer_name=#{conversation.customer_name}&conversation_id=#{conversation.id}"
-      )
+      live(conn, "/storefront?customer_name=#{conversation.customer_name}&conversation_id=#{conversation.id}")
 
     vue = LiveVueTest.get_vue(render(page_live), id: "customer-storefront-page")
 

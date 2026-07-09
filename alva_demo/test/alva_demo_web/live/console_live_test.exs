@@ -161,4 +161,5 @@ defmodule AlvaDemoWeb.MerchantConsoleLiveTest do
                false
            end)
   end
+
 end
