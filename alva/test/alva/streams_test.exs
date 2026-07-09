@@ -89,7 +89,7 @@ defmodule Alva.StreamsTest do
 
     # Stream is injected
     assert Map.has_key?(socket.assigns.streams, :items)
-    assert length(socket.assigns.streams.items.inserts) == 1
+    assert [_] = socket.assigns.streams.items.inserts
 
     # Verify stream metadata for handle_info
     meta = socket.private.alva.streams.items
@@ -127,7 +127,7 @@ defmodule Alva.StreamsTest do
 
     broadcast = %Phoenix.Socket.Broadcast{payload: notification}
     {:halt, socket} = handle_info.(broadcast, socket)
-    assert length(socket.assigns.streams.items.inserts) == 1
+    assert [_] = socket.assigns.streams.items.inserts
 
     # 2. Update
     updated_record = Ash.update!(new_record, %{name: "Updated"})
@@ -141,7 +141,7 @@ defmodule Alva.StreamsTest do
     broadcast = %Phoenix.Socket.Broadcast{payload: notification}
     {:halt, socket} = handle_info.(broadcast, socket)
     # insert + update
-    assert length(socket.assigns.streams.items.inserts) == 2
+    assert [_, _] = socket.assigns.streams.items.inserts
 
     # 3. Destroy (Delete)
     notification = %Ash.Notifier.Notification{
@@ -152,7 +152,7 @@ defmodule Alva.StreamsTest do
 
     broadcast = %Phoenix.Socket.Broadcast{payload: notification}
     {:halt, socket} = handle_info.(broadcast, socket)
-    assert length(socket.assigns.streams.items.deletes) == 1
+    assert [_] = socket.assigns.streams.items.deletes
   end
 
   test "ignores notifications not in sync_on" do
@@ -221,7 +221,7 @@ defmodule Alva.StreamsTest do
     {:cont, socket} = Alva.LiveView.on_mount(config, %{"room_id" => "empty_room"}, %{}, socket)
 
     assert Map.has_key?(socket.assigns.streams, :items)
-    assert length(socket.assigns.streams.items.inserts) == 0
+    assert [] = socket.assigns.streams.items.inserts
   end
 
   defp build_socket do

@@ -3,6 +3,6 @@ defmodule Alva.DebugTest do
   alias Alva.LiveViewTest.TestResource
 
   test "debug events" do
-    IO.inspect(Alva.Registry.events(TestResource))
+    assert is_list(Alva.Registry.events(TestResource))
   end
 end

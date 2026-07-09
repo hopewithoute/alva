@@ -166,7 +166,7 @@ defmodule Alva.DispatcherTest do
         change(fn changeset, _context ->
           files = Ash.Changeset.get_argument(changeset, :files)
 
-          if is_list(files) and length(files) > 0 do
+          if is_list(files) and files != [] do
             file = hd(files)
 
             filename =
@@ -452,7 +452,7 @@ defmodule Alva.DispatcherTest do
 
     assert result.ok == true
     assert is_list(result.data)
-    assert length(result.data) == 1
+    assert [_] = result.data
     assert hd(result.data).name == "Other"
   end
 
@@ -479,7 +479,7 @@ defmodule Alva.DispatcherTest do
 
     assert result.ok == true
     assert is_list(result.data)
-    assert length(result.data) == 2
+    assert [_, _] = result.data
     assert result.meta.pagination.limit == 2
     assert result.meta.pagination.offset == 0
     assert result.meta.pagination.has_more == true
@@ -583,7 +583,7 @@ defmodule Alva.DispatcherTest do
       )
 
     assert result.ok == true
-    assert length(result.data) == 1
+    assert [_] = result.data
     assert hd(result.data).name == "T1"
   end
 
@@ -820,7 +820,7 @@ defmodule Alva.DispatcherTest do
       {stripped, exposed_meta} =
         Alva.Serializer.serialize(records, expose_metadata: event_def.expose_metadata)
 
-      assert length(stripped) == 2
+      assert [_, _] = stripped
       assert exposed_meta == %{sync_token: "tok_1"}
     end
   end

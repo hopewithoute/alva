@@ -106,7 +106,7 @@ defmodule Alva.RegistryTest do
 
   test "events and public fields for resource" do
     events = Registry.events(TestResource)
-    assert length(events) == 1
+    assert [_] = events
 
     assert Registry.public_fields(TestResource) == [:id]
   end
