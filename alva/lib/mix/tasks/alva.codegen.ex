@@ -182,7 +182,6 @@ defmodule Mix.Tasks.Alva.Codegen do
     import { reactive } from "vue";
     import { useLiveForm, type Form, type UseLiveFormReturn } from "live_vue";
     import type { AlvaEvents } from "../events";
-    import type { AlvaError } from "./useAlvaApi";
 
     export type AlvaFormOptions<FormValues, EventKeys> = {
         initialValues: FormValues;
@@ -192,15 +191,24 @@ defmodule Mix.Tasks.Alva.Codegen do
         onOptimisticSubmit?: (formData: FormValues) => (() => void) | void;
     };
 
+    type AlvaFormReturn<K extends keyof AlvaEvents, FormValues extends object> =
+        UseLiveFormReturn<FormValues> & {
+            submit: () => Promise<AlvaEvents[K]["output"]>;
+        };
+
+    function clearFormErrors(errors: Record<string, string[]>) {
+        for (const key of Object.keys(errors)) {
+            delete errors[key];
+        }
+    }
+
     export function useAlvaForm<
         K extends keyof AlvaEvents,
         FormValues extends object = AlvaEvents[K]["input"],
     >(
         submitEvent: K,
         options: AlvaFormOptions<FormValues, keyof AlvaEvents>,
-    ): UseLiveFormReturn<FormValues> & {
-        submit: () => Promise<AlvaEvents[K]["output"]>;
-    } {
+    ): AlvaFormReturn<K, FormValues> {
         const pseudoForm = reactive({
             name: submitEvent as string,
             values: JSON.parse(JSON.stringify(options.initialValues)),
@@ -238,15 +246,11 @@ defmodule Mix.Tasks.Alva.Codegen do
                 if (rollbackFn) rollbackFn();
 
                 if (result?.error?.fields) {
-                    for (const key of Object.keys(pseudoForm.errors)) {
-                        delete (pseudoForm.errors as any)[key];
-                    }
+                    clearFormErrors(pseudoForm.errors);
                     Object.assign(pseudoForm.errors, result.error.fields);
                 }
             } else {
-                for (const key of Object.keys(pseudoForm.errors)) {
-                    delete (pseudoForm.errors as any)[key];
-                }
+                clearFormErrors(pseudoForm.errors);
             }
 
             return result;
@@ -255,7 +259,7 @@ defmodule Mix.Tasks.Alva.Codegen do
         return {
             ...liveForm,
             submit,
-        } as any;
+        } as AlvaFormReturn<K, FormValues>;
     }
     """
 
