@@ -81,16 +81,19 @@ defmodule Mix.Tasks.Alva.CodegenTest do
     end
   end
 
-  test "generates events.ts and client.ts", %{tmp_dir: tmp_dir} do
+  test "generates events.ts, composables, and index.ts", %{tmp_dir: tmp_dir} do
     Mix.Tasks.Alva.Codegen.run([])
 
     events_path = Path.join(tmp_dir, "events.ts")
-    client_path = Path.join(tmp_dir, "client.ts")
+    composables_dir = Path.join(tmp_dir, "composables")
+    use_alva_api_path = Path.join(composables_dir, "useAlvaApi.ts")
+    index_path = Path.join(tmp_dir, "index.ts")
     types_path = Path.join(tmp_dir, "types.ts")
     signals_path = Path.join(tmp_dir, "signals.ts")
 
     assert File.exists?(events_path)
-    assert File.exists?(client_path)
+    assert File.exists?(use_alva_api_path)
+    assert File.exists?(index_path)
     assert File.exists?(types_path)
     assert File.exists?(signals_path)
 
@@ -108,19 +111,20 @@ defmodule Mix.Tasks.Alva.CodegenTest do
     assert String.contains?(types_content, "export type AlvaResult")
     assert String.contains?(types_content, "export interface Resource")
 
-    client_content = File.read!(client_path)
-    assert String.contains?(client_content, "const base_api = useAlvaApi<AlvaEvents>();")
+    use_alva_api_content = File.read!(use_alva_api_path)
+    assert String.contains?(use_alva_api_content, "import { useLiveVue } from \"live_vue\"")
+    assert String.contains?(use_alva_api_content, "import type { AlvaEvents } from \"../events\"")
+    assert String.contains?(use_alva_api_content, ~s("test.create"))
+    assert String.contains?(use_alva_api_content, "live.pushEvent")
+
+    index_content = File.read!(index_path)
 
     assert String.contains?(
-             client_content,
-             "function create_deep_proxy(path: string[] = []): any {"
+             index_content,
+             "export { useAlvaApi } from \"./composables/useAlvaApi\""
            )
 
-    assert String.contains?(client_content, ~s(prop === "call"))
-    assert String.contains?(client_content, "return base_api.call;")
-    refute String.contains?(client_content, ~s(prop === "on"))
-    refute String.contains?(client_content, "return base_api.on;")
-    assert String.contains?(client_content, "export const ashCall = createAlvaApi().call;")
+    assert String.contains?(index_content, "export type { AlvaEvents } from \"./events\"")
 
     signals_content = File.read!(signals_path)
     assert String.contains?(signals_content, ~s("test_signal"))

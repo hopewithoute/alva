@@ -43,7 +43,9 @@ export type AlvaEvents = {
   };
 
   "demo_feed.list_entries": {
-    input: Record<string, never>;
+    input: {
+              page_limit?: number;
+            };
     output: AlvaResult<Types.FeedEntry[]>;
   };
 
@@ -80,7 +82,7 @@ export type AlvaEvents = {
 
   "sales.list_orders": {
     input: {
-              status?: "new" | "processing" | "fulfilled";
+              status?: string;
               customer_query?: string;
               require_customer?: boolean;
               product_query?: string;
