@@ -383,6 +383,18 @@ defmodule Alva.LiveView do
          subject <- build_authorization_subject(resource, action, payload),
          true <- Ash.can?(subject, actor, tenant: tenant, maybe_is: false) do
       topics = pubsub_topics(resource, signal.on, payload)
+
+      state = alva_state(sock)
+      active_signals = Map.get(state, :active_signals, %{})
+
+      sock =
+        if Map.has_key?(active_signals, signal_name) do
+          {_reply, sock} = handle_unsubscribe_signal(%{"name" => signal_name}, sock, nil)
+          sock
+        else
+          sock
+        end
+
       maybe_subscribe_to_topics(sock, topics)
 
       sock =
@@ -419,10 +431,23 @@ defmodule Alva.LiveView do
     end
   end
 
+  defp all_active_topics(active_signals) do
+    Enum.flat_map(active_signals, fn {_, meta} -> Map.get(meta, :topics, []) end) |> MapSet.new()
+  end
+
   defp maybe_subscribe_to_topics(sock, topics) do
     if Phoenix.LiveView.connected?(sock) do
+      state = alva_state(sock)
+      active_signals = Map.get(state, :active_signals, %{})
+      existing_topics = all_active_topics(active_signals)
+
       pubsub = endpoint_pubsub!(sock)
-      Enum.each(topics, &Phoenix.PubSub.subscribe(pubsub, &1))
+
+      Enum.each(topics, fn topic ->
+        unless MapSet.member?(existing_topics, topic) do
+          Phoenix.PubSub.subscribe(pubsub, topic)
+        end
+      end)
     end
   end
 
@@ -430,18 +455,25 @@ defmodule Alva.LiveView do
     signal_name = params["name"]
     state = alva_state(sock)
     active_signals = Map.get(state, :active_signals, %{})
-    topics = Map.get(active_signals, signal_name, [])
+    topics_to_remove = Map.get(active_signals, signal_name, %{}) |> Map.get(:topics, [])
 
-    if Phoenix.LiveView.connected?(sock) do
-      pubsub = endpoint_pubsub!(sock)
-      Enum.each(topics, &Phoenix.PubSub.unsubscribe(pubsub, &1))
-    end
+    active_signals = Map.delete(active_signals, signal_name)
 
     sock =
       update_alva(sock, fn state ->
-        active_signals = Map.get(state, :active_signals, %{})
-        Map.put(state, :active_signals, Map.delete(active_signals, signal_name))
+        Map.put(state, :active_signals, active_signals)
       end)
+
+    if Phoenix.LiveView.connected?(sock) do
+      remaining_topics = all_active_topics(active_signals)
+      pubsub = endpoint_pubsub!(sock)
+
+      Enum.each(topics_to_remove, fn topic ->
+        unless MapSet.member?(remaining_topics, topic) do
+          Phoenix.PubSub.unsubscribe(pubsub, topic)
+        end
+      end)
+    end
 
     {:halt, %{ok: true}, sock}
   end
