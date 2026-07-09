@@ -36,6 +36,7 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEvents do
       |> Spark.Dsl.Transformer.persist(:alva_signal_map, signal_map)
 
     Alva.Registry.verify_host_app_command_uniqueness!(module, event_map)
+    Alva.Registry.verify_host_app_signal_uniqueness!(module, signal_map)
 
     {:ok, dsl_state}
   end

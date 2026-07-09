@@ -99,6 +99,15 @@ defmodule Alva.Registry do
     )
   end
 
+  def verify_host_app_signal_uniqueness!(current_domain, current_signal_map) do
+    verify_host_app_uniqueness!(
+      current_domain,
+      current_signal_map,
+      &alva_signal_map/1,
+      "application signal name"
+    )
+  end
+
   defp verify_host_app_uniqueness!(current_domain, current_entries, fetcher, identity_label) do
     with true <- Code.ensure_loaded?(Mix.Project),
          otp_app when is_atom(otp_app) <- Mix.Project.config()[:app],
@@ -154,7 +163,21 @@ defmodule Alva.Registry do
   defp build_file_upload_arguments(domains) do
     domains
     |> Enum.flat_map(&file_upload_arguments/1)
-    |> Enum.uniq_by(& &1.name)
+    |> Enum.reduce(%{}, fn arg, acc ->
+      case Map.fetch(acc, arg.name) do
+        {:ok, existing_arg} ->
+          if arg.type != existing_arg.type or arg.constraints != existing_arg.constraints do
+            raise ArgumentError,
+                  "Conflicting file upload arguments found for #{inspect(arg.name)}. Both have the same name but different types or constraints."
+          else
+            acc
+          end
+
+        :error ->
+          Map.put(acc, arg.name, arg)
+      end
+    end)
+    |> Map.values()
   end
 
   defp all_domains_loaded?(domains, current_domain) do
