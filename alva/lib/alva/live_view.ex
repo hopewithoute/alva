@@ -95,6 +95,13 @@ defmodule Alva.LiveView do
         {arg_name, value}
       end)
 
+    socket
+    |> load_stream_data(name, resource, source, scope_args)
+    |> setup_stream_pubsub(resource, sync_on, scope_args)
+    |> register_stream_meta(name, resource, source, scope_def, scope_args, sync_on)
+  end
+
+  defp load_stream_data(socket, name, resource, source, scope_args) do
     {actor, tenant} = socket_actor_tenant(socket)
 
     query =
@@ -108,15 +115,18 @@ defmodule Alva.LiveView do
         {:error, _} -> []
       end
 
-    socket = Phoenix.LiveView.stream(socket, name, records)
+    Phoenix.LiveView.stream(socket, name, records)
+  end
 
-    socket =
-      if Ash.Resource.Info.notifiers(resource) |> Enum.member?(Ash.Notifier.PubSub) do
-        subscribe_to_pubsub_topics(socket, resource, sync_on, scope_args)
-      else
-        socket
-      end
+  defp setup_stream_pubsub(socket, resource, sync_on, scope_args) do
+    if Ash.Resource.Info.notifiers(resource) |> Enum.member?(Ash.Notifier.PubSub) do
+      subscribe_to_pubsub_topics(socket, resource, sync_on, scope_args)
+    else
+      socket
+    end
+  end
 
+  defp register_stream_meta(socket, name, resource, source, scope_def, scope_args, sync_on) do
     update_alva(socket, fn state ->
       streams_meta = Map.get(state, :streams, %{})
 
@@ -376,49 +386,57 @@ defmodule Alva.LiveView do
     signal_name = params["name"]
     payload = params["input"] || %{}
 
+    case authorize_signal_subscription(sock, otp_app, signal_name, payload) do
+      {:ok, resource, signal} ->
+        sock = do_subscribe_signal(sock, signal_name, resource, signal, payload)
+        {:halt, %{ok: true}, sock}
+
+      {:error, reason, message} ->
+        {:halt, %{ok: false, error: %{type: reason, message: message}}, sock}
+    end
+  end
+
+  defp authorize_signal_subscription(sock, otp_app, signal_name, payload) do
     with {:ok, resource, signal} <- Alva.Registry.fetch_signal(otp_app, signal_name),
          {actor, tenant} <- socket_actor_tenant(sock),
          action when not is_nil(action) <-
            Ash.Resource.Info.action(resource, signal.authorize_with),
          subject <- build_authorization_subject(resource, action, payload),
          true <- Ash.can?(subject, actor, tenant: tenant, maybe_is: false) do
-      topics = pubsub_topics(resource, signal.on, payload)
-
-      state = alva_state(sock)
-      active_signals = Map.get(state, :active_signals, %{})
-
-      sock =
-        if Map.has_key?(active_signals, signal_name) do
-          {:halt, _reply, sock} = handle_unsubscribe_signal(%{"name" => signal_name}, sock, nil)
-          sock
-        else
-          sock
-        end
-
-      maybe_subscribe_to_topics(sock, topics)
-
-      sock =
-        update_alva(sock, fn state ->
-          active_signals = Map.get(state, :active_signals, %{})
-          signal_meta = %{resource: resource, signal: signal, topics: topics, params: payload}
-          Map.put(state, :active_signals, Map.put(active_signals, signal_name, signal_meta))
-        end)
-
-      {:halt, %{ok: true}, sock}
+      {:ok, resource, signal}
     else
       :error ->
-        {:halt, %{ok: false, error: %{type: "not_found", message: "Signal not found"}}, sock}
+        {:error, "not_found", "Signal not found"}
 
       nil ->
-        {:halt,
-         %{
-           ok: false,
-           error: %{type: "not_found", message: "Signal authorize_with action not found"}
-         }, sock}
+        {:error, "not_found", "Signal authorize_with action not found"}
 
       false ->
-        {:halt, %{ok: false, error: %{type: "forbidden", message: "Forbidden"}}, sock}
+        {:error, "forbidden", "Forbidden"}
     end
+  end
+
+  defp do_subscribe_signal(sock, signal_name, resource, signal, payload) do
+    topics = pubsub_topics(resource, signal.on, payload)
+
+    state = alva_state(sock)
+    active_signals = Map.get(state, :active_signals, %{})
+
+    sock =
+      if Map.has_key?(active_signals, signal_name) do
+        {:halt, _reply, sock} = handle_unsubscribe_signal(%{"name" => signal_name}, sock, nil)
+        sock
+      else
+        sock
+      end
+
+    maybe_subscribe_to_topics(sock, topics)
+
+    update_alva(sock, fn state ->
+      active_signals = Map.get(state, :active_signals, %{})
+      signal_meta = %{resource: resource, signal: signal, topics: topics, params: payload}
+      Map.put(state, :active_signals, Map.put(active_signals, signal_name, signal_meta))
+    end)
   end
 
   defp build_authorization_subject(resource, action, payload) do
