@@ -566,8 +566,6 @@ defmodule Alva.LiveView do
     unless Keyword.keyword?(opts) do
       raise_compile_error!(caller, invalid_stream_use_opts_description(name))
     end
-
-    # Add validation for resource, source, scope, sync_on
   end
 
   defp validate_stream_use_opts!(name, _opts, caller) do

@@ -383,27 +383,26 @@ defmodule Alva.Dispatcher do
 
   defp handle_success(data, exposed_meta, page \\ nil) do
     {permissions, cleaned_data} = extract_and_remove_permissions(data)
-
-    meta =
-      if page do
-        pagination = %{
-          limit: page.limit,
-          offset: page.offset,
-          count: page.count,
-          has_more: page.more?
-        }
-
-        pagination = pagination |> Enum.reject(fn {_, v} -> is_nil(v) end) |> Enum.into(%{})
-        Map.merge(%{pagination: pagination}, build_meta(permissions, exposed_meta))
-      else
-        build_meta(permissions, exposed_meta)
-      end
+    meta = build_response_meta(permissions, exposed_meta, page)
 
     if map_size(meta) > 0 do
       %{ok: true, data: cleaned_data, meta: meta}
     else
       %{ok: true, data: cleaned_data}
     end
+  end
+
+  defp build_response_meta(permissions, exposed_meta, nil) do
+    build_meta(permissions, exposed_meta)
+  end
+
+  defp build_response_meta(permissions, exposed_meta, page) do
+    pagination =
+      %{limit: page.limit, offset: page.offset, count: page.count, has_more: page.more?}
+      |> Enum.reject(fn {_, v} -> is_nil(v) end)
+      |> Enum.into(%{})
+
+    Map.merge(%{pagination: pagination}, build_meta(permissions, exposed_meta))
   end
 
   defp build_meta(permissions, exposed_meta) do

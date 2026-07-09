@@ -251,15 +251,14 @@ defmodule Alva.Registry do
     domain
     |> alva_event_map()
     |> Enum.flat_map(fn {_event_name, {resource, event_def}} ->
-      action = Ash.Resource.Info.action(resource, event_def.action)
-
-      if action do
-        Enum.filter(action.arguments, &file_arg?/1)
-      else
-        []
-      end
+      resource
+      |> Ash.Resource.Info.action(event_def.action)
+      |> maybe_file_args()
     end)
   end
+
+  defp maybe_file_args(nil), do: []
+  defp maybe_file_args(action), do: Enum.filter(action.arguments, &file_arg?/1)
 
   defp file_arg?(arg) do
     case arg.type do
