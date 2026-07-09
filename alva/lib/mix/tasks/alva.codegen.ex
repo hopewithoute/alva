@@ -415,10 +415,6 @@ defmodule Mix.Tasks.Alva.Codegen do
         return { ...upload, files, errors, progress, getFileReferences, dispatch };
     }
 
-    function uploadEntrySize(file: UploadEntry) {
-        return file.client_size ?? file.size ?? 0;
-    }
-
     function isUploadConfig(value: unknown): value is UploadConfigShape {
         return Boolean(
             value && typeof value === "object" &&
