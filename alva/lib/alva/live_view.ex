@@ -439,7 +439,9 @@ defmodule Alva.LiveView do
     if Phoenix.LiveView.connected?(sock) do
       state = alva_state(sock)
       active_signals = Map.get(state, :active_signals, %{})
-      existing_topics = all_active_topics(active_signals)
+      signal_topics = all_active_topics(active_signals)
+      stream_topics = all_stream_topics(state)
+      existing_topics = MapSet.union(signal_topics, stream_topics)
 
       pubsub = endpoint_pubsub!(sock)
 
@@ -449,6 +451,16 @@ defmodule Alva.LiveView do
         end
       end)
     end
+  end
+
+  defp all_stream_topics(state) do
+    streams = Map.get(state, :streams, %{})
+
+    streams
+    |> Enum.flat_map(fn {_name, meta} ->
+      pubsub_topics(meta.resource, meta.sync_on, Map.get(meta, :scope_args, %{}))
+    end)
+    |> MapSet.new()
   end
 
   defp handle_unsubscribe_signal(params, sock, _otp_app) do
@@ -465,11 +477,13 @@ defmodule Alva.LiveView do
       end)
 
     if Phoenix.LiveView.connected?(sock) do
-      remaining_topics = all_active_topics(active_signals)
+      remaining_signal_topics = all_active_topics(active_signals)
+      stream_topics = all_stream_topics(alva_state(sock))
+      protected_topics = MapSet.union(remaining_signal_topics, stream_topics)
       pubsub = endpoint_pubsub!(sock)
 
       Enum.each(topics_to_remove, fn topic ->
-        unless MapSet.member?(remaining_topics, topic) do
+        unless MapSet.member?(protected_topics, topic) do
           Phoenix.PubSub.unsubscribe(pubsub, topic)
         end
       end)
