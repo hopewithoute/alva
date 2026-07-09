@@ -389,7 +389,7 @@ defmodule Alva.LiveView do
 
       sock =
         if Map.has_key?(active_signals, signal_name) do
-          {_reply, sock} = handle_unsubscribe_signal(%{"name" => signal_name}, sock, nil)
+          {:halt, _reply, sock} = handle_unsubscribe_signal(%{"name" => signal_name}, sock, nil)
           sock
         else
           sock
