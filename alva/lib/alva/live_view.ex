@@ -420,64 +420,50 @@ defmodule Alva.LiveView do
         actor = sock.assigns[:current_user] || sock.assigns[:current_actor]
         tenant = sock.assigns[:current_tenant]
 
-        if is_nil(signal.authorize_with) do
-          {:halt,
-           %{
-             ok: false,
-             error: %{type: "forbidden", message: "Signal missing authorize_with policy"}
-           }, sock}
+        action = Ash.Resource.Info.action(resource, signal.authorize_with)
+
+        subject =
+          case action.type do
+            :read -> Ash.Query.for_read(resource, action.name, payload)
+            :create -> Ash.Changeset.for_create(resource, action.name, payload)
+            :update -> Ash.Changeset.for_update(resource, action.name, payload)
+            :destroy -> Ash.Changeset.for_destroy(resource, action.name, payload)
+            :action -> Ash.ActionInput.for_action(resource, action.name, payload)
+          end
+
+        authorized? = Ash.can?(subject, actor, tenant: tenant, maybe_is: false)
+
+        if authorized? do
+          topics = pubsub_topics(resource, signal.on, payload)
+          pubsub = endpoint_pubsub!(sock)
+
+          if Phoenix.LiveView.connected?(sock) do
+            Enum.each(topics, fn topic ->
+              :ok = Phoenix.PubSub.subscribe(pubsub, topic)
+            end)
+          end
+
+          sock =
+            update_alva(sock, fn state ->
+              active_signals = Map.get(state, :active_signals, %{})
+
+              signal_meta = %{
+                resource: resource,
+                signal: signal,
+                topics: topics,
+                params: payload
+              }
+
+              Map.put(state, :active_signals, Map.put(active_signals, signal_name, signal_meta))
+            end)
+
+          {:halt, %{ok: true}, sock}
         else
-          do_subscribe_signal(resource, signal, actor, tenant, payload, sock)
+          {:halt, %{ok: false, error: %{type: "forbidden", message: "Forbidden"}}, sock}
         end
 
       :error ->
         {:halt, %{ok: false, error: %{type: "not_found", message: "Signal not found"}}, sock}
-    end
-  end
-
-  defp do_subscribe_signal(resource, signal, actor, tenant, payload, sock) do
-    action = Ash.Resource.Info.action(resource, signal.authorize_with)
-
-    subject =
-      case action.type do
-        :read -> Ash.Query.for_read(resource, action.name, payload)
-        :create -> Ash.Changeset.for_create(resource, action.name, payload)
-        :update -> Ash.Changeset.for_update(resource, action.name, payload)
-        :destroy -> Ash.Changeset.for_destroy(resource, action.name, payload)
-        :action -> Ash.ActionInput.for_action(resource, action.name, payload)
-      end
-
-    authorized? = Ash.can?(subject, actor, tenant: tenant, maybe_is: false)
-
-    if authorized? do
-      topics = pubsub_topics(resource, signal.on, payload)
-      pubsub = endpoint_pubsub!(sock)
-
-      if Phoenix.LiveView.connected?(sock) do
-        Enum.each(topics, fn topic ->
-          :ok = Phoenix.PubSub.subscribe(pubsub, topic)
-        end)
-      end
-
-      signal_name = signal.name
-
-      sock =
-        update_alva(sock, fn state ->
-          active_signals = Map.get(state, :active_signals, %{})
-
-          signal_meta = %{
-            resource: resource,
-            signal: signal,
-            topics: topics,
-            params: payload
-          }
-
-          Map.put(state, :active_signals, Map.put(active_signals, signal_name, signal_meta))
-        end)
-
-      {:halt, %{ok: true}, sock}
-    else
-      {:halt, %{ok: false, error: %{type: "forbidden", message: "Forbidden"}}, sock}
     end
   end
 
