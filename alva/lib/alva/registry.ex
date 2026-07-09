@@ -287,11 +287,12 @@ defmodule Alva.Registry do
   end
 
   def public_fields(resource) do
-    attrs = Ash.Resource.Info.public_attributes(resource) |> Enum.map(& &1.name)
-    calcs = Ash.Resource.Info.public_calculations(resource) |> Enum.map(& &1.name)
-    rels = Ash.Resource.Info.public_relationships(resource) |> Enum.map(& &1.name)
-    aggs = Ash.Resource.Info.public_aggregates(resource) |> Enum.map(& &1.name)
-
-    attrs ++ calcs ++ rels ++ aggs
+    [
+      Ash.Resource.Info.public_attributes(resource),
+      Ash.Resource.Info.public_calculations(resource),
+      Ash.Resource.Info.public_relationships(resource),
+      Ash.Resource.Info.public_aggregates(resource)
+    ]
+    |> Enum.flat_map(fn items -> Enum.map(items, & &1.name) end)
   end
 end

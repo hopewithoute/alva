@@ -80,14 +80,12 @@ defmodule Alva.Error do
   end
 
   defp validation_fields(errors) do
-    Enum.reduce(errors, %{}, fn %{field: field} = sub_error, acc ->
-      if not is_nil(field) do
-        field_key = validation_field_key(sub_error, field)
-        message = validation_message(sub_error, field)
-        Map.update(acc, field_key, [message], &[message | &1])
-      else
-        acc
-      end
+    errors
+    |> Enum.reject(&is_nil(&1.field))
+    |> Enum.reduce(%{}, fn %{field: field} = sub_error, acc ->
+      field_key = validation_field_key(sub_error, field)
+      message = validation_message(sub_error, field)
+      Map.update(acc, field_key, [message], &[message | &1])
     end)
   end
 

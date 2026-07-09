@@ -291,15 +291,12 @@ defmodule Alva.Dispatcher do
       end)
       |> Enum.unzip()
 
-    value =
-      if arg_type == {:array, Ash.Type.File} do
-        consumed_files
-      else
-        List.first(consumed_files)
-      end
-
+    value = maybe_wrap_upload_list(consumed_files, arg_type)
     {value, cleanup_paths}
   end
+
+  defp maybe_wrap_upload_list(files, {:array, _}), do: files
+  defp maybe_wrap_upload_list(files, _), do: List.first(files)
 
   defp persist_uploaded_entry(path, entry) do
     upload_dir = Path.join(System.tmp_dir!(), @upload_temp_dir_name)

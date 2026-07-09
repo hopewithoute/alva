@@ -112,14 +112,7 @@ defmodule Alva.LiveView do
 
     socket =
       if Ash.Resource.Info.notifiers(resource) |> Enum.member?(Ash.Notifier.PubSub) do
-        topics = pubsub_topics(resource, sync_on, scope_args)
-        pubsub = endpoint_pubsub!(socket)
-
-        Enum.each(topics, fn topic ->
-          :ok = Phoenix.PubSub.subscribe(pubsub, topic)
-        end)
-
-        socket
+        subscribe_to_pubsub_topics(socket, resource, sync_on, scope_args)
       else
         socket
       end
@@ -306,6 +299,13 @@ defmodule Alva.LiveView do
 
   defp upload_lifecycle_event?(_event_name), do: false
 
+  defp subscribe_to_pubsub_topics(socket, resource, sync_on, scope_args) do
+    topics = pubsub_topics(resource, sync_on, scope_args)
+    pubsub = endpoint_pubsub!(socket)
+    Enum.each(topics, &Phoenix.PubSub.subscribe(pubsub, &1))
+    socket
+  end
+
   defp endpoint_pubsub!(%{endpoint: endpoint}) when is_atom(endpoint) and not is_nil(endpoint) do
     endpoint.config(:pubsub_server) ||
       raise ArgumentError,
@@ -354,33 +354,19 @@ defmodule Alva.LiveView do
   defp matching_projection_operations(socket, notification_resource, occurrence_keys) do
     state = alva_state(socket)
 
-    # Check streams
     streams = Map.get(state, :streams, %{})
 
     stream_ops =
-      Enum.flat_map(streams, fn {stream_name, stream_meta} ->
-        if stream_meta.resource == notification_resource do
-          # Does any occurrence key match sync_on?
-          matching_actions =
-            occurrence_keys
-            |> Enum.filter(fn action_name -> action_name in stream_meta.sync_on end)
-
-          Enum.map(matching_actions, fn action_name ->
-            action = Ash.Resource.Info.action(stream_meta.resource, action_name)
-
-            op_type =
-              case action && action.type do
-                :destroy -> :delete
-                :create -> :insert
-                :update -> :update
-                _ -> :update
-              end
-
-            {stream_name, %{op: op_type, meta: stream_meta}}
-          end)
-        else
-          []
-        end
+      streams
+      |> Enum.filter(fn {_name, meta} -> meta.resource == notification_resource end)
+      |> Enum.flat_map(fn {stream_name, stream_meta} ->
+        occurrence_keys
+        |> Enum.filter(&(&1 in stream_meta.sync_on))
+        |> Enum.map(fn action_name ->
+          action = Ash.Resource.Info.action(stream_meta.resource, action_name)
+          op_type = action_type_to_op(action && action.type)
+          {stream_name, %{op: op_type, meta: stream_meta}}
+        end)
       end)
 
     active_signals = Map.get(state, :active_signals, %{})
@@ -452,17 +438,13 @@ defmodule Alva.LiveView do
 
   defp handle_unsubscribe_signal(params, sock, _otp_app) do
     signal_name = params["name"]
-
     state = alva_state(sock)
     active_signals = Map.get(state, :active_signals, %{})
     topics = Map.get(active_signals, signal_name, [])
 
-    pubsub = endpoint_pubsub!(sock)
-
     if Phoenix.LiveView.connected?(sock) do
-      Enum.each(topics, fn topic ->
-        Phoenix.PubSub.unsubscribe(pubsub, topic)
-      end)
+      pubsub = endpoint_pubsub!(sock)
+      Enum.each(topics, &Phoenix.PubSub.unsubscribe(pubsub, &1))
     end
 
     sock =
@@ -719,6 +701,10 @@ defmodule Alva.LiveView do
     end)
     |> Enum.uniq()
   end
+
+  defp action_type_to_op(:destroy), do: :delete
+  defp action_type_to_op(:create), do: :insert
+  defp action_type_to_op(_), do: :update
 
   defp publication_occurrence_key(%{action: action}) when not is_nil(action), do: action
   defp publication_occurrence_key(%{type: type}) when not is_nil(type), do: type
