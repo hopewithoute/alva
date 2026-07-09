@@ -124,16 +124,15 @@ defmodule Mix.Tasks.Alva.Codegen do
       events_map
       |> Enum.map_join("\n", fn {event_name, {_resource, _event_def}} ->
         """
-              "#{event_name}": (payload: AlvaEvents["#{event_name}"]["input"]): Promise<AlvaEvents["#{event_name}"]["output"]> => {
+              "#{event_name}": (payload: AlvaEvents["#{event_name}"]["input"]): AlvaEvents["#{event_name}"]["output"] => {
                 return new Promise((resolve) => {
-                  live.pushEvent("#{event_name}", payload, (reply: any) => {
+                  live.pushEvent("#{event_name}", payload, (reply: AlvaEvents["#{event_name}"]["output"]) => {
                     if (reply.ok) {
                       config?.onSuccess?.(reply.data, "#{event_name}");
-                      resolve(reply);
                     } else {
                       config?.onError?.(reply.error, "#{event_name}");
-                      resolve(reply);
                     }
+                    resolve(reply);
                   });
                 });
               },
