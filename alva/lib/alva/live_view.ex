@@ -338,18 +338,11 @@ defmodule Alva.LiveView do
     {payload, meta} = Alva.Serializer.serialize(data, expose_metadata: signal.expose_metadata)
 
     if map_size(meta) == 0 do
-      normalize_signal_payload(payload)
+      payload
     else
-      put_signal_meta(payload, meta)
+      Map.put(payload, :meta, meta)
     end
   end
-
-  defp normalize_signal_payload(nil), do: %{}
-  defp normalize_signal_payload(payload) when is_map(payload), do: payload
-  defp normalize_signal_payload(payload), do: %{data: payload}
-
-  defp put_signal_meta(payload, meta) when is_map(payload), do: Map.put(payload, :meta, meta)
-  defp put_signal_meta(payload, meta), do: %{data: payload, meta: meta}
 
   defp matching_projection_operations(socket, notification_resource, occurrence_keys) do
     state = alva_state(socket)
