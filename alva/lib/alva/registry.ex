@@ -163,21 +163,26 @@ defmodule Alva.Registry do
   defp build_file_upload_arguments(domains) do
     domains
     |> Enum.flat_map(&file_upload_arguments/1)
-    |> Enum.reduce(%{}, fn arg, acc ->
-      case Map.fetch(acc, arg.name) do
-        {:ok, existing_arg} ->
-          if arg.type != existing_arg.type or arg.constraints != existing_arg.constraints do
-            raise ArgumentError,
-                  "Conflicting file upload arguments found for #{inspect(arg.name)}. Both have the same name but different types or constraints."
-          else
-            acc
-          end
-
-        :error ->
-          Map.put(acc, arg.name, arg)
-      end
-    end)
+    |> Enum.reduce(%{}, &put_file_upload_argument/2)
     |> Map.values()
+  end
+
+  defp put_file_upload_argument(arg, acc) do
+    case Map.fetch(acc, arg.name) do
+      {:ok, existing_arg} ->
+        check_conflicting_file_argument!(arg, existing_arg)
+        acc
+
+      :error ->
+        Map.put(acc, arg.name, arg)
+    end
+  end
+
+  defp check_conflicting_file_argument!(arg, existing_arg) do
+    if arg.type != existing_arg.type or arg.constraints != existing_arg.constraints do
+      raise ArgumentError,
+            "Conflicting file upload arguments found for #{inspect(arg.name)}. Both have the same name but different types or constraints."
+    end
   end
 
   defp all_domains_loaded?(domains, current_domain) do
