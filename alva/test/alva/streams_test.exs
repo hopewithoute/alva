@@ -125,7 +125,8 @@ defmodule Alva.StreamsTest do
       data: new_record
     }
 
-    {:halt, socket} = handle_info.(notification, socket)
+    broadcast = %Phoenix.Socket.Broadcast{payload: notification}
+    {:halt, socket} = handle_info.(broadcast, socket)
     assert length(socket.assigns.streams.items.inserts) == 1
 
     # 2. Update
@@ -137,7 +138,8 @@ defmodule Alva.StreamsTest do
       data: updated_record
     }
 
-    {:halt, socket} = handle_info.(notification, socket)
+    broadcast = %Phoenix.Socket.Broadcast{payload: notification}
+    {:halt, socket} = handle_info.(broadcast, socket)
     # insert + update
     assert length(socket.assigns.streams.items.inserts) == 2
 
@@ -148,7 +150,8 @@ defmodule Alva.StreamsTest do
       data: updated_record
     }
 
-    {:halt, socket} = handle_info.(notification, socket)
+    broadcast = %Phoenix.Socket.Broadcast{payload: notification}
+    {:halt, socket} = handle_info.(broadcast, socket)
     assert length(socket.assigns.streams.items.deletes) == 1
   end
 
@@ -180,8 +183,9 @@ defmodule Alva.StreamsTest do
       data: record
     }
 
+    broadcast = %Phoenix.Socket.Broadcast{payload: notification}
     # Because sync_on only has :create, an update should not halt or alter the stream
-    assert {:cont, socket} = handle_info.(notification, socket)
+    assert {:cont, socket} = handle_info.(broadcast, socket)
     assert socket.assigns.streams.items.inserts == []
   end
 

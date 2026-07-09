@@ -206,9 +206,6 @@ defmodule Alva.LiveView do
 
   defp attach_info_hook(socket) do
     Phoenix.LiveView.attach_hook(socket, :alva_handle_info, :handle_info, fn
-      %Ash.Notifier.Notification{} = notification, sock ->
-        handle_notification(notification, sock, notification_occurrence_keys(notification))
-
       %Phoenix.Socket.Broadcast{payload: %Ash.Notifier.Notification{} = notification} = broadcast,
       sock ->
         _ = broadcast

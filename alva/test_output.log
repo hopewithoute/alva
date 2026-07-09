@@ -1,934 +1,795 @@
-Running ExUnit with seed: 727498, max_cases: 24
+Running ExUnit with seed: 575535, max_cases: 24
 
+...........
+01:05:40.913 [warning] Alva Extension: Event "test_action" maps to action :action_err which returns an empty DTO. Vue will receive an empty payload.
+[
+  %Alva.Resource.Event{
+    key: :test_signal_event,
+    name: "test_signal_event",
+    action: :test_signal_action,
+    lookup: nil,
+    expose_metadata: [],
+    enable_filter: false,
+    validate_only: false,
+    __spark_metadata__: %Spark.Dsl.Entity.Meta{anno: nil, properties_anno: %{}}
+  },
+  %Alva.Resource.Event{
+    key: :create_event,
+    name: "create_event",
+    action: :create,
+    lookup: nil,
+    expose_metadata: [],
+    enable_filter: false,
+    validate_only: false,
+    __spark_metadata__: %Spark.Dsl.Entity.Meta{anno: nil, properties_anno: %{}}
+  },
+  %Alva.Resource.Event{
+    key: :update_event,
+    name: "update_event",
+    action: :update,
+    lookup: nil,
+    expose_metadata: [],
+    enable_filter: false,
+    validate_only: false,
+    __spark_metadata__: %Spark.Dsl.Entity.Meta{anno: nil, properties_anno: %{}}
+  },
+  %Alva.Resource.Event{
+    key: :destroy_event,
+    name: "destroy_event",
+    action: :destroy,
+    lookup: nil,
+    expose_metadata: [],
+    enable_filter: false,
+    validate_only: false,
+    __spark_metadata__: %Spark.Dsl.Entity.Meta{anno: nil, properties_anno: %{}}
+  },
+  %Alva.Resource.Event{
+    key: :upload_command,
+    name: "upload_command",
+    action: :upload_action,
+    lookup: nil,
+    expose_metadata: [],
+    enable_filter: false,
+    validate_only: false,
+    __spark_metadata__: %Spark.Dsl.Entity.Meta{anno: nil, properties_anno: %{}}
+  },
+  %Alva.Resource.Event{
+    key: :unknown_action_command,
+    name: "unknown_action_command",
+    action: :unknown_action,
+    lookup: nil,
+    expose_metadata: [],
+    enable_filter: false,
+    validate_only: false,
+    __spark_metadata__: %Spark.Dsl.Entity.Meta{anno: nil, properties_anno: %{}}
+  }
+]
+..........
+01:05:42.090 [error] Alva.Error: Unhandled error:
+** (RuntimeError) an error
+    (elixir 1.20.2) lib/process.ex:897: Process.info/2
+    (alva 0.1.0) lib/alva/error.ex:28: Alva.Error.format/2
+    test/alva/error_test.exs:130: Alva.ErrorTest."test formats unknown error when not exposed"/1
+    (ex_unit 1.20.2) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+    (stdlib 7.2.1) timer.erl:599: :timer.tc/2
+    (ex_unit 1.20.2) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
 
-22:49:59.628 [warning] Alva Extension: Collection :secondary_orders has no insert/update/delete mappings and will not update from PubSub.
-
-22:49:59.628 [warning] Alva Extension: Collection :primary_orders has no insert/update/delete mappings and will not update from PubSub.
-
-22:49:59.727 [warning] Alva Extension: Event "test.create" maps to action :create which returns an empty DTO. Vue will receive an empty payload.
-
-22:49:59.728 [warning] Alva Extension: Event "test.read" maps to action :read which returns an empty DTO. Vue will receive an empty payload.
-
-22:49:59.728 [warning] Alva Extension: Event "test.upload" maps to action :upload which returns an empty DTO. Vue will receive an empty payload.
-..........................
-22:50:02.271 [warning] Alva Extension: Event "realtime.read" maps to action :read which returns an empty DTO. Vue will receive an empty payload.
-..
-22:50:03.146 [warning] Alva Extension: Event "students.list" maps to action :read which returns an empty DTO. Vue will receive an empty payload.
-....
-22:50:05.020 [warning] Alva Extension: Event "b.read" maps to action :read which returns an empty DTO. Vue will receive an empty payload.
-
-22:50:05.020 [warning] Alva Extension: Event "a.read" maps to action :read which returns an empty DTO. Vue will receive an empty payload.
-.........................
-22:50:06.650 [warning] Alva Extension: Event "valid.realtime.read" maps to action :read which returns an empty DTO. Vue will receive an empty payload.
-..
-22:50:07.051 [warning] Alva Extension: Event "students.list" maps to action :read which returns an empty DTO. Vue will receive an empty payload.
-..
-22:50:07.440 [warning] Alva Extension: Event "students.list" maps to action :read which returns an empty DTO. Vue will receive an empty payload.
+........
+01:05:42.092 [error] Alva.Error: Unhandled error:
+** (RuntimeError) an error
+.................
+01:05:42.101 [warning] Alva Dispatcher: Unknown event error.read_lookup
+.
+01:05:42.101 [warning] Alva Dispatcher: Unknown event error.destroy
 ...
-22:50:08.079 [warning] Alva Extension: Event "students.list" maps to action :read which returns an empty DTO. Vue will receive an empty payload.
+01:05:42.103 [warning] Alva Dispatcher: Unknown event error.dry
+.
+01:05:42.103 [warning] Alva Dispatcher: Unknown event error.update
+.
+01:05:42.104 [warning] Alva Dispatcher: Unknown event error.read
 ..
-22:50:08.500 [warning] Alva Extension: Event "valid.pubsub.read" maps to action :read which returns an empty DTO. Vue will receive an empty payload.
-.
-22:50:08.682 [warning] Alva Extension: Event "students.list" maps to action :read which returns an empty DTO. Vue will receive an empty payload.
-.
-22:50:08.894 [warning] Alva Extension: Event "students.list" maps to action :read which returns an empty DTO. Vue will receive an empty payload.
-.
-22:50:09.108 [warning] Alva Extension: Event "valid.read" maps to action :read which returns an empty DTO. Vue will receive an empty payload.
+01:05:42.186 [warning] Alva Dispatcher: Action read_err on Alva.DispatcherUncoveredTest.ErrorResource returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads.
 
-22:50:09.108 [warning] Alva Extension: Event "valid.create" maps to action :create which returns an empty DTO. Vue will receive an empty payload.
-........Successfully generated TypeScript bindings in test/tmp/alva_codegen
+01:05:42.203 [error] Alva.Error: Unhandled error:
+** (Ash.Error.Unknown) 
+Unknown Error
+
+* read error
+  (ash 3.29.3) lib/ash/query/query.ex:930: Ash.Query.for_read/4
+  (alva 0.1.0) lib/alva/dispatcher.ex:247: Alva.Dispatcher.build_read_query/5
+  (alva 0.1.0) lib/alva/dispatcher.ex:173: Alva.Dispatcher.handle_read/5
+  (alva 0.1.0) lib/alva/dispatcher.ex:52: Alva.Dispatcher.do_dispatch/3
+  (alva 0.1.0) lib/alva/dispatcher.ex:19: Alva.Dispatcher.dispatch/3
+  test/alva/dispatcher_uncovered_test.exs:181: Alva.DispatcherUncoveredTest."test read inner error"/1
+  (ex_unit 1.20.2) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+  (stdlib 7.2.1) timer.erl:599: :timer.tc/2
+  (ex_unit 1.20.2) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+    (elixir 1.20.2) lib/process.ex:897: Process.info/2
+    (alva 0.1.0) lib/alva/error.ex:28: Alva.Error.format/2
+    (alva 0.1.0) lib/alva/dispatcher.ex:445: Alva.Dispatcher.handle_error/1
+    (alva 0.1.0) lib/alva/dispatcher.ex:52: Alva.Dispatcher.do_dispatch/3
+    (alva 0.1.0) lib/alva/dispatcher.ex:19: Alva.Dispatcher.dispatch/3
+    test/alva/dispatcher_uncovered_test.exs:181: Alva.DispatcherUncoveredTest."test read inner error"/1
+    (ex_unit 1.20.2) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+    (stdlib 7.2.1) timer.erl:599: :timer.tc/2
+    (ex_unit 1.20.2) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+
+.
+01:05:42.204 [warning] Alva Dispatcher: Unknown event non_existent_event
+.
+01:05:42.241 [debug] Creating Alva.DispatcherUncoveredTest.ErrorResource:
+
+Setting %{id: "bc8f9e8d-f25a-4f8f-a118-856aa9270172"}
+
+.....
+01:05:42.306 [error] Alva.Error: Unhandled error:
+** (Ash.Error.Unknown) 
+Bread Crumbs:
+  > Error returned from: Alva.DispatcherUncoveredTest.ErrorResource.action_err
+
+Unknown Error
+
+* action error
+  (ash 3.29.3) lib/ash/actions/action.ex:19: Ash.Actions.Action.run/3
+  (ash 3.29.3) lib/ash.ex:1956: Ash.run_action/2
+  (alva 0.1.0) lib/alva/dispatcher.ex:118: Alva.Dispatcher.execute_action/7
+  (alva 0.1.0) lib/alva/dispatcher.ex:52: Alva.Dispatcher.do_dispatch/3
+  (alva 0.1.0) lib/alva/dispatcher.ex:19: Alva.Dispatcher.dispatch/3
+  test/alva/dispatcher_uncovered_test.exs:212: Alva.DispatcherUncoveredTest."test action inner error"/1
+  (ex_unit 1.20.2) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+  (stdlib 7.2.1) timer.erl:599: :timer.tc/2
+  (ex_unit 1.20.2) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+    (elixir 1.20.2) lib/process.ex:897: Process.info/2
+    (alva 0.1.0) lib/alva/error.ex:28: Alva.Error.format/2
+    (alva 0.1.0) lib/alva/dispatcher.ex:445: Alva.Dispatcher.handle_error/1
+    (alva 0.1.0) lib/alva/dispatcher.ex:52: Alva.Dispatcher.do_dispatch/3
+    (alva 0.1.0) lib/alva/dispatcher.ex:19: Alva.Dispatcher.dispatch/3
+    test/alva/dispatcher_uncovered_test.exs:212: Alva.DispatcherUncoveredTest."test action inner error"/1
+    (ex_unit 1.20.2) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+    (stdlib 7.2.1) timer.erl:599: :timer.tc/2
+    (ex_unit 1.20.2) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+
+..
+01:05:42.308 [error] Alva.Error: Unhandled error:
+** (Ash.Error.Unknown) 
+Unknown Error
+
+* get error
+  (ash 3.29.3) lib/ash/query/query.ex:930: Ash.Query.for_read/4
+  (alva 0.1.0) lib/alva/dispatcher.ex:247: Alva.Dispatcher.build_read_query/5
+  (alva 0.1.0) lib/alva/dispatcher.ex:173: Alva.Dispatcher.handle_read/5
+  (alva 0.1.0) lib/alva/dispatcher.ex:52: Alva.Dispatcher.do_dispatch/3
+  (alva 0.1.0) lib/alva/dispatcher.ex:19: Alva.Dispatcher.dispatch/3
+  test/alva/dispatcher_uncovered_test.exs:186: Alva.DispatcherUncoveredTest."test get returns not found"/1
+  (ex_unit 1.20.2) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+  (stdlib 7.2.1) timer.erl:599: :timer.tc/2
+  (ex_unit 1.20.2) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+    (elixir 1.20.2) lib/process.ex:897: Process.info/2
+    (alva 0.1.0) lib/alva/error.ex:28: Alva.Error.format/2
+    (alva 0.1.0) lib/alva/dispatcher.ex:445: Alva.Dispatcher.handle_error/1
+    (alva 0.1.0) lib/alva/dispatcher.ex:52: Alva.Dispatcher.do_dispatch/3
+    (alva 0.1.0) lib/alva/dispatcher.ex:19: Alva.Dispatcher.dispatch/3
+    test/alva/dispatcher_uncovered_test.exs:186: Alva.DispatcherUncoveredTest."test get returns not found"/1
+    (ex_unit 1.20.2) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+    (stdlib 7.2.1) timer.erl:599: :timer.tc/2
+    (ex_unit 1.20.2) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+
+.
+01:05:42.309 [debug] Creating Alva.DispatcherUncoveredTest.ErrorResource:
+
+Setting %{id: "9e1296d8-9768-483a-9b06-615f1d2e3de7"}
+
+.
+01:05:42.321 [warning] Alva Dispatcher: Action read_err on Alva.DispatcherUncoveredTest.ErrorResource returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads.
+
+01:05:42.326 [error] Alva.Error: Unhandled error:
+** (Ash.Error.Unknown) 
+Unknown Error
+
+* read error
+  (ash 3.29.3) lib/ash/query/query.ex:930: Ash.Query.for_read/4
+  (alva 0.1.0) lib/alva/dispatcher.ex:247: Alva.Dispatcher.build_read_query/5
+  (alva 0.1.0) lib/alva/dispatcher.ex:173: Alva.Dispatcher.handle_read/5
+  (alva 0.1.0) lib/alva/dispatcher.ex:52: Alva.Dispatcher.do_dispatch/3
+  (alva 0.1.0) lib/alva/dispatcher.ex:19: Alva.Dispatcher.dispatch/3
+  test/alva/dispatcher_uncovered_test.exs:217: Alva.DispatcherUncoveredTest."test sort parse input invalid"/1
+  (ex_unit 1.20.2) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+  (stdlib 7.2.1) timer.erl:599: :timer.tc/2
+  (ex_unit 1.20.2) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+    (elixir 1.20.2) lib/process.ex:897: Process.info/2
+    (alva 0.1.0) lib/alva/error.ex:28: Alva.Error.format/2
+    (alva 0.1.0) lib/alva/dispatcher.ex:445: Alva.Dispatcher.handle_error/1
+    (alva 0.1.0) lib/alva/dispatcher.ex:52: Alva.Dispatcher.do_dispatch/3
+    (alva 0.1.0) lib/alva/dispatcher.ex:19: Alva.Dispatcher.dispatch/3
+    test/alva/dispatcher_uncovered_test.exs:217: Alva.DispatcherUncoveredTest."test sort parse input invalid"/1
+    (ex_unit 1.20.2) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+    (stdlib 7.2.1) timer.erl:599: :timer.tc/2
+    (ex_unit 1.20.2) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+
+.
+01:05:42.332 [error] Alva.Error: Unhandled error:
+** (Ash.Error.Unknown) 
+Unknown Error
+
+* read error
+  (ash 3.29.3) lib/ash/query/query.ex:930: Ash.Query.for_read/4
+  (alva 0.1.0) lib/alva/dispatcher.ex:154: Alva.Dispatcher.handle_read_with_lookup/4
+  (alva 0.1.0) lib/alva/dispatcher.ex:52: Alva.Dispatcher.do_dispatch/3
+  (alva 0.1.0) lib/alva/dispatcher.ex:19: Alva.Dispatcher.dispatch/3
+  test/alva/dispatcher_uncovered_test.exs:191: Alva.DispatcherUncoveredTest."test read lookup inner error"/1
+  (ex_unit 1.20.2) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+  (stdlib 7.2.1) timer.erl:599: :timer.tc/2
+  (ex_unit 1.20.2) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+    (elixir 1.20.2) lib/process.ex:897: Process.info/2
+    (alva 0.1.0) lib/alva/error.ex:28: Alva.Error.format/2
+    (alva 0.1.0) lib/alva/dispatcher.ex:445: Alva.Dispatcher.handle_error/1
+    (alva 0.1.0) lib/alva/dispatcher.ex:52: Alva.Dispatcher.do_dispatch/3
+    (alva 0.1.0) lib/alva/dispatcher.ex:19: Alva.Dispatcher.dispatch/3
+    test/alva/dispatcher_uncovered_test.exs:191: Alva.DispatcherUncoveredTest."test read lookup inner error"/1
+    (ex_unit 1.20.2) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+    (stdlib 7.2.1) timer.erl:599: :timer.tc/2
+    (ex_unit 1.20.2) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+
+.
+01:05:42.333 [debug] Creating Alva.DispatcherUncoveredTest.ErrorResource:
+
+Setting %{id: "0c21d5c1-2cdb-4735-8d9d-31accf0bdced"}
+
+.
+01:05:42.339 [error] Alva.Error: Unhandled error:
+** (Ash.Error.Unknown) 
+Unknown Error
+
+* read_one error
+  (ash 3.29.3) lib/ash/query/query.ex:930: Ash.Query.for_read/4
+  (alva 0.1.0) lib/alva/dispatcher.ex:247: Alva.Dispatcher.build_read_query/5
+  (alva 0.1.0) lib/alva/dispatcher.ex:173: Alva.Dispatcher.handle_read/5
+  (alva 0.1.0) lib/alva/dispatcher.ex:52: Alva.Dispatcher.do_dispatch/3
+  (alva 0.1.0) lib/alva/dispatcher.ex:19: Alva.Dispatcher.dispatch/3
+  test/alva/dispatcher_uncovered_test.exs:175: Alva.DispatcherUncoveredTest."test read_one inner error"/1
+  (ex_unit 1.20.2) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+  (stdlib 7.2.1) timer.erl:599: :timer.tc/2
+  (ex_unit 1.20.2) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+    (elixir 1.20.2) lib/process.ex:897: Process.info/2
+    (alva 0.1.0) lib/alva/error.ex:28: Alva.Error.format/2
+    (alva 0.1.0) lib/alva/dispatcher.ex:445: Alva.Dispatcher.handle_error/1
+    (alva 0.1.0) lib/alva/dispatcher.ex:52: Alva.Dispatcher.do_dispatch/3
+    (alva 0.1.0) lib/alva/dispatcher.ex:19: Alva.Dispatcher.dispatch/3
+    test/alva/dispatcher_uncovered_test.exs:175: Alva.DispatcherUncoveredTest."test read_one inner error"/1
+    (ex_unit 1.20.2) lib/ex_unit/runner.ex:533: ExUnit.Runner.exec_test/2
+    (stdlib 7.2.1) timer.erl:599: :timer.tc/2
+    (ex_unit 1.20.2) lib/ex_unit/runner.ex:455: anonymous fn/6 in ExUnit.Runner.spawn_test_monitor/4
+
+.
+01:05:42.340 [warning] Alva Dispatcher: Unknown event missing_event
+.Successfully generated TypeScript SDK in test/tmp/alva_codegen
+...
+01:05:42.382 [debug] Creating Alva.StreamsTest.TestResource:
+
+Setting %{id: "b0e99469-f59e-4875-a6f2-2ae992d88ba7", name: "Secret",
+ room_id: "room_forbidden"}
+
+.
+01:05:42.388 [debug] Creating Alva.StreamsTest.TestResource:
+
+Setting %{id: "cae68a9b-9c8e-4eae-93f2-33204acf81dc", name: "Initial",
+ room_id: "room_ssr_-576460752303400063"}
+
+.
+01:05:42.389 [debug] Creating Alva.StreamsTest.TestResource:
+
+Setting %{id: "fbf635fe-96a4-4275-85f5-80493816e20b", name: "New",
+ room_id: "room_diff_-576460752303399678"}
 
 
-  1) test generates types.ts content (Alva.Codegen.DtoGeneratorTest)
-     test/alva/codegen/dto_generator_test.exs:29
-     Assertion with =~ failed
-     code:  assert content =~ "export type LiveResult<T>"
-     left:  "// This file is auto-generated by Alva.\n// Do not edit manually.\n\nexport type AlvaResult<T> =\n  | { ok: true; data: T; meta?: Record<string, any> }\n  | { ok: false; error: any; meta?: Record<string, any> };\n\nexport interface BaseFieldFilter<T> {\n  eq?: T | null;\n  not_eq?: T | null;\n  in?: T[] | null;\n  is_nil?: boolean | null;\n  less_than?: T | null;\n  greater_than?: T | null;\n  less_than_or_equal?: T | null;\n  greater_than_or_equal?: T | null;\n}\n\nexport interface StringFieldFilter extends BaseFieldFilter<string> {\n  contains?: string | null;\n  ilike?: string | null;\n  like?: string | null;\n}\n\nexport interface IntFieldFilter extends BaseFieldFilter<number> {}\n\nexport interface BooleanFieldFilter {\n  eq?: boolean | null;\n  not_eq?: boolean | null;\n  is_nil?: boolean | null;\n}\n\nexport interface UserFilter {\n  and?: UserFilter[];\n  or?: UserFilter[];\n  not?: UserFilter;\n  id?: StringFieldFilter | null;\n  name?: StringFieldFilter | null;\n  age?: IntFieldFilter | null;\n  profile_id?: StringFieldFilter | null;\n  profile?: ProfileFilter | null;\n}\n\n\nexport interface ProfileFilter {\n  and?: ProfileFilter[];\n  or?: ProfileFilter[];\n  not?: ProfileFilter;\n  id?: StringFieldFilter | null;\n  bio?: StringFieldFilter | null;\n}\n\n\nexport interface User {\n  id: string;\n  name: string;\n  age?: number;\n  profile_id?: string;\n  profile?: Profile;\n}\n\n\nexport interface Profile {\n  id: string;\n  bio?: string;\n}\n\n"
-     right: "export type LiveResult<T>"
+01:05:42.392 [debug] Creating Alva.StreamsTest.TestResource:
+
+Setting %{id: "77040bfb-d58d-44d2-aee1-2e0c75a7cfe4", name: "New",
+ room_id: "room_ignore_-576460752303399807"}
+
+
+01:05:42.400 [warning] Alva Extension: Dispatching event "unknown_event" without a tenant. Expected socket.assigns.current_tenant to be set.
+
+01:05:42.400 [warning] Alva Dispatcher: Unknown event unknown_event
+
+01:05:42.400 [warning] Alva Extension: Dispatching event "test_signal_event" without a tenant. Expected socket.assigns.current_tenant to be set.
+
+
+  1) test processes stream diffing notifications (Alva.StreamsTest)
+     test/alva/streams_test.exs:100
+     ** (MatchError) no match of right hand side value:
+
+         {:cont,
+          #Phoenix.LiveView.Socket<
+            id: nil,
+            endpoint: Alva.StreamsTest.TestEndpoint,
+            view: nil,
+            parent_pid: nil,
+            root_pid: nil,
+            router: nil,
+            assigns: %{
+              __changed__: %{streams: true},
+              current_user: nil,
+              streams: %{
+                items: %Phoenix.LiveView.LiveStream{
+                  name: :items,
+                  dom_id: #Function<4.93858838/1 in Phoenix.LiveView.LiveStream.new/4>,
+                  ref: "0",
+                  inserts: [],
+                  deletes: [],
+                  reset?: false,
+                  consumable?: false
+                },
+                __changed__: MapSet.new([:items]),
+                __configured__: %{},
+                __ref__: 1
+              },
+              current_actor: nil,
+              current_tenant: nil,
+              flash: %{}
+            },
+            transport_pid: #PID<0.771.0>,
+            sticky?: false,
+            ...
+          >}
+
+     code: {:halt, socket} = handle_info.(notification, socket)
      stacktrace:
-       test/alva/codegen/dto_generator_test.exs:33: (test)
+       test/alva/streams_test.exs:128: (test)
 
-.......
-22:50:09.664 [debug] Creating Alva.DispatcherTest.TestResource:
+......................
+01:05:42.591 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "d7cf329e-55fd-4022-8ce1-836fa004fc25", name: "Test", status: :open,
+Setting %{id: "e3d0918b-faf9-46b8-b08e-c894ef57fb2b", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.625897Z]}
+ created_at: ~U[2026-07-09 18:05:42.589260Z]}
 
 .
-22:50:09.715 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.592 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "1f028fc2-a70f-4601-9865-6d010dbec015", name: "Test", status: :open,
+Setting %{id: "e60c43c4-987b-4fe6-aeac-878877e56fb3", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.714962Z]}
+ created_at: ~U[2026-07-09 18:05:42.592289Z]}
 
 
-22:50:09.715 [debug] Creating Alva.DispatcherTest.MetadataResource:
+01:05:42.592 [warning] Alva Extension: Dispatching event "test.say_hello" without an actor. Expected socket.assigns.current_user to be set.
 
-Setting %{id: "51f8588f-c424-4bae-8da3-fd6076e8ea91", name: "Test"}
+01:05:42.592 [warning] Alva Extension: Dispatching event "test.say_hello" without a tenant. Expected socket.assigns.current_tenant to be set.
+.
+01:05:42.592 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "2949c729-36c0-48b0-bd3e-13e4d9816494", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.592821Z]}
+
+
+01:05:42.593 [warning] Alva Dispatcher: Action read on Alva.DispatcherTest.TestResource is paginated but no page options were provided. Enforcing default limit: 50.
+.
+01:05:42.598 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "72badeeb-ca54-4cdf-8243-acb4d38097f6", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.597857Z]}
+
+
+01:05:42.599 [warning] Alva Extension: Dispatching event "test.upload_array" without an actor. Expected socket.assigns.current_user to be set.
+
+01:05:42.599 [warning] Alva Extension: Dispatching event "test.upload_array" without a tenant. Expected socket.assigns.current_tenant to be set.
+
+01:05:42.604 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "6ae80ac0-a882-4864-9cc0-9e0732d1524e", name: "test.png", status: :open,
+ secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.604674Z]}
 
 .
-22:50:09.715 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.605 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "c08f1ca2-366e-4d8d-85f5-6a66f307134c", name: "Test", status: :open,
+Setting %{id: "ecd292be-6de2-46a7-957d-05f7b722d52c", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.715787Z]}
+ created_at: ~U[2026-07-09 18:05:42.605435Z]}
 
 .
-22:50:09.734 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.605 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "3d95bb20-7940-4133-b154-667f0b1904d6", name: "Test", status: :open,
+Setting %{id: "44d9f232-43b6-4c3e-b17c-a6b41ecfbb88", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.734206Z]}
+ created_at: ~U[2026-07-09 18:05:42.605783Z]}
 
 .
-22:50:09.734 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.606 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "fdfddba7-8594-4f3c-9811-cf749583af87", name: "Test", status: :open,
+Setting %{id: "b7758c59-925a-4b2d-b85f-48e7661fe318", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.734854Z]}
+ created_at: ~U[2026-07-09 18:05:42.606145Z]}
 
 
-22:50:09.735 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.606 [debug] Creating Alva.DispatcherTest.MetadataResource:
 
-Setting %{id: "74e98219-ed7e-4bd2-b09b-f430bb2937e2", name: "T1", status: :open,
- actor_name: nil, tenant_id: "tenant_1", secret_key: "secret",
- can_archive: true, created_at: ~U[2026-07-07 15:50:09.735145Z]}
-
-
-22:50:09.735 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "07e90a94-4092-45de-b99e-4d9341866cb5", name: "T2", status: :open,
- actor_name: nil, tenant_id: "tenant_2", secret_key: "secret",
- can_archive: true, created_at: ~U[2026-07-07 15:50:09.735417Z]}
+Setting %{id: "499dc872-1579-4481-be2a-8aaa62ef2a5c", name: "Test"}
 
 .
-22:50:09.758 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.607 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "eb88d1de-5912-4bed-8e35-7f588bbbe374", name: "Test", status: :open,
+Setting %{id: "c839fe53-8aea-4113-899a-c83624cb8bb5", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.758312Z]}
+ created_at: ~U[2026-07-09 18:05:42.607044Z]}
 
 
-22:50:09.758 [info] The function passed as a handler with ID "test-telemetry-handler--576460752303286783" is a local function.
+01:05:42.609 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "61a5d640-1418-4b6d-8b9f-c78b2ea2b7c6", name: "New", status: :open,
+ actor_name: "Creator", tenant_id: "tenant_create", secret_key: "secret",
+ can_archive: true, created_at: ~U[2026-07-09 18:05:42.609573Z]}
+
+.
+01:05:42.610 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "fdc05c9e-5f47-4147-998f-f1124f8a601a", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.610113Z]}
+
+.
+01:05:42.610 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "c18f53ac-cb6c-4c27-9d39-32287441d0fc", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.610808Z]}
+
+.
+01:05:42.611 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "793c5adf-fa78-4f62-b534-e439cf68c5cc", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.611342Z]}
+
+
+01:05:42.611 [warning] Alva Dispatcher: Action read on Alva.DispatcherTest.TestResource is paginated but no page options were provided. Enforcing default limit: 50.
+.
+01:05:42.612 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "fb2d54f6-7caf-4241-b9f1-75ee001628fe", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.611943Z]}
+
+
+01:05:42.612 [warning] Alva Dispatcher: Action read on Alva.DispatcherTest.TestResource is paginated but no page options were provided. Enforcing default limit: 50.
+.
+01:05:42.612 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "eaa92bc8-1163-4a6c-a212-e2ffecc7882d", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.612558Z]}
+
+
+01:05:42.613 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "5758b70c-8b91-43a8-b4a6-c92dbcb45b30", name: "Other", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.612908Z]}
+
+
+01:05:42.613 [warning] Alva Dispatcher: Action search on Alva.DispatcherTest.TestResource returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads.
+.
+01:05:42.613 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "3360cd2a-550a-4b11-be04-34b514097767", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.613776Z]}
+
+.
+01:05:42.614 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "1bd076d0-d0fe-4323-9272-f2c7b0a36654", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.614117Z]}
+
+.
+01:05:42.614 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "bc5b8162-de9a-4bfe-b120-42c7c7c80da1", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.614680Z]}
+
+
+01:05:42.615 [warning] Alva Extension: Dispatching event "test.upload_with_contents" without an actor. Expected socket.assigns.current_user to be set.
+
+01:05:42.615 [warning] Alva Extension: Dispatching event "test.upload_with_contents" without a tenant. Expected socket.assigns.current_tenant to be set.
+
+01:05:42.618 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "623ade89-8ce9-46ae-a8c4-a8cea6bf9c41", name: "test.png", status: :open,
+ upload_contents: "dispatcher upload contents", secret_key: "secret",
+ can_archive: true, created_at: ~U[2026-07-09 18:05:42.618314Z]}
+
+.
+01:05:42.619 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "ff0dee6c-961e-4928-a851-b6685ed7c88c", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.619084Z]}
+
+.
+01:05:42.620 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "4dc24fc5-f332-445c-a2d2-e349e8b0f74a", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.620774Z]}
+
+.
+01:05:42.621 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "c8093f72-53ea-41ea-bbb8-555c69f67915", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.621498Z]}
+
+
+01:05:42.621 [debug] Creating Alva.DispatcherTest.MetadataResource:
+
+Setting %{id: "712c2a4f-77f7-4d64-8ae9-c5e1fd3371e0", name: "Test"}
+
+.
+01:05:42.622 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "d2da458c-160b-4556-a138-894082edade5", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.622015Z]}
+
+.
+01:05:42.622 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "d527ffb3-7b98-4c7b-adfd-c6798baab6da", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.622623Z]}
+
+.
+01:05:42.629 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "04264831-a2a6-4753-ba43-ed7c116af56a", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.629509Z]}
+
+.
+01:05:42.631 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "a342cce4-7787-4b0a-9359-216cd47818f4", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.631395Z]}
+
+.
+01:05:42.632 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "430918df-0fda-4b4e-9f6c-b3cc60cfc062", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.632059Z]}
+
+
+01:05:42.632 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "eb3cd440-ac7c-40e0-bc47-642384349d42", name: "Page1", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.632442Z]}
+
+
+01:05:42.632 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "298e841b-bc15-45ac-be4d-1c72a0acb765", name: "Page2", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.632821Z]}
+
+
+01:05:42.633 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "c7f37b29-9eb5-42f9-a22e-505621d2c6a4", name: "Page3", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.633112Z]}
+
+.
+01:05:42.640 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "668819a9-9aed-47b0-aded-9daa2859acc2", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.640165Z]}
+
+.
+01:05:42.641 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "011bc3fa-d2c5-4429-b11a-251df85b83c1", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.640979Z]}
+
+.
+01:05:42.641 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "67169c44-a33c-4c9d-b5e8-57c108baf834", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.641713Z]}
+
+
+01:05:42.642 [warning] Alva Extension: Dispatching event "test.upload" without an actor. Expected socket.assigns.current_user to be set.
+
+01:05:42.642 [warning] Alva Extension: Dispatching event "test.upload" without a tenant. Expected socket.assigns.current_tenant to be set.
+
+01:05:42.643 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "136dbdd7-fc64-40ab-9e90-221018606a3b", name: "test.png", status: :open,
+ secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.643204Z]}
+
+.
+01:05:42.644 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "b329b9a1-cbc5-41bd-a68c-d7f4a044f9f1", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.644067Z]}
+
+.
+01:05:42.645 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "c79c737b-acae-4420-b45a-af2579c52a69", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.645136Z]}
+
+
+01:05:42.645 [info] The function passed as a handler with ID "test-telemetry-handler--576460752303397247" is a local function.
 This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
 
 https://hexdocs.pm/telemetry/telemetry.html#attach/4
 .
-22:50:09.763 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.650 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "1dba9172-29ef-4570-b21c-a8c19837a896", name: "Test", status: :open,
+Setting %{id: "773c7ac0-e6fc-4cf1-93b1-180c41ee0510", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.763479Z]}
-
-
-22:50:09.763 [warning] Alva Extension: Dispatching event "test.say_hello" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.763 [warning] Alva Extension: Dispatching event "test.say_hello" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:09.764 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "b471768b-7156-48fb-87ea-f42bb5c20467", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.764243Z]}
+ created_at: ~U[2026-07-09 18:05:42.650104Z]}
 
 .
-22:50:09.764 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.651 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "ecd5ff10-3e2f-4d2d-9c5b-500aab09c2bb", name: "Test", status: :open,
+Setting %{id: "3b290af7-43d2-40a6-857d-9d6708310f80", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.764612Z]}
-
-
-22:50:09.765 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "38b526e7-76ec-479c-87b6-95fe425948f4", name: "New", status: :open,
- actor_name: "Creator", tenant_id: "tenant_create", secret_key: "secret",
- can_archive: true, created_at: ~U[2026-07-07 15:50:09.764948Z]}
+ created_at: ~U[2026-07-09 18:05:42.651057Z]}
 
 .
-22:50:09.765 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.651 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "da4a2dc6-7192-42e4-a08a-d977c0c2e5d0", name: "Test", status: :open,
+Setting %{id: "f796678c-4696-44a7-bb7f-992116ae8cbe", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.765356Z]}
+ created_at: ~U[2026-07-09 18:05:42.651560Z]}
+
+
+01:05:42.651 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "cb903489-5f1e-4312-a6c9-b9840a8d036a", name: "Zebra", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.651854Z]}
+
+
+01:05:42.652 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "fc816eea-2c48-431d-a684-515235af7c03", name: "Apple", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.652122Z]}
+
+
+01:05:42.652 [warning] Alva Dispatcher: Action read on Alva.DispatcherTest.TestResource is paginated but no page options were provided. Enforcing default limit: 50.
+
+01:05:42.652 [warning] Alva Dispatcher: Action read on Alva.DispatcherTest.TestResource is paginated but no page options were provided. Enforcing default limit: 50.
+.
+01:05:42.653 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "f7d84e89-34c2-4a81-b092-178c14ec9b61", name: "Test", status: :open,
+ actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.653143Z]}
 
 .
-22:50:09.779 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.660 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "10ec09c3-841b-4557-8878-7978a07b50cd", name: "Test", status: :open,
+Setting %{id: "1c8e544b-30cc-468d-9e86-bf30f5d1b34c", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.779444Z]}
+ created_at: ~U[2026-07-09 18:05:42.660695Z]}
+
+
+01:05:42.661 [warning] Alva Extension: Dispatching event "test.upload" without an actor. Expected socket.assigns.current_user to be set.
+
+01:05:42.661 [warning] Alva Extension: Dispatching event "test.upload" without a tenant. Expected socket.assigns.current_tenant to be set.
+
+01:05:42.661 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "5f0cf52b-8085-4347-a81e-e0c19d698856", name: "__", status: :open,
+ secret_key: "secret", can_archive: true,
+ created_at: ~U[2026-07-09 18:05:42.661906Z]}
 
 .
-22:50:09.780 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.662 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "ae4fdfac-b3d3-4879-af3c-316d19c8f30d", name: "Test", status: :open,
+Setting %{id: "96806432-55c0-45a7-a5b0-9c004bdf47e3", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.780160Z]}
+ created_at: ~U[2026-07-09 18:05:42.662357Z]}
+
+
+01:05:42.662 [debug] Creating Alva.DispatcherTest.MetadataResource:
+
+Setting %{id: "a01e62d7-99d2-490f-b1ab-d5c1eb1dd287", name: "Test"}
 
 .
-22:50:09.781 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.662 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "17cdd114-c0a0-48ec-8aa1-42f57b646ab4", name: "Test", status: :open,
+Setting %{id: "1d5b53cd-eafb-4fae-84c0-2527bfc5d4ce", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.780904Z]}
+ created_at: ~U[2026-07-09 18:05:42.662869Z]}
 
 .
-22:50:09.785 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.663 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "64d16742-bed0-471e-93f9-287755b0c29d", name: "Test", status: :open,
+Setting %{id: "a25cbf14-4862-4a07-b968-664e0ecaf5b2", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.784988Z]}
+ created_at: ~U[2026-07-09 18:05:42.663536Z]}
 
 .
-22:50:09.790 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.664 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "f4f70ccb-f179-462c-9897-857345d74ffc", name: "Test", status: :open,
+Setting %{id: "395b9faf-9360-4e8c-bc27-cd4d08d1c89e", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.789888Z]}
+ created_at: ~U[2026-07-09 18:05:42.663880Z]}
 
 
-22:50:09.790 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.664 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "7b27e0f5-09ef-4542-b5af-784571f395c3", name: "Page1", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.790371Z]}
-
-
-22:50:09.790 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "7e21fafb-65f8-4117-b968-1d7685696f6d", name: "Page2", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.790768Z]}
-
-
-22:50:09.791 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "224fe10d-af67-4016-9ef0-98ab91823cf2", name: "Page3", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.791066Z]}
+Setting %{id: "d6fed181-2447-4d79-992e-65d312939a0f", name: "T1", status: :open,
+ actor_name: nil, tenant_id: "tenant_1", secret_key: "secret",
+ can_archive: true, created_at: ~U[2026-07-09 18:05:42.664175Z]}
 
 .
-22:50:09.802 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.665 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "216c7a4f-2d51-4fda-8971-26020f323340", name: "Test", status: :open,
+Setting %{id: "1adf1151-5f99-4937-945d-9db68caf3bab", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.802594Z]}
+ created_at: ~U[2026-07-09 18:05:42.665239Z]}
 
 .
-22:50:09.806 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.665 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "00ee889c-5160-4117-883a-812ca51d1392", name: "Test", status: :open,
+Setting %{id: "8f808954-0cbc-4bba-83c2-94d0f4173b35", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.806473Z]}
-
-.
-22:50:09.807 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "da21564a-bccc-475e-aa0a-fa8260d7d7b5", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.807231Z]}
-
-.
-22:50:09.807 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "95a110b4-f90c-46d7-898b-1032c16e298c", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.807631Z]}
-
-.
-22:50:09.808 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "ec248547-8b6c-4963-90a9-2d50daeb4457", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.808117Z]}
+ created_at: ~U[2026-07-09 18:05:42.665644Z]}
 
 
-22:50:09.808 [debug] Creating Alva.DispatcherTest.MetadataResource:
-
-Setting %{id: "0f2a27b0-ad73-4de5-9c8d-f57a672396c2", name: "Test"}
-
-.
-22:50:09.809 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "f5fe993d-e034-4562-87e9-0ecd143823fd", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.809072Z]}
-
-.
-22:50:09.809 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "f56fb17f-ab54-4e89-a597-1e87119d72b1", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.809416Z]}
-
-
-22:50:09.810 [warning] Alva Extension: Dispatching event "test.upload_with_contents" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.810 [warning] Alva Extension: Dispatching event "test.upload_with_contents" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:09.816 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "21de705c-4fab-4d76-81de-314fe00e7aa3", name: "test.png", status: :open,
- upload_contents: "dispatcher upload contents", secret_key: "secret",
- can_archive: true, created_at: ~U[2026-07-07 15:50:09.816640Z]}
-
-.
-22:50:09.817 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "069b1346-199d-439f-b816-b035f4496f95", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.817437Z]}
-
-
-22:50:09.817 [debug] Creating Alva.DispatcherTest.MetadataResource:
-
-Setting %{id: "735dce9e-3fcd-4b63-8221-065002ec97cf", name: "Test"}
-
-.
-22:50:09.818 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "f5b024d9-8c3b-43f9-a576-da265c442bbc", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.818082Z]}
-
-
-22:50:09.827 [debug] "Updating Alva.DispatcherTest.TestResource "f5b024d9-8c3b-43f9-a576-da265c442bbc":
+01:05:42.666 [debug] "Updating Alva.DispatcherTest.TestResource "8f808954-0cbc-4bba-83c2-94d0f4173b35":
 
 Setting %{name: "Updated", actor_name: "Updater", tenant_id: "tenant_update"}
 
 .
-22:50:09.827 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.666 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "900cedd5-9f11-4b42-aab2-78f86465f302", name: "Test", status: :open,
+Setting %{id: "662d7fdd-622e-41fc-8266-6d42b78cec3a", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.827514Z]}
-
-
-22:50:09.828 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "d4aa3aee-f594-425e-b339-a9213d066ad4", name: "Zebra", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.827911Z]}
-
-
-22:50:09.828 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "06bba4d0-6932-4354-9af1-f3375e41a41b", name: "Apple", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.828240Z]}
+ created_at: ~U[2026-07-09 18:05:42.666459Z]}
 
 .
-22:50:09.829 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.666 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "5f4b5b10-2a03-4895-89b3-315bbe0917c5", name: "Test", status: :open,
+Setting %{id: "5e3bb1dd-375b-4c9a-bc4f-273e9d84b45d", name: "Test", status: :open,
  actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.829444Z]}
-
-.
-22:50:09.830 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "4b99a88e-0a0b-4942-afaa-2110c75eb53a", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.829979Z]}
-
-.
-22:50:09.830 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "eed239a6-957a-42fa-8977-896e8cf89a6d", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.830581Z]}
-
-.
-22:50:09.831 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "63902b74-d496-4bcf-8325-7cd9d7211f9f", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.831422Z]}
+ created_at: ~U[2026-07-09 18:05:42.666844Z]}
 
 
-22:50:09.831 [debug] Creating Alva.DispatcherTest.TestResource:
+01:05:42.667 [debug] Creating Alva.DispatcherTest.TestResource:
 
-Setting %{id: "12ac553b-3a74-4bbd-83b5-9d1486c25368", name: "T1", status: :open,
+Setting %{id: "a38b3de1-d9fb-43af-9848-25052882ab83", name: "T1", status: :open,
  actor_name: nil, tenant_id: "tenant_1", secret_key: "secret",
- can_archive: true, created_at: ~U[2026-07-07 15:50:09.831709Z]}
+ can_archive: true, created_at: ~U[2026-07-09 18:05:42.667098Z]}
 
+
+01:05:42.667 [debug] Creating Alva.DispatcherTest.TestResource:
+
+Setting %{id: "0effef81-835f-4dc1-903c-d2aad231ad84", name: "T2", status: :open,
+ actor_name: nil, tenant_id: "tenant_2", secret_key: "secret",
+ can_archive: true, created_at: ~U[2026-07-09 18:05:42.667458Z]}
+
+
+01:05:42.667 [warning] Alva Dispatcher: Action read_with_tenant on Alva.DispatcherTest.TestResource returns a collection but has no pagination configured in Ash. This may block LiveView on large payloads.
 .
-22:50:09.832 [debug] Creating Alva.DispatcherTest.TestResource:
+Finished in 4.0 seconds (2.4s async, 1.6s sync)
 
-Setting %{id: "e8bf80c9-f603-465c-9541-b07cefa457d1", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.832622Z]}
-
-.
-22:50:09.833 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "35f78656-ad45-454e-8bf7-d990047d73bc", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.833175Z]}
-
-.
-22:50:09.841 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "dfcd1a3a-07bd-416f-8937-3905f7bf25fc", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.841049Z]}
-
-.
-22:50:09.841 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "bbd5a87a-4339-45d2-b3aa-4f0e472bd775", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.841767Z]}
-
-.
-22:50:09.842 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "18ad7339-2216-4336-add3-99e35b159e30", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.842531Z]}
-
-.
-22:50:09.843 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "06969f33-aa3a-4f5a-95e9-b612da7f7575", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.843165Z]}
-
-
-22:50:09.843 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "a61e3ac1-2f3d-4cf6-a46d-3d7174f04478", name: "Other", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.843450Z]}
-
-.
-22:50:09.844 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "c6874daf-c725-457d-876c-c537d6746bf4", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.844044Z]}
-
-.
-22:50:09.851 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "465ac7ea-0abc-4b9e-90ed-3cec5f724208", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.850940Z]}
-
-.
-22:50:09.852 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "93ffe2bb-be79-42eb-bd21-3c209d360ca4", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.852732Z]}
-
-.
-22:50:09.853 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "57af8df3-2440-4ff4-894a-60ac727d07e1", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.853260Z]}
-
-
-22:50:09.853 [warning] Alva Extension: Dispatching event "test.upload" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.853 [warning] Alva Extension: Dispatching event "test.upload" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:09.854 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "c9d12086-e24e-468b-b546-b5f90fce2f58", name: "test.png", status: :open,
- secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.854333Z]}
-
-.
-22:50:09.855 [debug] Creating Alva.DispatcherTest.TestResource:
-
-Setting %{id: "2d809187-e62d-47b2-af49-e2d21d87373a", name: "Test", status: :open,
- actor_name: nil, tenant_id: nil, secret_key: "secret", can_archive: true,
- created_at: ~U[2026-07-07 15:50:09.854895Z]}
-
-.
-22:50:09.919 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.919 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:09.922 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.922 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:09.923 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.923 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-..
-22:50:09.923 [warning] Alva Extension: Dispatching event "other_students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.923 [warning] Alva Extension: Dispatching event "other_students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-..
-22:50:09.929 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "406b9d15-507f-440d-9f36-08182f98931f", name: "Static Params A"}
-
-
-22:50:09.932 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "ea8363fb-1ac2-4ef9-98de-ccd57ffa585c", name: "Static Params B"}
-
-
-22:50:09.932 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.932 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-...
-22:50:09.946 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-.
-22:50:09.946 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:09.946 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.946 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:09.947 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.947 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:09.947 [debug] Creating Alva.LiveViewTest.SharedKeyPrimaryResource:
-
-Setting %{id: "36ebb18b-adf8-45c6-8ac9-20f7ae10f9ea", name: "Primary Shared"}
-
-
-22:50:09.948 [debug] Creating Alva.LiveViewTest.SharedKeySecondaryResource:
-
-Setting %{id: "c1f3cf6c-9cc6-42ba-9ac0-9863610f9149", name: "Secondary Shared"}
-
-
-22:50:09.948 [warning] Alva Extension: Dispatching event "secondary.shared.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.948 [warning] Alva Extension: Dispatching event "secondary.shared.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.....
-22:50:09.949 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "c0065245-9992-4d93-b4ad-4071cd7a11ef", name: "Declarative Collection A"}
-
-
-22:50:09.949 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.949 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-..
-22:50:09.950 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.950 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:09.950 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "38d6de99-f3fd-4f19-93e4-bafa18b87931", name: "Paged Source A"}
-
-
-22:50:09.950 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "ddef815f-55ff-4104-a842-399a4a7cc6aa", name: "Paged Source B"}
-
-
-22:50:09.951 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.951 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:09.951 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.951 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:09.951 [warning] Alva Extension: Dispatching event "students.rename" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.951 [warning] Alva Extension: Dispatching event "students.rename" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:09.952 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "baa88dff-c64e-4fe0-99bf-720c6ec2d5c7", name: "Destroy Me"}
-
-
-22:50:09.952 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.952 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:09.952 [warning] Alva Extension: Dispatching event "students.destroy" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.952 [warning] Alva Extension: Dispatching event "students.destroy" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:09.953 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.953 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:09.954 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "d1f7ad82-bde7-4166-99f4-083c87ef7743", name: "Refresh Stored A"}
-
-
-22:50:09.954 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.954 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:09.954 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "1b58f09f-9647-4904-91da-610314c09e93", name: "Refresh Stored B"}
-
-
-22:50:09.955 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.955 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:09.975 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.976 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:09.976 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.976 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:09.976 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.976 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:09.977 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.977 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:09.977 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "9e50311d-a4fe-4aaa-a21a-7df4c73a78b5", name: "Alias Params A"}
-
-
-22:50:09.978 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "c291ac09-e5a0-4113-b3f0-20f2b630f7a3", name: "Alias Params B"}
-
-
-22:50:09.978 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.978 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:09.978 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-.
-22:50:09.979 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:09.979 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.979 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:09.979 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.979 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:09.980 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "b0b23251-3b41-4478-90d2-59cee874abcf", name: "Manual Collection A"}
-
-
-22:50:09.980 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.980 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:09.980 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "3045dc82-ee43-40b3-ab10-272b1850ccd5", name: "Before Rename"}
-
-
-22:50:09.980 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.980 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:09.981 [warning] Alva Extension: Dispatching event "students.rename" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:09.981 [warning] Alva Extension: Dispatching event "students.rename" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:09.999 [debug] ETS: Updating Alva.LiveViewTest.TestResource matching filter `id == "3045dc82-ee43-40b3-ab10-272b1850ccd5"`:
-
-Setting %{name: "After Rename"}
-
-.....
-22:50:10.003 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "03d4b43a-6267-45f5-ac83-3e00c56e8a86", name: "Route Stable A"}
-
-
-22:50:10.003 [info] The function passed as a handler with ID "alva-dispatch-137986" is a local function.
-This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
-
-https://hexdocs.pm/telemetry/telemetry.html#attach/4
-
-22:50:10.004 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.004 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-...
-22:50:10.056 [warning] Alva Extension: Dispatching event "other_students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.056 [warning] Alva Extension: Dispatching event "other_students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:10.056 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.056 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-...
-22:50:10.057 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "21125706-dacb-4631-857d-79e6cd3b66a8", name: "Inactive Collection A"}
-
-..
-22:50:10.058 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.058 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:10.058 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.058 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:10.059 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "49e36063-46b9-4df4-889e-a81b72bfa01c", name: "Route Multi A"}
-
-
-22:50:10.059 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "d5c49bb5-f5ae-41ef-9000-0c016664daad", name: "Route Multi B"}
-
-
-22:50:10.059 [info] The function passed as a handler with ID "alva-dispatch-98501" is a local function.
-This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
-
-https://hexdocs.pm/telemetry/telemetry.html#attach/4
-
-22:50:10.059 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.059 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:10.060 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.060 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:10.060 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.060 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:10.112 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.112 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:10.113 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.113 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:10.113 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.113 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:10.113 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.113 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:10.114 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "519e7cd4-7e05-4bbd-bd1b-e82472209a04", name: "Refresh Override A"}
-
-
-22:50:10.114 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "4d5adc5f-5fd7-4aad-ba2f-22b6e98f1c22", name: "Refresh Override B"}
-
-
-22:50:10.114 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.114 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:10.115 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.115 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-..
-22:50:10.115 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.115 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:10.116 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.116 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:10.116 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.116 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:10.116 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.116 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:10.117 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.117 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:10.117 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "45fe3359-0132-456b-9d22-4561097c6a28", name: "Route Params A"}
-
-
-22:50:10.117 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "688e4254-ece0-49f4-af35-bd7515a7ea6d", name: "Route Params B"}
-
-
-22:50:10.118 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.118 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-...
-22:50:10.119 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "32c25fbb-3aa9-4bbf-935a-e5698c025fee", name: "Callback Params A"}
-
-
-22:50:10.119 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "f204449d-5dfe-495d-83e1-24f8b3c9e043", name: "Callback Params B"}
-
-
-22:50:10.119 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.119 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-..
-22:50:10.120 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.120 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:10.120 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "a46beb5e-7900-41b6-8a18-05a54e70c4db", name: "Manual Params A"}
-
-
-22:50:10.120 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "155f6c65-fdcf-4954-8022-b2819b566658", name: "Manual Params B"}
-
-
-22:50:10.120 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.120 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:10.121 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "2c598d4d-03e2-488b-82f9-bbdb19b999c3", name: "Route Reload A"}
-
-
-22:50:10.121 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "71cb6ec8-a5e5-46ab-8da7-a0b1a5e8eeed", name: "Route Reload B"}
-
-
-22:50:10.121 [info] The function passed as a handler with ID "alva-dispatch-99525" is a local function.
-This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
-
-https://hexdocs.pm/telemetry/telemetry.html#attach/4
-
-22:50:10.122 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.122 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:10.122 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.122 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-...
-22:50:10.174 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "aa404708-2995-44cd-bf4c-cc695efabf16", name: "Imperative Shared Topic"}
-
-
-22:50:10.175 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.175 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:10.175 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.175 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:10.176 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.176 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:10.176 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "ba1e9337-60af-4699-984e-e85d227b261f", name: "Raw Callback Params A"}
-
-
-22:50:10.176 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "134225ec-dad8-4a0b-8f0f-f8e2f0b8c24c", name: "Raw Callback Params B"}
-
-
-22:50:10.177 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.177 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-...
-22:50:10.178 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.178 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:10.178 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.178 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:10.179 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.179 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-..
-22:50:10.179 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.180 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-....
-22:50:10.180 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.180 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:10.180 [warning] Alva Extension: Dispatching event "students.create" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.181 [warning] Alva Extension: Dispatching event "students.create" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:10.181 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "93b04892-a3fb-4393-a803-a4efa46680ee", name: "Buy no refresh"}
-
-...
-22:50:10.181 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "cc9592bf-a328-4209-91e4-233087ee6aac", name: "Unbound A"}
-
-
-22:50:10.182 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.182 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-
-22:50:10.182 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.182 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-..
-22:50:10.182 [debug] Creating Alva.LiveViewTest.TestResource:
-
-Setting %{id: "91394cc0-0f2c-4d9f-be54-c5dae7f72e08", name: "Rendered Collection A"}
-
-
-22:50:10.183 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.183 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-..
-22:50:10.183 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.183 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-..
-22:50:10.184 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.184 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-..
-22:50:10.184 [warning] Alva Extension: Dispatching event "students.list" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.184 [warning] Alva Extension: Dispatching event "students.list" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-22:50:10.185 [warning] Alva Extension: Dispatching event "students.custom_envelope" without an actor. Expected socket.assigns.current_user to be set.
-
-22:50:10.185 [warning] Alva Extension: Dispatching event "students.custom_envelope" without a tenant. Expected socket.assigns.current_tenant to be set.
-.
-Finished in 14.4 seconds (0.00s async, 14.4s sync)
-
-Result: 214/215 passed
+Result: 139/140 passed
 Failed: 1 test
