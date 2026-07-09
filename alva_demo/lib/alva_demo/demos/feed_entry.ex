@@ -8,14 +8,6 @@ defmodule AlvaDemo.Demos.FeedEntry do
 
   live_vue do
     event(:demo_feed_list_entries, name: "demo_feed.list_entries", action: :list)
-
-    subscription :feed_entries do
-      name("feed_entries")
-      kind(:stream)
-      source(event: :demo_feed_list_entries)
-      scope(%{page: :map, sort: :string})
-      resolve(:resolve_feed_entries_scope)
-    end
   end
 
   actions do
@@ -52,20 +44,6 @@ defmodule AlvaDemo.Demos.FeedEntry do
     attribute :position, :integer do
       allow_nil?(false)
       public?(true)
-    end
-  end
-
-  def resolve_feed_entries_scope(input, socket) do
-    source_input =
-      %{
-        "page" => %{"limit" => 5, "offset" => 0},
-        "sort" => "position"
-      }
-      |> DemoSubscriptions.with_defaults(input)
-
-    with {:ok, items} <-
-           DemoSubscriptions.load_stream_items(socket, "demo_feed.list_entries", source_input) do
-      {:ok, %{topics: [], items: items}}
     end
   end
 end

@@ -5,16 +5,16 @@ vi.mock("live_vue", () => ({
     useLiveEvent: vi.fn(),
 }));
 
-import {
-    useAlvaForm,
-    useAlvaStream,
-    useAlvaSubscriptions,
-    useAlvaUpload,
-    ash
-} from "./index";
+import * as alva from "./index";
+import { useAlvaSubscriptions } from "./useAlvaSubscriptions";
+import { ash } from "./ash";
 
 describe("package root exports", () => {
     it("re-exports useAlvaSubscriptions for compatibility consumers", () => {
-        expect(useAlvaSubscriptions).toBe(useAlvaSubscriptions);
+        expect(alva.useAlvaSubscriptions).toBe(useAlvaSubscriptions);
+    });
+
+    it("re-exports ash", () => {
+        expect(alva.ash).toBe(ash);
     });
 });

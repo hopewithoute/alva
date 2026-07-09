@@ -18,15 +18,6 @@ defmodule AlvaDemo.Support.SupportMessage do
   live_vue do
     event(:support_list_messages, name: "support.list_messages", action: :read_for_conversation)
     event(:support_send_message, name: "support.send_message", action: :create)
-
-    subscription :support_messages do
-      name("support_messages")
-      kind(:stream)
-      source(event: :support_list_messages)
-      scope(%{conversation_id: :uuid})
-      insert(on: :create)
-      resolve(:resolve_support_messages_scope)
-    end
   end
 
   actions do
@@ -90,35 +81,6 @@ defmodule AlvaDemo.Support.SupportMessage do
     belongs_to :conversation, AlvaDemo.Support.Conversation do
       allow_nil?(false)
       public?(true)
-    end
-  end
-
-  def resolve_support_messages_scope(input, socket) do
-    normalized_input = DemoSubscriptions.normalize_input(input)
-
-    conversation_id =
-      case Map.fetch(normalized_input, "conversation_id") do
-        {:ok, value} ->
-          ParamHelpers.normalize_optional_string(value)
-
-        :error ->
-          ParamHelpers.active_conversation_id(socket)
-      end
-
-    source_input = %{"conversation_id" => conversation_id}
-
-    with {:ok, items} <-
-           DemoSubscriptions.load_stream_items(socket, "support.list_messages", source_input) do
-      {:ok,
-       %{
-         topics:
-           if is_nil(conversation_id) do
-             []
-           else
-             [DemoSubscriptions.notifier_topic(__MODULE__, "conversation:#{conversation_id}")]
-           end,
-         items: items
-       }}
     end
   end
 end

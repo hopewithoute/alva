@@ -39,7 +39,7 @@ describe("DemoNotificationsPage", () => {
     const wrapper = mount(DemoNotificationsPage);
 
     expect(signalRegistrations).toHaveLength(1);
-    expect(signalRegistrations[0]?.name).toBe("demo_notifications_sent");
+    expect(signalRegistrations[0]?.name).toBe("demo_notifications.sent");
     expect(signalRegistrations[0]?.input).toEqual({});
 
     await wrapper.get("#demo-notification-title").setValue("Inventory sync complete");

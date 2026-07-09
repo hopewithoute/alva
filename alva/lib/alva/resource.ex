@@ -12,39 +12,13 @@ defmodule Alva.Resource.Event do
   ]
 end
 
-defmodule Alva.Resource.SubscriptionSource do
-  @moduledoc false
-  defstruct [:event, :__spark_metadata__]
-end
-
-defmodule Alva.Resource.SubscriptionOperation do
-  @moduledoc false
-  defstruct [:on, :op, :at, :limit, :update_only, :__spark_metadata__]
-end
-
 defmodule Alva.Resource.Signal do
   @moduledoc false
   defstruct [
     :key,
     :name,
-    :on,
-    :authorize_with,
-    :__spark_metadata__
-  ]
-end
-
-defmodule Alva.Resource.Subscription do
-  @moduledoc false
-  defstruct [
-    :key,
-    :name,
-    :kind,
-    :source,
-    :scope,
-    :resolve,
     :authorize_with,
     :on,
-    :operations,
     :expose_metadata,
     :__spark_metadata__
   ]
@@ -133,61 +107,11 @@ defmodule Alva.Resource do
     ]
   }
 
-  @subscription_source %Spark.Dsl.Entity{
-    name: :source,
-    describe: "The command event used to load or reset this stream.",
-    target: Alva.Resource.SubscriptionSource,
-    schema: [
-      event: [
-        type: {:or, [:atom, :string]},
-        required: true,
-        doc: "The Alva event declaration key that returns this stream's snapshot."
-      ]
-    ]
-  }
-
-  @subscription_insert %Spark.Dsl.Entity{
-    name: :insert,
-    describe: "Insert or update a record in this stream when a published event occurs.",
-    target: Alva.Resource.SubscriptionOperation,
-    schema:
-      Keyword.put(@subscription_operation_schema, :op,
-        type: {:one_of, [:insert]},
-        default: :insert
-      )
-  }
-
-  @subscription_update %Spark.Dsl.Entity{
-    name: :update,
-    describe: "Update a record in this stream when a published event occurs.",
-    target: Alva.Resource.SubscriptionOperation,
-    schema:
-      Keyword.put(@subscription_operation_schema, :op,
-        type: {:one_of, [:update]},
-        default: :update
-      )
-  }
-
-  @subscription_delete %Spark.Dsl.Entity{
-    name: :delete,
-    describe: "Delete a record from this stream when a published event occurs.",
-    target: Alva.Resource.SubscriptionOperation,
-    schema:
-      Keyword.put(@subscription_operation_schema, :op,
-        type: {:one_of, [:delete]},
-        default: :delete
-      )
-  }
-
-  @subscription %Spark.Dsl.Entity{
-    name: :subscription,
-    describe: "A typed realtime capability (stream or signal) that clients can activate.",
-    target: Alva.Resource.Subscription,
+  @signal %Spark.Dsl.Entity{
+    name: :signal,
+    describe: "A reactive one-off notification that Vue clients can subscribe to dynamically.",
+    target: Alva.Resource.Signal,
     args: [:key],
-    entities: [
-      source: [@subscription_source],
-      operations: [@subscription_insert, @subscription_update, @subscription_delete]
-    ],
     schema: [
       key: [
         type: :atom,
@@ -199,33 +123,15 @@ defmodule Alva.Resource do
         required: true,
         doc: "The public name exposed to Vue clients."
       ],
-      kind: [
-        type: {:one_of, [:stream, :signal]},
-        required: true,
-        doc:
-          "Whether this capability acts as a reactive list (stream) or a one-off notification (signal)."
-      ],
-      scope: [
-        type: {:custom, Alva.Resource, :validate_scope, []},
-        required: false,
-        default: %{},
-        doc:
-          "The public input schema accepted before resolver/default merging. Plain entries like %{conversation_id: :uuid} are optional and nullable by default; use maps or keywords such as %{conversation_id: %{type: :uuid, required?: true, allow_nil?: false}} to tighten the contract."
-      ],
-      resolve: [
-        type: :atom,
-        required: true,
-        doc: "The local function to call to resolve scope and topics."
-      ],
       authorize_with: [
         type: :atom,
         required: false,
         doc: "The action to use with Ash.can? for authorization."
       ],
       on: [
-        type: {:or, [:atom, :string]},
-        required: false,
-        doc: "For kind: :signal, the Ash PubSub occurrence key that triggers this signal."
+        type: {:wrap_list, {:or, [:atom, :string]}},
+        required: true,
+        doc: "The Ash PubSub occurrence keys that trigger this signal."
       ],
       expose_metadata: [
         type: {:list, :atom},
@@ -236,48 +142,10 @@ defmodule Alva.Resource do
     ]
   }
 
-  @signal %Spark.Dsl.Entity{
-    name: :signal,
-    describe: "A LiveVue signal for real-time notification",
-    examples: [
-      """
-      signal :chat_typing do
-        name "chat.user_typing"
-        on [:user_started_typing]
-        authorize_with: :read_room
-      end
-      """
-    ],
-    target: Alva.Resource.Signal,
-    args: [:key],
-    schema: [
-      key: [
-        type: :atom,
-        required: true,
-        doc: "The atom declaration key."
-      ],
-      name: [
-        type: :string,
-        required: true,
-        doc: "The application-wide client-facing signal name."
-      ],
-      on: [
-        type: {:list, :atom},
-        required: true,
-        doc: "The Ash.Notifier pubsub triggers to listen to."
-      ],
-      authorize_with: [
-        type: :atom,
-        required: true,
-        doc: "The Ash action to use for authorization."
-      ]
-    ]
-  }
-
   @live_vue %Spark.Dsl.Section{
     name: :live_vue,
     describe: "Configure how this resource is exposed to LiveVue",
-    entities: [@event, @subscription, @signal],
+    entities: [@event, @signal],
     schema: []
   }
 

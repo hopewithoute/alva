@@ -2,7 +2,14 @@ defmodule AlvaDemoWeb.DemoChatLive do
   use AlvaDemoWeb, :live_view
 
   use Alva.LiveView,
-    subscriptions: [chat_messages: [activate: :mount]]
+    streams: [
+      chat_messages: [
+        resource: AlvaDemo.Demos.ChatMessage,
+        source: :list,
+        scope: %{},
+        sync_on: [:send]
+      ]
+    ]
 
   def render(assigns) do
     ~H"""

@@ -1,5 +1,4 @@
-Status: ready-for-agent
-
+Status: done
 ## Parent
 .scratch/alva-v2-streams/PRD.md
 

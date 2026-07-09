@@ -3,11 +3,31 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
   import AlvaDemoWeb.ParamHelpers
 
   use Alva.LiveView,
-    subscriptions: [
-      sales_orders: [activate: :mount],
-      products: [activate: :mount],
-      conversations: [activate: :mount],
-      support_messages: [activate: :mount]
+    streams: [
+      sales_orders: [
+        resource: AlvaDemo.Sales.Order,
+        source: :list,
+        scope: %{},
+        sync_on: [:create, :begin_processing, :fulfill]
+      ],
+      products: [
+        resource: AlvaDemo.Catalog.Product,
+        source: :list,
+        scope: %{},
+        sync_on: [:adjust_stock, :upload_media]
+      ],
+      conversations: [
+        resource: AlvaDemo.Support.Conversation,
+        source: :list,
+        scope: %{},
+        sync_on: [:create, :assign_merchant, :close]
+      ],
+      support_messages: [
+        resource: AlvaDemo.Support.SupportMessage,
+        source: :read_for_conversation,
+        scope: %{conversation_id: :active_conversation_id},
+        sync_on: [:create]
+      ]
     ],
     commands: ["catalog.upload_media"]
 

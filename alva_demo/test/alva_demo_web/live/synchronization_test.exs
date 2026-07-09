@@ -276,5 +276,4 @@ defmodule AlvaDemoWeb.SynchronizationTest do
 
     result.data
   end
-
 end

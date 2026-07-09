@@ -2,25 +2,6 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
   use ExUnit.Case, async: false
   import ExUnit.CaptureLog
 
-  defp mock_dsl_state(events, action_defs) do
-    # Create a mock DSL state that VerifyActions can read
-    # We just need it to return our mock entities
-    %{
-      persisted: %{module: MockModule},
-      entities: [
-        %{
-          path: [:live_vue],
-          entities: events
-        }
-      ],
-      actions: action_defs
-    }
-  end
-
-  defmodule MockModule do
-    # Just a dummy module name for errors
-  end
-
   # We need to stub Spark.Dsl.Extension for our test since the real one expects a real struct.
   # But VerifyActions calls Spark.Dsl.Extension.get_entities and get_persisted, and Ash.Resource.Info.action.
   # It's easier to just build a real module and capture the error!

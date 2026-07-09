@@ -24,7 +24,7 @@ defmodule Mix.Tasks.Alva.Codegen do
       File.mkdir_p!(output_dir)
 
       events_map = Alva.Registry.event_map(app)
-      subscription_map = Alva.Registry.registry(app).subscription_map
+      signal_map = Alva.Registry.registry(app).signal_map
 
       resources =
         events_map
@@ -34,7 +34,7 @@ defmodule Mix.Tasks.Alva.Codegen do
 
       generate_types_ts(resources, events_map, output_dir)
       generate_events_ts(events_map, output_dir)
-      generate_subscriptions_ts(subscription_map, events_map, output_dir)
+      generate_signals_ts(signal_map, events_map, output_dir)
       generate_client_ts(events_map, output_dir)
 
       Mix.shell().info("Successfully generated TypeScript bindings in #{output_dir}")
@@ -84,20 +84,14 @@ defmodule Mix.Tasks.Alva.Codegen do
     write_file!(output_dir, "events.ts", content)
   end
 
-  defp generate_subscriptions_ts(subscription_map, events_map, output_dir) do
+  defp generate_signals_ts(signal_map, events_map, output_dir) do
     subs_content =
-      subscription_map
-      |> Enum.map_join("\n", fn {_key, {resource, sub_def}} ->
-        kind = sub_def.kind
-
-        input_shape = generate_subscription_input_shape(sub_def.scope)
-
-        payload_prop = generate_subscription_payload_prop(kind, sub_def, events_map, resource)
+      signal_map
+      |> Enum.map_join("\n", fn {_key, {resource, signal_def}} ->
+        payload_prop = generate_signal_payload_prop(signal_def, events_map, resource)
 
         """
-          "#{sub_def.name}": {
-            kind: "#{kind}";
-            input: #{input_shape};
+          "#{signal_def.name}": {
             #{payload_prop}
           };
         """
@@ -109,96 +103,18 @@ defmodule Mix.Tasks.Alva.Codegen do
 
     import type * as Types from "./types";
 
-    export type AlvaSubscriptions = {
+    export type AlvaSignals = {
     #{subs_content}
     };
     """
 
-    write_file!(output_dir, "subscriptions.ts", content)
+    write_file!(output_dir, "signals.ts", content)
   end
 
-  defp generate_subscription_payload_prop(:stream, sub_def, events_map, resource) do
-    if sub_def.source do
-      source_event_key = sub_def.source.event
-
-      {_, event_def} =
-        Enum.find(Map.values(events_map), fn {_, ev} -> ev.key == source_event_key end)
-
-      output_type =
-        Alva.Codegen.DtoGenerator.output_type(resource, event_def)
-        |> String.replace_suffix("[]", "")
-
-      "item: Types.#{output_type};"
-    else
-      "item: any;"
-    end
-  end
-
-  defp generate_subscription_payload_prop(_kind, _sub_def, _events_map, resource) do
+  defp generate_signal_payload_prop(_signal_def, _events_map, resource) do
     output_type = resource |> Module.split() |> List.last()
     "payload: Types.#{output_type};"
   end
-
-  defp generate_subscription_input_shape(nil), do: "Record<string, never>"
-
-  defp generate_subscription_input_shape(scope) when scope in [%{}, []],
-    do: "Record<string, never>"
-
-  defp generate_subscription_input_shape(scope) when is_map(scope) do
-    fields =
-      Enum.map(scope, fn {name, spec} ->
-        %{type: type, required?: required?, allow_nil?: allow_nil?} =
-          normalize_subscription_scope_spec(spec)
-
-        ts_type =
-          type
-          |> Alva.Codegen.TypeMapper.map_type()
-          |> maybe_add_nil_union(allow_nil?)
-
-        format_subscription_scope_field(name, ts_type, required?)
-      end)
-
-    "{ #{Enum.join(fields, " ")} }"
-  end
-
-  defp generate_subscription_input_shape(_scope), do: "Record<string, any>"
-
-  defp normalize_subscription_scope_spec(spec) when is_list(spec) do
-    spec |> Enum.into(%{}) |> normalize_subscription_scope_spec()
-  end
-
-  defp normalize_subscription_scope_spec(spec) when is_map(spec) do
-    required? = fetch_scope_flag(spec, :required?, false)
-    allow_nil? = fetch_scope_flag(spec, :allow_nil?, not required?)
-
-    %{
-      type: fetch_scope_type(spec),
-      required?: required?,
-      allow_nil?: allow_nil?
-    }
-  end
-
-  defp normalize_subscription_scope_spec(type) do
-    %{
-      type: type,
-      required?: false,
-      allow_nil?: true
-    }
-  end
-
-  defp fetch_scope_type(spec) when is_map(spec) do
-    Map.get(spec, :type) || Map.get(spec, "type") || :any
-  end
-
-  defp fetch_scope_flag(spec, key, default) when is_map(spec) do
-    Map.get(spec, key, Map.get(spec, Atom.to_string(key), default))
-  end
-
-  defp maybe_add_nil_union(ts_type, true), do: "#{ts_type} | null"
-  defp maybe_add_nil_union(ts_type, false), do: ts_type
-
-  defp format_subscription_scope_field(name, ts_type, true), do: "#{name}: #{ts_type};"
-  defp format_subscription_scope_field(name, ts_type, false), do: "#{name}?: #{ts_type};"
 
   defp generate_client_ts(_events_map, output_dir) do
     content = """

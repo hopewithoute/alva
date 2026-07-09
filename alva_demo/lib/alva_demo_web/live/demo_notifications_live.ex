@@ -2,7 +2,14 @@ defmodule AlvaDemoWeb.DemoNotificationsLive do
   use AlvaDemoWeb, :live_view
 
   use Alva.LiveView,
-    subscriptions: [:demo_notifications_sent]
+    streams: [
+      notifications: [
+        resource: AlvaDemo.Demos.Notification,
+        source: :read,
+        scope: %{},
+        sync_on: [:send]
+      ]
+    ]
 
   def render(assigns) do
     ~H"""

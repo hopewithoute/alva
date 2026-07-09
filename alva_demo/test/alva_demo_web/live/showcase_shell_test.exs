@@ -41,9 +41,6 @@ defmodule AlvaDemoWeb.ShowcaseShellTest do
     Enum.each(@showcase_live_files, fn path ->
       content = File.read!(path)
 
-      refute Regex.match?(~r/(^|\s)streams:\s/m, content),
-             "#{Path.basename(path)} still uses legacy declarative streams:"
-
       refute Regex.match?(~r/(^|\s)collections:\s/m, content),
              "#{Path.basename(path)} still uses legacy declarative collections:"
 

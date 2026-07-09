@@ -12,7 +12,6 @@ defmodule Alva.RegistryTest do
 
     live_vue do
       event(:test_event, name: "my_event", action: :read)
-      subscription(:test_sub, name: "my_sub_name", on: :read, resolve: :read, kind: :stream)
     end
 
     actions do
@@ -102,16 +101,12 @@ defmodule Alva.RegistryTest do
 
     assert Registry.alva_event_map(EmptyDomain) == %{}
     assert Registry.alva_event_key_map(EmptyDomain) == %{}
-    assert Registry.alva_subscription_map(EmptyDomain) == %{}
     assert Registry.file_upload_arguments(EmptyDomain) == []
   end
 
-  test "events and subscriptions for resource" do
+  test "events and public fields for resource" do
     events = Registry.events(TestResource)
     assert length(events) == 1
-
-    subs = Registry.subscriptions(TestResource)
-    assert length(subs) == 1
 
     assert Registry.public_fields(TestResource) == [:id]
   end

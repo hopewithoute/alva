@@ -15,9 +15,9 @@ defmodule AlvaDemo.Demos.Notification do
     event(:demo_notifications_send, name: "demo_notifications.send", action: :send)
 
     signal :demo_notifications_sent do
-      name "demo_notifications_sent"
-      on [:send]
-      authorize_with :read
+      name("demo_notifications.sent")
+      on(:send)
+      authorize_with(:read)
     end
   end
 
@@ -54,6 +54,4 @@ defmodule AlvaDemo.Demos.Notification do
       public?(true)
     end
   end
-
-
 end

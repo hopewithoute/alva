@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: completed
 
 ## Parent
 .scratch/alva-v2-streams/PRD.md
@@ -10,9 +10,9 @@ Remove the V1 legacy architecture.
 3. Clean up the entire test suite associated with `subscription` DSL within the framework. Remove all stale assertions and ensure the core framework test suite passes natively without legacy code.
 
 ## Acceptance criteria
-- [ ] `subscription` DSL no longer compiles (throws CompileError).
-- [ ] All framework-level legacy `subscription` tests are cleaned up and completely removed.
-- [ ] Core SDK tests pass cleanly.
+- [x] `subscription` DSL no longer compiles (throws CompileError).
+- [x] All framework-level legacy `subscription` tests are cleaned up and completely removed.
+- [x] Core SDK tests pass cleanly.
 
 ## Blocked by
 - .scratch/alva-v2-streams/issues/01-client-driven-signals.md

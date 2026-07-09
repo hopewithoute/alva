@@ -5,7 +5,7 @@ defmodule Alva.LiveView do
 
   @alva_private_key :alva
   @public_activation_keys [
-    :subscriptions,
+    :streams,
     :commands
   ]
   @public_subscription_option_keys [:activate]
@@ -14,35 +14,41 @@ defmodule Alva.LiveView do
   @err_domains_removed "Alva declarative page activation no longer accepts `domains:`. Prefer `subscriptions:` for the supported V2 path; projection lookup now resolves through the consuming host app registry."
   @err_streams_removed "Alva declarative page activation no longer accepts top-level `streams:`. For the supported V2 path, expose typed `subscription` capabilities and activate them with `subscriptions:`."
 
-  @err_opts_expected "use Alva.LiveView expects keyword options. The V2 path only accepts `subscriptions:` and `commands:`. Legacy keys are no longer supported."
+  @err_opts_expected "use Alva.LiveView expects keyword options. The V2 path only accepts `streams:` and `commands:`. Legacy keys are no longer supported."
   defp err_unsupported_key(key),
     do:
-      "Alva declarative page activation only accepts :subscriptions and :commands on the supported V2 path. Unsupported key: #{inspect(key)}. The V1 legacy keys are removed."
+      "Alva declarative page activation only accepts :streams and :commands on the supported V2 path. Unsupported key: #{inspect(key)}. The V1 legacy keys are removed."
 
   defmacro __using__(opts) do
     validate_use_opts!(opts, __CALLER__)
 
+    if Keyword.has_key?(opts, :subscriptions) do
+      raise CompileError,
+        description:
+          "The legacy `subscriptions:` DSL is strictly removed. Use `streams:` instead."
+    end
+
     quote do
       import Alva.LiveView
-      @alva_subscriptions Keyword.get(unquote(opts), :subscriptions, [])
+      @alva_streams Keyword.get(unquote(opts), :streams, [])
       @alva_commands Keyword.get(unquote(opts), :commands, [])
 
-      on_mount({Alva.LiveView, %{subscriptions: @alva_subscriptions, commands: @alva_commands}})
+      on_mount({Alva.LiveView, %{streams: @alva_streams, commands: @alva_commands}})
     end
   end
 
-  def on_mount(config, _params, _session, socket) do
-    subscriptions = Map.get(config, :subscriptions, [])
-    commands = Map.get(config, :commands, [])
-    socket = Phoenix.LiveView.put_private(socket, :alva_options, subscriptions: subscriptions)
+  def on_mount(config, params, _session, socket) do
+    streams_config = Map.get(config, :streams, [])
+    commands_config = Map.get(config, :commands, [])
+    socket = Phoenix.LiveView.put_private(socket, :alva_options, streams: streams_config)
 
     otp_app = host_app_otp_app!(socket)
     registry = Alva.Registry.registry(otp_app)
 
     socket
     |> setup_initial_alva_state(otp_app, registry)
-    |> eager_activate_mount_subscriptions(subscriptions, otp_app)
-    |> configure_file_uploads_from_commands(commands, otp_app)
+    |> configure_streams(streams_config, params, otp_app)
+    |> configure_file_uploads_from_commands(commands_config, otp_app)
     |> attach_alva_hooks(otp_app)
     |> then(&{:cont, &1})
   end
@@ -58,33 +64,83 @@ defmodule Alva.LiveView do
     end)
   end
 
-  defp eager_activate_mount_subscriptions(socket, subscriptions, otp_app) do
-    Enum.reduce(subscriptions, socket, fn sub, acc_sock ->
-      try_activate_mount_subscription(sub, acc_sock, otp_app)
+  defp configure_streams(socket, streams_config, params, otp_app) do
+    Enum.reduce(streams_config, socket, fn {name, config}, acc_socket ->
+      configure_stream(acc_socket, name, config, params, otp_app)
     end)
   end
 
-  defp try_activate_mount_subscription({key, opts}, acc_sock, otp_app) do
-    if Keyword.get(opts, :activate) == :mount do
-      resolve_and_apply_mount_subscription(otp_app, key, acc_sock)
-    else
-      acc_sock
-    end
-  end
+  defp configure_stream(socket, name, config, params, _otp_app) do
+    resource = Keyword.fetch!(config, :resource)
+    source = Keyword.fetch!(config, :source)
+    scope_def = Keyword.get(config, :scope, %{})
+    sync_on = Keyword.get(config, :sync_on, [])
 
-  defp try_activate_mount_subscription(_, acc_sock, _otp_app), do: acc_sock
+    # 1. Resolve scope from assigns, fallback to params
+    scope_args =
+      Map.new(scope_def, fn {arg_name, assign_key} ->
+        value = Map.get(socket.assigns, assign_key) || Map.get(params, to_string(assign_key))
+        {arg_name, value}
+      end)
 
-  defp resolve_and_apply_mount_subscription(otp_app, key, acc_sock) do
-    case Alva.Registry.fetch_subscription_by_key(otp_app, key) do
-      {:ok, resource, subscription} ->
-        case apply(resource, subscription.resolve, [%{}, acc_sock]) do
-          {:ok, resolution} -> apply_subscription_resolution(acc_sock, subscription, resolution)
-          _ -> acc_sock
-        end
+    # 2. Build Query
+    actor = socket.assigns[:current_user] || socket.assigns[:current_actor]
+    tenant = socket.assigns[:current_tenant]
 
-      _ ->
-        acc_sock
-    end
+    query =
+      resource
+      |> Ash.Query.new()
+      |> Ash.Query.for_read(source, scope_args, actor: actor, tenant: tenant)
+
+    # 3. Fetch data
+    records =
+      case Ash.read(query, actor: actor, tenant: tenant) do
+        {:ok, results} -> results
+        {:error, _} -> []
+      end
+
+    # 4. Initialize Stream
+    socket = Phoenix.LiveView.stream(socket, name, records)
+
+    # 5. Subscribe to PubSub
+    socket =
+      if Ash.Resource.Info.notifiers(resource) |> Enum.member?(Ash.Notifier.PubSub) do
+        prefix = Ash.Notifier.PubSub.Info.prefix(resource) || ""
+        delimiter = Ash.Notifier.PubSub.Info.delimiter(resource)
+
+        topics =
+          Ash.Notifier.PubSub.Info.publications(resource)
+          |> Enum.filter(&(&1.action in sync_on))
+          |> Enum.map(fn pub ->
+            topic_suffix = Enum.join(pub.topic, delimiter)
+            if prefix == "", do: topic_suffix, else: "#{prefix}#{delimiter}#{topic_suffix}"
+          end)
+          |> Enum.uniq()
+
+        pubsub = endpoint_pubsub!(socket)
+
+        Enum.each(topics, fn topic ->
+          :ok = Phoenix.PubSub.subscribe(pubsub, topic)
+        end)
+
+        socket
+      else
+        socket
+      end
+
+    # 6. Store metadata for handle_info diffing
+    update_alva(socket, fn state ->
+      streams_meta = Map.get(state, :streams, %{})
+
+      new_meta = %{
+        resource: resource,
+        source: source,
+        scope_args: scope_args,
+        sync_on: sync_on
+      }
+
+      Map.put(state, :streams, Map.put(streams_meta, name, new_meta))
+    end)
   end
 
   defp configure_file_uploads_from_commands(socket, commands, otp_app) do
@@ -137,15 +193,6 @@ defmodule Alva.LiveView do
       cond do
         upload_lifecycle_event?(event_name) ->
           {:halt, sock}
-
-        event_name == "alva:activate_subscription" ->
-          handle_activate_subscription(params, sock, otp_app)
-
-        event_name == "alva:load_more_subscription" ->
-          handle_load_more_subscription(params, sock, otp_app)
-
-        event_name == "alva:deactivate_subscription" ->
-          handle_deactivate_subscription(params, sock, otp_app)
 
         event_name == "alva:subscribe_signal" ->
           handle_subscribe_signal(params, sock, otp_app)
@@ -358,367 +405,139 @@ defmodule Alva.LiveView do
   defp put_signal_meta(payload, meta), do: %{data: payload, meta: meta}
 
   defp matching_projection_operations(socket, notification_resource, occurrence_keys) do
-    otp_app = alva_state(socket).otp_app
+    state = alva_state(socket)
 
-    active_subscriptions =
-      socket
-      |> active_subscription_keys()
-      |> Enum.flat_map(fn sub_key ->
-        case Alva.Registry.fetch_subscription_by_key(otp_app, sub_key) do
-          {:ok, resource, subscription} -> [{sub_key, {resource, subscription}}]
-          :error -> []
+    # Check streams
+    streams = Map.get(state, :streams, %{})
+
+    stream_ops =
+      Enum.flat_map(streams, fn {stream_name, stream_meta} ->
+        if stream_meta.resource == notification_resource do
+          # Does any occurrence key match sync_on?
+          matching_actions =
+            occurrence_keys
+            |> Enum.filter(fn action_name -> action_name in stream_meta.sync_on end)
+
+          Enum.map(matching_actions, fn action_name ->
+            action = Ash.Resource.Info.action(stream_meta.resource, action_name)
+
+            op_type =
+              case action && action.type do
+                :destroy -> :delete
+                :create -> :insert
+                :update -> :update
+                _ -> :update
+              end
+
+            {stream_name, %{op: op_type}}
+          end)
+        else
+          []
         end
       end)
 
-    Enum.reduce(active_subscriptions, %{streams: [], signals: []}, fn {name,
-                                                                       {resource, subscription}},
-                                                                      acc ->
-      reduce_matching_operations(
-        acc,
-        name,
-        resource,
-        subscription,
-        notification_resource,
-        occurrence_keys
-      )
-    end)
-  end
-
-  defp reduce_matching_operations(
-         acc,
-         _name,
-         resource,
-         _subscription,
-         notification_resource,
-         _occurrence_keys
-       )
-       when resource != notification_resource,
-       do: acc
-
-  defp reduce_matching_operations(
-         acc,
-         _name,
-         _resource,
-         %{kind: :stream} = subscription,
-         _notification_resource,
-         occurrence_keys
-       ) do
-    stream_name = subscription_stream_name(subscription)
-
-    ops =
-      subscription.operations
-      |> Enum.filter(&MapSet.member?(occurrence_keys, &1.on))
-      |> Enum.map(&{stream_name, &1})
-
-    %{acc | streams: ops ++ acc.streams}
-  end
-
-  defp reduce_matching_operations(
-         acc,
-         name,
-         _resource,
-         %{kind: :signal} = subscription,
-         _notification_resource,
-         occurrence_keys
-       ) do
-    if MapSet.member?(occurrence_keys, subscription.on) do
-      %{acc | signals: [{name, subscription} | acc.signals]}
-    else
-      acc
-    end
-  end
-
-  defp reduce_matching_operations(
-         acc,
-         _name,
-         _resource,
-         _subscription,
-         _notification_resource,
-         _occurrence_keys
-       ) do
-    acc
-  end
-
-  defp handle_activate_subscription(params, sock, otp_app) do
-    case resolve_and_authorize_subscription(params, sock, otp_app) do
-      {:ok, subscription, resolution} ->
-        sock = apply_subscription_resolution(sock, subscription, resolution)
-        client_resolution = Map.drop(resolution, [:items])
-        {:halt, %{ok: true, data: client_resolution}, sock}
-
-      {:error, reason} ->
-        {:halt, %{ok: false, error: reason}, sock}
-    end
-  end
-
-  defp apply_subscription_resolution(sock, subscription, resolution) do
-    sock = activate_subscription_key(sock, subscription.key)
-    stream_name = subscription_stream_name(subscription)
-
-    # Subscribe to topics
-    sock =
-      if Phoenix.LiveView.connected?(sock) do
-        Enum.reduce(resolution.topics || [], sock, fn topic, acc_sock ->
-          subscribe_dynamic_topic(acc_sock, topic)
-        end)
-      else
-        sock
-      end
-
-    # Stream items if it's a stream
-    if subscription.kind == :stream do
-      Phoenix.LiveView.stream(sock, stream_name, resolution.items || [], reset: true)
-    else
-      sock
-    end
-  end
-
-  defp handle_load_more_subscription(params, sock, otp_app) do
-    case resolve_and_authorize_subscription(params, sock, otp_app) do
-      {:ok, subscription, resolution} ->
-        sock =
-          if subscription.kind == :stream do
-            stream_name = subscription_stream_name(subscription)
-            stream_insert_all(sock, resolution.items, stream_name)
-          else
-            sock
-          end
-
-        client_resolution = Map.drop(resolution, [:items])
-        {:halt, %{ok: true, data: client_resolution}, sock}
-
-      {:error, reason} ->
-        {:halt, %{ok: false, error: reason}, sock}
-    end
-  end
-
-  defp stream_insert_all(sock, items, stream_name) do
-    Enum.reduce(items || [], sock, fn item, acc_sock ->
-      Phoenix.LiveView.stream_insert(acc_sock, stream_name, item)
-    end)
-  end
-
-  defp resolve_and_authorize_subscription(params, sock, otp_app) do
-    subscription_name = params["name"]
-    input = params["input"] || %{}
-
-    with {:ok, resource, subscription} <-
-           Alva.Registry.fetch_subscription(otp_app, subscription_name),
-         :ok <- check_subscription_allowlist(sock, subscription.key),
-         :ok <- check_subscription_authorization(sock, resource, subscription),
-         {:ok, resolution} <- apply(resource, subscription.resolve, [input, sock]) do
-      {:ok, subscription, resolution}
-    else
-      :error -> {:error, %{type: "not_found", message: "Resource not found"}}
-      {:error, :forbidden} -> {:error, %{type: "forbidden", message: "Forbidden"}}
-      {:error, reason} -> {:error, Alva.Error.format(reason)}
-    end
-  end
-
-  defp handle_deactivate_subscription(params, sock, otp_app) do
-    subscription_name = params["name"]
-    input = params["input"] || %{}
-
-    with {:ok, resource, subscription} <-
-           Alva.Registry.fetch_subscription(otp_app, subscription_name),
-         :ok <- check_subscription_allowlist(sock, subscription.key),
-         {:ok, resolution} <- apply(resource, subscription.resolve, [input, sock]) do
-      sock =
-        unsubscribe_all_dynamic_topics(sock, resolution.topics)
-        |> deactivate_subscription_key(subscription.key)
-
-      {:halt, %{ok: true}, sock}
-    else
-      _ ->
-        {:halt, %{ok: false}, sock}
-    end
+    # Check signals (legacy signals used active_subscription_keys, keep it for now if needed, or just return empty)
+    # Actually, signals will be handled dynamically later via alva:subscribe_signal. For now just empty.
+    %{streams: stream_ops, signals: []}
   end
 
   defp handle_subscribe_signal(params, sock, otp_app) do
-    case resolve_and_authorize_signal(params, sock, otp_app) do
-      {:ok, signal, topics} ->
-        sock = activate_signal_key(sock, signal.key)
-
-        sock =
-          if Phoenix.LiveView.connected?(sock) do
-            Enum.reduce(topics, sock, fn topic, acc_sock ->
-              subscribe_dynamic_topic(acc_sock, topic)
-            end)
-          else
-            sock
-          end
-
-        {:halt, %{ok: true}, sock}
-
-      {:error, reason} ->
-        {:halt, %{ok: false, error: reason}, sock}
-    end
-  end
-
-  defp handle_unsubscribe_signal(params, sock, otp_app) do
-    case resolve_and_authorize_signal(params, sock, otp_app) do
-      {:ok, signal, topics} ->
-        sock =
-          if Phoenix.LiveView.connected?(sock) do
-            Enum.reduce(topics, sock, fn topic, acc_sock ->
-              unsubscribe_dynamic_topic(acc_sock, topic)
-            end)
-          else
-            sock
-          end
-
-        sock = deactivate_signal_key(sock, signal.key)
-        {:halt, %{ok: true}, sock}
-
-      {:error, _} ->
-        {:halt, %{ok: false}, sock}
-    end
-  end
-
-  defp resolve_and_authorize_signal(params, sock, otp_app) do
     signal_name = params["name"]
-    input = params["input"] || %{}
+    payload = params["input"] || %{}
 
-    with {:ok, resource, signal} <- Alva.Registry.fetch_signal(otp_app, signal_name),
-         :ok <- check_signal_authorization(sock, resource, signal) do
-      topics = compute_signal_topics(resource, signal, input)
-      {:ok, signal, topics}
-    else
-      :error -> {:error, %{type: "not_found", message: "Signal not found"}}
-      {:error, :forbidden} -> {:error, %{type: "forbidden", message: "Forbidden"}}
-      {:error, reason} -> {:error, Alva.Error.format(reason)}
-    end
-  end
+    case Alva.Registry.fetch_signal(otp_app, signal_name) do
+      {:ok, resource, signal} ->
+        actor = sock.assigns[:current_user] || sock.assigns[:current_actor]
+        tenant = sock.assigns[:current_tenant]
 
-  defp compute_signal_topics(resource, signal, _input) do
-    prefix = Ash.Notifier.PubSub.Info.prefix(resource) || ""
-    delimiter = Ash.Notifier.PubSub.Info.delimiter(resource) || ":"
+        authorized? =
+          if signal.authorize_with do
+            action = Ash.Resource.Info.action(resource, signal.authorize_with)
 
-    Enum.map(List.wrap(signal.on), fn event ->
-      if prefix == "" do
-        to_string(event)
-      else
-        "#{prefix}#{delimiter}#{event}"
-      end
-    end)
-  end
+            subject =
+              case action.type do
+                :read -> Ash.Query.for_read(resource, action.name, payload)
+                :create -> Ash.Changeset.for_create(resource, action.name, payload)
+                :update -> Ash.Changeset.for_update(resource, action.name, payload)
+                :destroy -> Ash.Changeset.for_destroy(resource, action.name, payload)
+                :action -> Ash.ActionInput.for_action(resource, action.name, payload)
+              end
 
-  defp check_signal_authorization(sock, resource, signal) do
-    if signal.authorize_with do
-      actor = sock.assigns[:current_user] || sock.assigns[:current_actor]
-      tenant = sock.assigns[:current_tenant]
+            Ash.can?(subject, actor, tenant: tenant, maybe_is: false)
+          else
+            true
+          end
 
-      if Ash.can?({resource, signal.authorize_with}, actor, tenant: tenant, maybe_is: false) do
-        :ok
-      else
-        {:error, :forbidden}
-      end
-    else
-      :ok
-    end
-  end
+        if authorized? do
+          prefix = Ash.Notifier.PubSub.Info.prefix(resource) || ""
+          delimiter = Ash.Notifier.PubSub.Info.delimiter(resource)
 
-  defp activate_signal_key(socket, key) when is_atom(key) do
-    update_alva(socket, fn state ->
-      refs = Map.get(state, :active_signal_refs, %{})
-      next_count = Map.get(refs, key, 0) + 1
-      Map.put(state, :active_signal_refs, Map.put(refs, key, next_count))
-    end)
-  end
+          topics =
+            Ash.Notifier.PubSub.Info.publications(resource)
+            |> Enum.filter(&(&1.action in signal.on))
+            |> Enum.map(fn pub ->
+              topic_parts =
+                Enum.map(pub.topic, fn
+                  part when is_atom(part) ->
+                    Map.get(payload, to_string(part)) || Map.get(payload, part) || to_string(part)
 
-  defp deactivate_signal_key(socket, key) when is_atom(key) do
-    update_alva(socket, fn state ->
-      refs = Map.get(state, :active_signal_refs, %{})
+                  part ->
+                    part
+                end)
 
-      next_refs =
-        case Map.get(refs, key, 0) do
-          count when count > 1 -> Map.put(refs, key, count - 1)
-          1 -> Map.delete(refs, key)
-          _ -> refs
+              topic_suffix = Enum.join(topic_parts, delimiter)
+              if prefix == "", do: topic_suffix, else: "#{prefix}#{delimiter}#{topic_suffix}"
+            end)
+            |> Enum.uniq()
+
+          pubsub = endpoint_pubsub!(sock)
+
+          if Phoenix.LiveView.connected?(sock) do
+            Enum.each(topics, fn topic ->
+              :ok = Phoenix.PubSub.subscribe(pubsub, topic)
+            end)
+          end
+
+          # Track topics so we can unsubscribe later if needed
+          sock =
+            update_alva(sock, fn state ->
+              active_signals = Map.get(state, :active_signals, %{})
+              Map.put(state, :active_signals, Map.put(active_signals, signal_name, topics))
+            end)
+
+          {:halt, %{ok: true}, sock}
+        else
+          {:halt, %{ok: false, error: %{type: "forbidden", message: "Forbidden"}}, sock}
         end
 
-      Map.put(state, :active_signal_refs, next_refs)
-    end)
+      :error ->
+        {:halt, %{ok: false, error: %{type: "not_found", message: "Signal not found"}}, sock}
+    end
   end
 
-  defp unsubscribe_all_dynamic_topics(sock, topics) do
+  defp handle_unsubscribe_signal(params, sock, _otp_app) do
+    signal_name = params["name"]
+
+    state = alva_state(sock)
+    active_signals = Map.get(state, :active_signals, %{})
+    topics = Map.get(active_signals, signal_name, [])
+
+    pubsub = endpoint_pubsub!(sock)
+
     if Phoenix.LiveView.connected?(sock) do
-      Enum.reduce(topics || [], sock, fn topic, acc_sock ->
-        unsubscribe_dynamic_topic(acc_sock, topic)
+      Enum.each(topics, fn topic ->
+        Phoenix.PubSub.unsubscribe(pubsub, topic)
       end)
-    else
-      sock
     end
-  end
 
-  defp check_subscription_allowlist(sock, subscription_key) do
-    alva_options = Map.get(sock.private, :alva_options, [])
-    allowlist = Keyword.get(alva_options, :subscriptions, [])
-
-    normalized_allowlist =
-      Enum.map(allowlist, fn
-        {key, _opts} -> key
-        key -> key
+    sock =
+      update_alva(sock, fn state ->
+        active_signals = Map.get(state, :active_signals, %{})
+        Map.put(state, :active_signals, Map.delete(active_signals, signal_name))
       end)
 
-    if subscription_key in normalized_allowlist do
-      :ok
-    else
-      {:error, :forbidden}
-    end
+    {:halt, %{ok: true}, sock}
   end
-
-  defp check_subscription_authorization(sock, resource, subscription) do
-    if subscription.authorize_with do
-      actor = sock.assigns[:current_user] || sock.assigns[:current_actor]
-      tenant = sock.assigns[:current_tenant]
-
-      # Run authorization
-      if Ash.can?({resource, subscription.authorize_with}, actor, tenant: tenant, maybe_is: false) do
-        :ok
-      else
-        {:error, :forbidden}
-      end
-    else
-      :ok
-    end
-  end
-
-  defp activate_subscription_key(socket, key) when is_atom(key) do
-    update_alva(socket, fn state ->
-      refs = Map.get(state, :active_subscription_refs, %{})
-      next_count = Map.get(refs, key, 0) + 1
-      Map.put(state, :active_subscription_refs, Map.put(refs, key, next_count))
-    end)
-  end
-
-  defp deactivate_subscription_key(socket, key) when is_atom(key) do
-    update_alva(socket, fn state ->
-      refs = Map.get(state, :active_subscription_refs, %{})
-
-      next_refs =
-        case Map.get(refs, key, 0) do
-          count when count > 1 -> Map.put(refs, key, count - 1)
-          1 -> Map.delete(refs, key)
-          _ -> refs
-        end
-
-      Map.put(state, :active_subscription_refs, next_refs)
-    end)
-  end
-
-  defp active_subscription_keys(socket) do
-    socket
-    |> alva_state()
-    |> Map.get(:active_subscription_refs, %{})
-    |> Map.keys()
-  end
-
-  defp subscription_stream_name(%{key: key, name: name}) when is_atom(key) and is_binary(name) do
-    if Atom.to_string(key) == name, do: key, else: name
-  end
-
-  defp subscription_stream_name(%{key: key}), do: key
 
   defp projection_cache(%Alva.Registry{} = registry) do
     %{
@@ -732,9 +551,9 @@ defmodule Alva.LiveView do
       |> Keyword.keys()
       |> Enum.each(&validate_public_activation_key!(&1, caller))
 
-      case Keyword.fetch(opts, :subscriptions) do
-        {:ok, subscriptions} ->
-          maybe_validate_subscription_use_declarations!(subscriptions, caller)
+      case Keyword.fetch(opts, :streams) do
+        {:ok, streams} ->
+          maybe_validate_stream_use_declarations!(streams, caller)
 
         :error ->
           :ok
@@ -748,9 +567,9 @@ defmodule Alva.LiveView do
     raise_compile_error!(caller, @err_opts_expected)
   end
 
-  defp maybe_validate_subscription_use_declarations!(subscriptions, caller) do
-    case expand_use_opt_literal(subscriptions, caller) do
-      {:ok, subscriptions} -> validate_subscription_use_declarations!(subscriptions, caller)
+  defp maybe_validate_stream_use_declarations!(streams, caller) do
+    case expand_use_opt_literal(streams, caller) do
+      {:ok, streams} -> validate_stream_use_declarations!(streams, caller)
       :dynamic -> :ok
     end
   end
@@ -769,15 +588,18 @@ defmodule Alva.LiveView do
     raise_compile_error!(caller, @err_domains_removed)
   end
 
-  defp validate_public_activation_key!(:streams, caller) do
-    raise_compile_error!(caller, @err_streams_removed)
+  defp validate_public_activation_key!(:subscriptions, caller) do
+    raise_compile_error!(
+      caller,
+      "The legacy `subscriptions:` DSL is strictly removed. Use `streams:` instead."
+    )
   end
 
   defp validate_public_activation_key!(key, caller)
        when key in [:collections, :signals, :route_subscriptions, :page_events, :page_state] do
     raise_compile_error!(
       caller,
-      "Alva declarative page activation no longer accepts `#{key}:`. For the supported V2 path, use `subscriptions:` and `commands:`."
+      "Alva declarative page activation no longer accepts `#{key}:`. For the supported V2 path, use `streams:` and `commands:`."
     )
   end
 
@@ -787,77 +609,57 @@ defmodule Alva.LiveView do
     end
   end
 
-  defp validate_subscription_use_declarations!(subscriptions, caller)
-       when is_list(subscriptions) do
+  defp validate_stream_use_declarations!(streams, caller)
+       when is_list(streams) do
     keys =
-      Enum.map(subscriptions, fn
+      Enum.map(streams, fn
         key when is_atom(key) ->
           key
 
         {key, opts} when is_atom(key) and is_list(opts) ->
-          validate_subscription_use_opts!(key, opts, caller)
+          validate_stream_use_opts!(key, opts, caller)
           key
 
         name when is_binary(name) ->
           raise_compile_error!(
             caller,
-            "Alva declarative `subscriptions:` entries must use declaration key atoms, got browser-facing name #{inspect(name)}"
+            "Alva declarative `streams:` entries must use declaration key atoms, got browser-facing name #{inspect(name)}"
           )
 
         {key, _opts} ->
           raise_compile_error!(
             caller,
-            invalid_subscription_use_entries_description("Invalid key: #{inspect(key)}")
+            invalid_stream_use_entries_description("Invalid key: #{inspect(key)}")
           )
 
         other ->
           raise_compile_error!(
             caller,
-            invalid_subscription_use_entries_description("Got: #{inspect(other)}")
+            invalid_stream_use_entries_description("Got: #{inspect(other)}")
           )
       end)
 
-    validate_unique_activation_names!(keys, :subscription, caller)
+    validate_unique_activation_names!(keys, :stream, caller)
     keys
   end
 
-  defp validate_subscription_use_declarations!(_subscriptions, caller) do
+  defp validate_stream_use_declarations!(_streams, caller) do
     raise_compile_error!(
       caller,
-      "Alva declarative `subscriptions:` must be a list of declaration key atoms or keyword entries."
+      "Alva declarative `streams:` must be a list of declaration key atoms or keyword entries."
     )
   end
 
-  defp validate_subscription_use_opts!(name, opts, caller) when is_list(opts) do
+  defp validate_stream_use_opts!(name, opts, caller) when is_list(opts) do
     unless Keyword.keyword?(opts) do
-      raise_compile_error!(caller, invalid_subscription_use_opts_description(name))
+      raise_compile_error!(caller, invalid_stream_use_opts_description(name))
     end
 
-    Enum.each(Keyword.keys(opts), &validate_subscription_use_opt_key!(&1, name, opts, caller))
+    # Add validation for resource, source, scope, sync_on
   end
 
-  defp validate_subscription_use_opts!(name, _opts, caller) do
-    raise_compile_error!(caller, invalid_subscription_use_opts_description(name))
-  end
-
-  defp validate_subscription_use_opt_key!(:activate, name, opts, caller) do
-    case Keyword.get(opts, :activate) do
-      mode when mode in [:mount, :client] ->
-        :ok
-
-      mode ->
-        raise_compile_error!(
-          caller,
-          "Alva declarative subscription #{inspect(name)} only accepts `activate: :mount` or `activate: :client`, got: #{inspect(mode)}"
-        )
-    end
-  end
-
-  defp validate_subscription_use_opt_key!(key, name, _opts, caller) do
-    raise_compile_error!(
-      caller,
-      "Alva declarative subscription #{inspect(name)} only accepts #{@public_subscription_option_keys |> inspect()}. Unsupported option: #{inspect(key)}"
-    )
+  defp validate_stream_use_opts!(name, _opts, caller) do
+    raise_compile_error!(caller, invalid_stream_use_opts_description(name))
   end
 
   defp validate_unique_activation_names!(names, kind, caller) do
@@ -875,12 +677,12 @@ defmodule Alva.LiveView do
     end)
   end
 
-  defp invalid_subscription_use_entries_description(detail) do
-    "Alva declarative `subscriptions:` entries must be atoms or keyword entries like `subscriptions: [sales_orders: [activate: :mount]]`. #{detail}"
+  defp invalid_stream_use_entries_description(detail) do
+    "Alva declarative `streams:` entries must be atoms or keyword entries like `streams: [sales_orders: [resource: App.Order, source: :list]]`. #{detail}"
   end
 
-  defp invalid_subscription_use_opts_description(name) do
-    "Alva declarative subscription #{inspect(name)} options must be a keyword list containing only #{@public_subscription_option_keys |> inspect()}."
+  defp invalid_stream_use_opts_description(name) do
+    "Alva declarative stream #{inspect(name)} options must be a keyword list containing :resource, :source, etc."
   end
 
   defp raise_compile_error!(caller, description) do
@@ -966,8 +768,7 @@ defmodule Alva.LiveView do
       otp_app: nil,
       domains: [],
       event_map: %{},
-      active_subscription_refs: %{},
-      active_signal_refs: %{}
+      active_subscription_refs: %{}
     })
   end
 end

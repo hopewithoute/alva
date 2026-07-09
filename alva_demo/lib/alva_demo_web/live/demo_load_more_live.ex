@@ -2,7 +2,14 @@ defmodule AlvaDemoWeb.DemoLoadMoreLive do
   use AlvaDemoWeb, :live_view
 
   use Alva.LiveView,
-    subscriptions: [:feed_entries]
+    streams: [
+      feed_entries: [
+        resource: AlvaDemo.Demos.FeedEntry,
+        source: :list,
+        scope: %{},
+        sync_on: []
+      ]
+    ]
 
   def render(assigns) do
     ~H"""

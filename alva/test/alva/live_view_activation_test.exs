@@ -1,15 +1,14 @@
 defmodule Alva.LiveViewActivationTest do
   use ExUnit.Case
 
-  test "compiles successfully when top-level subscriptions are declared" do
+  test "compiles successfully when top-level streams are declared" do
     assert_compile("""
-    defmodule TestLiveViewActivation.SubscriptionsLive do
+    defmodule TestLiveViewActivation.StreamsLive do
       use Phoenix.LiveView
 
       use Alva.LiveView,
-        subscriptions: [
-          :sales_orders,
-          sales_orders_updated: [activate: :mount]
+        streams: [
+          :sales_orders
         ]
 
       def render(assigns) do
@@ -19,16 +18,16 @@ defmodule Alva.LiveViewActivationTest do
     """)
   end
 
-  test "fails to compile when top-level subscriptions use browser-facing string names" do
+  test "fails to compile when legacy subscriptions are used" do
     assert_raise CompileError,
-                 ~r/`subscriptions:` entries must use declaration key atoms/,
+                 ~r/legacy `subscriptions:` DSL is strictly removed/,
                  fn ->
                    compile_module("""
                    defmodule TestLiveViewActivation.InvalidSubscriptionsLive do
                      use Phoenix.LiveView
 
                      use Alva.LiveView,
-                       subscriptions: ["orders:all"]
+                       subscriptions: [:orders]
 
                      def render(assigns) do
                        ~H"<div />"

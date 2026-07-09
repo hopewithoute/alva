@@ -3,10 +3,25 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
   import AlvaDemoWeb.ParamHelpers
 
   use Alva.LiveView,
-    subscriptions: [
-      sales_orders: [activate: :mount],
-      products: [activate: :mount],
-      support_messages: [activate: :mount]
+    streams: [
+      sales_orders: [
+        resource: AlvaDemo.Sales.Order,
+        source: :list_storefront,
+        scope: %{customer_query: :connected_customer_name},
+        sync_on: [:create, :begin_processing, :fulfill]
+      ],
+      products: [
+        resource: AlvaDemo.Catalog.Product,
+        source: :list,
+        scope: %{},
+        sync_on: [:adjust_stock, :upload_media]
+      ],
+      support_messages: [
+        resource: AlvaDemo.Support.SupportMessage,
+        source: :read_for_conversation,
+        scope: %{conversation_id: :active_conversation_id},
+        sync_on: [:create]
+      ]
     ]
 
   def handle_params(params, _uri, socket) do
@@ -32,7 +47,8 @@ defmodule AlvaDemoWeb.CustomerStorefrontLive do
   defp storefront_route_assigns(params) do
     %{
       active_conversation_id: normalize_conversation_id(params),
-      connected_customer_name: normalize_customer_name(params)
+      connected_customer_name: normalize_customer_name(params),
+      require_customer: true
     }
   end
 

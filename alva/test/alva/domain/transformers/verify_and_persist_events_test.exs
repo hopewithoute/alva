@@ -1,6 +1,5 @@
 defmodule Alva.Domain.Transformers.VerifyAndPersistEventsTest do
   use ExUnit.Case, async: false
-  import ExUnit.CaptureLog
 
   test "returns true for Ash.Domain.Transformers.DefineResources" do
     assert Alva.Domain.Transformers.VerifyAndPersistEvents.after?(

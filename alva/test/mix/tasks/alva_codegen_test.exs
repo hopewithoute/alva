@@ -61,38 +61,11 @@ defmodule Mix.Tasks.Alva.CodegenTest do
       event(:test_read, name: "test.read", action: :read)
       event(:test_upload, name: "test.upload", action: :upload)
 
-      subscription :test_stream do
-        name("test_stream")
-        kind(:stream)
-        source(event: :test_read)
-
-        scope(%{
-          id: %{type: :uuid, required?: true, allow_nil?: false},
-          page: :map,
-          cursor: %{type: :string, required?: false, allow_nil?: false},
-          customer_query: %{type: :string, required?: false, allow_nil?: true}
-        })
-
-        insert(on: :create)
-        resolve(:resolve_test_stream_scope)
-      end
-
-      subscription :test_signal do
+      signal :test_signal do
         name("test_signal")
-        kind(:signal)
         on(:create)
-
-        scope(%{
-          audience: %{type: :string, required?: true, allow_nil?: false},
-          tenant_id: %{type: :uuid, required?: false, allow_nil?: true}
-        })
-
-        resolve(:resolve_test_signal_scope)
+        authorize_with(:read)
       end
-    end
-
-    def resolve_test_stream_scope(_input, _socket) do
-      {:ok, %{topics: ["codegen_resource:created"], items: []}}
     end
 
     def resolve_test_signal_scope(_input, _socket) do
@@ -114,12 +87,12 @@ defmodule Mix.Tasks.Alva.CodegenTest do
     events_path = Path.join(tmp_dir, "events.ts")
     client_path = Path.join(tmp_dir, "client.ts")
     types_path = Path.join(tmp_dir, "types.ts")
-    subscriptions_path = Path.join(tmp_dir, "subscriptions.ts")
+    signals_path = Path.join(tmp_dir, "signals.ts")
 
     assert File.exists?(events_path)
     assert File.exists?(client_path)
     assert File.exists?(types_path)
-    assert File.exists?(subscriptions_path)
+    assert File.exists?(signals_path)
 
     events_content = File.read!(events_path)
     # Verify the structure rather than exact string formatting
@@ -149,18 +122,8 @@ defmodule Mix.Tasks.Alva.CodegenTest do
     refute String.contains?(client_content, "return base_api.on;")
     assert String.contains?(client_content, "export const ashCall = createAlvaApi().call;")
 
-    subscriptions_content = File.read!(subscriptions_path)
-    assert String.contains?(subscriptions_content, ~s("test_stream"))
-    assert String.contains?(subscriptions_content, ~s(kind: "stream"))
-    assert String.contains?(subscriptions_content, ~s(id: string;))
-    assert String.contains?(subscriptions_content, ~s(page?: Record<string, any> | null;))
-    assert String.contains?(subscriptions_content, ~s(cursor?: string;))
-    assert String.contains?(subscriptions_content, ~s(customer_query?: string | null;))
-    assert String.contains?(subscriptions_content, ~s(item: Types.Resource;))
-    assert String.contains?(subscriptions_content, ~s("test_signal"))
-    assert String.contains?(subscriptions_content, ~s(kind: "signal"))
-    assert String.contains?(subscriptions_content, ~s(audience: string;))
-    assert String.contains?(subscriptions_content, ~s(tenant_id?: string | null;))
-    assert String.contains?(subscriptions_content, ~s(payload: Types.Resource;))
+    signals_content = File.read!(signals_path)
+    assert String.contains?(signals_content, ~s("test_signal"))
+    assert String.contains?(signals_content, ~s(payload: Types.Resource;))
   end
 end

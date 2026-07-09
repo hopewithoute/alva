@@ -4,7 +4,7 @@ import { ash } from "alva";
 import { ashCall } from "../../../js/alva/client";
 import type { AlvaSubscriptions } from "../../../js/alva/subscriptions";
 
-type NotificationSignal = AlvaSubscriptions["demo_notifications_sent"]["payload"];
+type NotificationSignal = AlvaSubscriptions["demo_notifications.sent"]["payload"];
 
 const title = ref("Build finished cleanly.");
 const severity = ref<NotificationSignal["severity"]>("success");
@@ -12,8 +12,8 @@ const notices = ref<NotificationSignal[]>([]);
 const error = ref<string | null>(null);
 const sending = ref(false);
 
-ash.on<AlvaSubscriptions, "demo_notifications_sent">(
-  "demo_notifications_sent",
+ash.on<AlvaSubscriptions, "demo_notifications.sent">(
+  "demo_notifications.sent",
   {},
   (payload: NotificationSignal) => {
     notices.value = [payload, ...notices.value].slice(0, 6);
