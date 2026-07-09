@@ -381,7 +381,7 @@ defmodule Alva.Dispatcher do
     )
   end
 
-  defp handle_success(data, exposed_meta, page \\ nil) do
+  defp handle_success(data, exposed_meta, page) do
     {permissions, cleaned_data} = extract_and_remove_permissions(data)
     meta = build_response_meta(permissions, exposed_meta, page)
 
