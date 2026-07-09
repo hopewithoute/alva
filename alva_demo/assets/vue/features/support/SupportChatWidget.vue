@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, nextTick, computed, watch } from "vue";
 import type { SupportMessage } from "../../../js/alva/types";
-import { ashCall } from "../../../js/alva/client";
+import { useAlvaApi } from "../../../js/alva/composables/useAlvaApi";
 import Button from "../../shared/ui/button/Button.vue";
 import { useRouteQueryPatch } from "../../shared/useRouteQueryPatch";
+
+const api = useAlvaApi();
 
 const props = defineProps<{
   connectedCustomerName?: string | null;
@@ -57,7 +59,7 @@ const joinChat = async () => {
   joinChatError.value = null;
 
   try {
-    const result = await ashCall("support.create", {
+    const result = await api.call["support.create"]({
       customer_name: props.connectedCustomerName,
     });
 
@@ -103,7 +105,7 @@ const sendMessage = async () => {
   sendMessageError.value = null;
 
   try {
-    const result = await ashCall("support.send_message", {
+    const result = await api.call["support.send_message"]({
       text: text,
       sender: "shopper",
       conversation_id: conversationId,
