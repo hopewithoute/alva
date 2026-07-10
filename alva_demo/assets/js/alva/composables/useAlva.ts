@@ -4,6 +4,7 @@
 import { useLiveVue, useLiveEvent } from "live_vue";
 import { onUnmounted } from "vue";
 import { useAlvaForm, type AlvaFormOptions } from "./useAlvaForm";
+import { useAlvaQuery } from "./useAlvaQuery";
 import type { AlvaEvents } from "../events";
 import type { AlvaSignals } from "../signals";
 
@@ -58,7 +59,14 @@ export function useAlva(config?: AlvaConfig) {
             options: Extract<AlvaEvents["catalog.list_products"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["catalog.list_products"]["input"], object>, keyof AlvaEvents>
         ) => {
             return useAlvaForm("catalog.list_products", options);
+        },
+        use_list_products_query: (
+            inputGetter: () => AlvaEvents["catalog.list_products"]["input"],
+            options?: import("./useAlvaQuery").AlvaQueryOptions<AlvaEvents["catalog.list_products"]["input"]>
+        ) => {
+            return useAlvaQuery("catalog.list_products", inputGetter, options);
         }
+
 ,
         upload_media: (payload: AlvaEvents["catalog.upload_media"]["input"]): Promise<AlvaEvents["catalog.upload_media"]["output"]> => {
             return new Promise((resolve) => {
@@ -97,7 +105,14 @@ export function useAlva(config?: AlvaConfig) {
             options: Extract<AlvaEvents["demo_chat.list_messages"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["demo_chat.list_messages"]["input"], object>, keyof AlvaEvents>
         ) => {
             return useAlvaForm("demo_chat.list_messages", options);
+        },
+        use_list_messages_query: (
+            inputGetter: () => AlvaEvents["demo_chat.list_messages"]["input"],
+            options?: import("./useAlvaQuery").AlvaQueryOptions<AlvaEvents["demo_chat.list_messages"]["input"]>
+        ) => {
+            return useAlvaQuery("demo_chat.list_messages", inputGetter, options);
         }
+
 ,
         send_message: (payload: AlvaEvents["demo_chat.send_message"]["input"]): Promise<AlvaEvents["demo_chat.send_message"]["output"]> => {
             return new Promise((resolve) => {
@@ -136,7 +151,14 @@ export function useAlva(config?: AlvaConfig) {
             options: Extract<AlvaEvents["demo_feed.list_entries"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["demo_feed.list_entries"]["input"], object>, keyof AlvaEvents>
         ) => {
             return useAlvaForm("demo_feed.list_entries", options);
+        },
+        use_list_entries_query: (
+            inputGetter: () => AlvaEvents["demo_feed.list_entries"]["input"],
+            options?: import("./useAlvaQuery").AlvaQueryOptions<AlvaEvents["demo_feed.list_entries"]["input"]>
+        ) => {
+            return useAlvaQuery("demo_feed.list_entries", inputGetter, options);
         }
+
 
     }
 ,
@@ -243,7 +265,14 @@ export function useAlva(config?: AlvaConfig) {
             options: Extract<AlvaEvents["sales.list_orders"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["sales.list_orders"]["input"], object>, keyof AlvaEvents>
         ) => {
             return useAlvaForm("sales.list_orders", options);
+        },
+        use_list_orders_query: (
+            inputGetter: () => AlvaEvents["sales.list_orders"]["input"],
+            options?: import("./useAlvaQuery").AlvaQueryOptions<AlvaEvents["sales.list_orders"]["input"]>
+        ) => {
+            return useAlvaQuery("sales.list_orders", inputGetter, options);
         }
+
 
     }
 ,
@@ -282,7 +311,14 @@ export function useAlva(config?: AlvaConfig) {
             options: Extract<AlvaEvents["support.get_conversation"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["support.get_conversation"]["input"], object>, keyof AlvaEvents>
         ) => {
             return useAlvaForm("support.get_conversation", options);
+        },
+        use_get_conversation_query: (
+            inputGetter: () => AlvaEvents["support.get_conversation"]["input"],
+            options?: import("./useAlvaQuery").AlvaQueryOptions<AlvaEvents["support.get_conversation"]["input"]>
+        ) => {
+            return useAlvaQuery("support.get_conversation", inputGetter, options);
         }
+
 ,
         list_conversations: (payload: AlvaEvents["support.list_conversations"]["input"]): Promise<AlvaEvents["support.list_conversations"]["output"]> => {
             return new Promise((resolve) => {
@@ -300,7 +336,14 @@ export function useAlva(config?: AlvaConfig) {
             options: Extract<AlvaEvents["support.list_conversations"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["support.list_conversations"]["input"], object>, keyof AlvaEvents>
         ) => {
             return useAlvaForm("support.list_conversations", options);
+        },
+        use_list_conversations_query: (
+            inputGetter: () => AlvaEvents["support.list_conversations"]["input"],
+            options?: import("./useAlvaQuery").AlvaQueryOptions<AlvaEvents["support.list_conversations"]["input"]>
+        ) => {
+            return useAlvaQuery("support.list_conversations", inputGetter, options);
         }
+
 ,
         list_messages: (payload: AlvaEvents["support.list_messages"]["input"]): Promise<AlvaEvents["support.list_messages"]["output"]> => {
             return new Promise((resolve) => {
@@ -318,7 +361,14 @@ export function useAlva(config?: AlvaConfig) {
             options: Extract<AlvaEvents["support.list_messages"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["support.list_messages"]["input"], object>, keyof AlvaEvents>
         ) => {
             return useAlvaForm("support.list_messages", options);
+        },
+        use_list_messages_query: (
+            inputGetter: () => AlvaEvents["support.list_messages"]["input"],
+            options?: import("./useAlvaQuery").AlvaQueryOptions<AlvaEvents["support.list_messages"]["input"]>
+        ) => {
+            return useAlvaQuery("support.list_messages", inputGetter, options);
         }
+
 ,
         send_message: (payload: AlvaEvents["support.send_message"]["input"]): Promise<AlvaEvents["support.send_message"]["output"]> => {
             return new Promise((resolve) => {

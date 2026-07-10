@@ -5,6 +5,7 @@ import StorefrontProductCard from "../catalog/StorefrontProductCard.vue";
 import CustomerOrderDrawer from "../sales/CustomerOrderDrawer.vue";
 import SupportChatWidget from "../support/SupportChatWidget.vue";
 import { ref } from "vue";
+import { useAlva } from "../../../js/alva";
 import type { Order, Product, SupportMessage } from "../../../js/alva/types";
 
 const props = defineProps<{
@@ -19,6 +20,21 @@ const isOrdersOpen = ref(false);
 const orderError = ref<string | null>(null);
 const orderNotice = ref<string | null>(null);
 const orderDrawerRef = ref<any>(null);
+
+const alva = useAlva();
+const searchQuery = ref("");
+
+const { data: queryProducts, loading: loadingProducts } = alva.catalog.use_list_products_query(
+  () => ({ query: searchQuery.value }),
+  { debounceMs: 300 }
+);
+
+const displayProducts = computed(() => {
+  if (searchQuery.value.trim() === "") {
+    return props.products;
+  }
+  return queryProducts.value ?? props.products;
+});
 
 const recentOrderCount = computed(() => props.sales_orders?.length || 0);
 const recentOrderItems = computed(() => {
@@ -63,12 +79,23 @@ const handleOrderError = (error: string) => {
         </div>
       </div>
 
-      <div v-if="!props.products" class="rounded-xl border border-dashed border-zinc-200 bg-white p-6 text-sm text-zinc-500">
+      <div class="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <label class="text-sm font-medium text-zinc-700 whitespace-nowrap">Search Catalog</label>
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Type to search products..."
+          class="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm"
+        />
+        <div v-if="loadingProducts" class="text-xs text-zinc-500">Searching...</div>
+      </div>
+
+      <div v-if="!displayProducts" class="rounded-xl border border-dashed border-zinc-200 bg-white p-6 text-sm text-zinc-500">
         Loading catalog...
       </div>
       <div v-else class="grid grid-cols-1 gap-6 sm:grid-cols-2 2xl:grid-cols-3">
         <StorefrontProductCard
-          v-for="product in props.products"
+          v-for="product in displayProducts"
           :key="product.id"
           :product="product"
           :connected-customer-name="props.connected_customer_name"

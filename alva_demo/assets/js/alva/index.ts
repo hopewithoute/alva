@@ -3,10 +3,12 @@
 
 export { useAlva } from "./composables/useAlva";
 export { useAlvaForm } from "./composables/useAlvaForm";
+export { useAlvaQuery } from "./composables/useAlvaQuery";
 export { useAlvaUpload } from "./composables/useAlvaUpload";
 export { ash } from "./composables/ash";
 export type { AlvaConfig, AlvaError } from "./composables/useAlva";
 export type { AlvaFormOptions } from "./composables/useAlvaForm";
+export type { AlvaQueryOptions, AlvaQueryReturn } from "./composables/useAlvaQuery";
 export type { AlvaUploadOptions, AlvaUploadDispatchContext, UploadEntry } from "./composables/useAlvaUpload";
 export type { AlvaEvents } from "./events";
 export type { AlvaSignals } from "./signals";
