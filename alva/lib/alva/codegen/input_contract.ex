@@ -25,13 +25,18 @@ defmodule Alva.Codegen.InputContract do
       pks_ts = generate_primary_keys_ts(resource, action.type, indent)
       filter_ts = generate_filter_ts(resource, Map.get(event_def, :enable_filter, false), indent)
 
-      page_ts =
-        if action.type == :read, do: ["#{indent}  page?: Types.PaginationInput;"], else: []
-
-      sort_ts = if action.type == :read, do: ["#{indent}  sort?: string | string[];"], else: []
+      extra_opts_ts =
+        if action.type == :read do
+          [
+            "#{indent}  page?: Types.PaginationInput;",
+            "#{indent}  sort?: string | string[];"
+          ]
+        else
+          []
+        end
 
       all_fields =
-        (args_ts ++ pks_ts ++ attrs_ts ++ filter_ts ++ page_ts ++ sort_ts)
+        (args_ts ++ pks_ts ++ attrs_ts ++ filter_ts ++ extra_opts_ts)
         |> Enum.uniq()
         |> Enum.join("\n")
 
