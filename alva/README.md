@@ -2,7 +2,7 @@
 
 <img src="guides/alva.png" width="250" alt="Alva Logo">
 
-A fully typed, auto-generated TypeScript SDK for Vue 3 that seamlessly bridges your Vue frontend with your Elixir/Ash backend via Phoenix LiveView.
+**Alva** (Ash Live Vue Adapter) is a fully typed, auto-generated TypeScript SDK for Vue 3 that seamlessly bridges your Vue frontend with your Elixir/Ash backend via Phoenix LiveView.
 
 Alva eliminates the need for manual API routing, REST endpoints, or GraphQL resolvers. By directly connecting Ash Resources to LiveVue, Alva lets you execute actions, read streams, process uploads, and listen to PubSub signals from the frontend — all with end-to-end TypeScript safety.
 

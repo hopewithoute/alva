@@ -2,7 +2,7 @@
 
 <img src="alva/guides/alva.png" width="250" alt="Alva Logo">
 
-Welcome to the Alva repository! This repository is structured as a monorepo containing the core package and a demo application.
+Welcome to the Alva (Ash Live Vue Adapter) repository! This repository is structured as a monorepo containing the core package and a demo application.
 
 ## 📦 Projects
 
