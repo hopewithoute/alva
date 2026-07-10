@@ -15,14 +15,19 @@ defmodule MyAppWeb.StorefrontLive do
     # Configure auto-syncing streams
     streams: [
       products: [
+        # `resource`: The full module name of the Ash Resource
         resource: MyApp.Catalog.Product,
+        # `source`: The name of a `:read` action defined in that resource to fetch the stream
         source: :list,
+        # `scope`: Arguments to pass to the `:read` action. (Empty means no arguments)
         scope: %{},
+        # `sync_on`: A list of mutation action names in the resource that will trigger a stream refresh
         sync_on: [:create, :adjust_stock, :destroy]
       ],
       orders: [
         resource: MyApp.Sales.Order,
         source: :my_orders,
+        # A value prefixed with a colon (`:current_user_id`) dynamically pulls from `socket.assigns`
         scope: %{user_id: :current_user_id},
         sync_on: [:create, :fulfill]
       ]

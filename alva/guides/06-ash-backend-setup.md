@@ -24,14 +24,25 @@ defmodule MyApp.Catalog.Product do
 
   alva do
     # 2. Map Ash Actions to SDK Events
-    event(:catalog_list_products, name: "catalog.list_products", action: :list)
-    event(:catalog_create_product, name: "catalog.create_product", action: :create)
+    event(:catalog_list_products, 
+      # `name`: A custom string that becomes the function name in Vue (alva.catalog.list_products)
+      name: "catalog.list_products", 
+      # `action`: Must match the name of an action defined in the `actions do` block below
+      action: :list
+    )
+    
+    event(:catalog_create_product, 
+      name: "catalog.create_product", 
+      action: :create
+    )
     
     # 3. Map PubSub Occurrences to SDK Signals
     signal(:product_updated_signal, 
+      # `name`: The topic name the Vue client uses in alva.catalog.on_product_updated()
       name: "catalog.product_updated", 
+      # `authorize_with`: Must match an action in `actions do` to run Ash.can? against
       authorize_with: :list, 
-      # The "on" array listens for occurrences published by the pub_sub block
+      # `on`: The occurrence key broadcasted by `publish :update, ["updated"]` in the pub_sub block
       on: ["updated"]
     )
   end
