@@ -130,83 +130,8 @@ defmodule Mix.Tasks.Alva.Codegen do
       Enum.map_join(domains, ",\n", fn domain ->
         domain_prefix = "#{domain}."
 
-        domain_events =
-          events_map
-          |> Enum.filter(fn {event_name, _} ->
-            String.starts_with?(event_name, domain_prefix) or event_name == domain
-          end)
-          |> Enum.map_join(",\n", fn {event_name, {resource, event_def}} ->
-            action_name =
-              if String.starts_with?(event_name, domain_prefix),
-                do: String.replace_prefix(event_name, domain_prefix, ""),
-                else: event_name
-
-            is_read =
-              case Ash.Resource.Info.action(resource, event_def.action) do
-                %{type: :read} -> true
-                _ -> false
-              end
-
-            query_ts =
-              if is_read do
-                """
-                ,
-                        use_#{action_name}_query: (
-                            inputGetter: () => AlvaEvents["#{event_name}"]["input"],
-                            options?: import("./useAlvaQuery").AlvaQueryOptions
-                        ) => {
-                            return useAlvaQuery("#{event_name}", inputGetter, options);
-                        }
-                """
-              else
-                ""
-              end
-
-            """
-                    #{action_name}: (payload: AlvaEvents["#{event_name}"]["input"]): Promise<AlvaEvents["#{event_name}"]["output"]> => {
-                        return new Promise((resolve) => {
-                            live.pushEvent("#{event_name}", payload, (reply: AlvaEvents["#{event_name}"]["output"]) => {
-                                if (reply.ok) {
-                                    config?.onSuccess?.(reply.data, "#{event_name}");
-                                } else {
-                                    config?.onError?.(reply.error, "#{event_name}");
-                                }
-                                resolve(reply);
-                            });
-                        });
-                    },
-                    use_#{action_name}_form: (
-                        options: Extract<AlvaEvents["#{event_name}"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["#{event_name}"]["input"], object>, keyof AlvaEvents>
-                    ) => {
-                        return useAlvaForm("#{event_name}", options);
-                    }#{query_ts}
-            """
-          end)
-
-        domain_signals =
-          signal_map
-          |> Enum.filter(fn {_k, {_, sig}} ->
-            String.starts_with?(sig.name, domain_prefix) or sig.name == domain
-          end)
-          |> Enum.map_join(",\n", fn {_k, {_, sig}} ->
-            signal_name =
-              if String.starts_with?(sig.name, domain_prefix),
-                do: String.replace_prefix(sig.name, domain_prefix, ""),
-                else: sig.name
-
-            """
-                    on_#{signal_name}: (
-                        input: AlvaSignals["#{sig.name}"] extends { input: infer I } ? I : Record<string, never>,
-                        callback: (payload: AlvaSignals["#{sig.name}"]["payload"]) => void
-                    ) => {
-                        live.pushEvent("alva:subscribe_signal", { name: "#{sig.name}", input }, () => {});
-                        useLiveEvent("#{sig.name}", callback);
-                        onUnmounted(() => {
-                            live.pushEvent("alva:unsubscribe_signal", { name: "#{sig.name}", input }, () => {});
-                        });
-                    }
-            """
-          end)
+        domain_events = generate_domain_events(events_map, domain, domain_prefix)
+        domain_signals = generate_domain_signals(signal_map, domain, domain_prefix)
 
         fields = [domain_events, domain_signals] |> Enum.reject(&(&1 == "")) |> Enum.join(",\n")
 
@@ -634,5 +559,85 @@ defmodule Mix.Tasks.Alva.Codegen do
   defp write_file!(output_dir, filename, content) do
     file_path = Path.join(output_dir, filename)
     File.write!(file_path, content)
+  end
+
+  defp generate_domain_events(events_map, domain, domain_prefix) do
+    events_map
+    |> Enum.filter(fn {event_name, _} ->
+      String.starts_with?(event_name, domain_prefix) or event_name == domain
+    end)
+    |> Enum.map_join(",\n", fn {event_name, {resource, event_def}} ->
+      action_name =
+        if String.starts_with?(event_name, domain_prefix),
+          do: String.replace_prefix(event_name, domain_prefix, ""),
+          else: event_name
+
+      is_read =
+        case Ash.Resource.Info.action(resource, event_def.action) do
+          %{type: :read} -> true
+          _ -> false
+        end
+
+      query_ts =
+        if is_read do
+          """
+          ,
+                  use_#{action_name}_query: (
+                      inputGetter: () => AlvaEvents["#{event_name}"]["input"],
+                      options?: import("./useAlvaQuery").AlvaQueryOptions
+                  ) => {
+                      return useAlvaQuery("#{event_name}", inputGetter, options);
+                  }
+          """
+        else
+          ""
+        end
+
+      """
+              #{action_name}: (payload: AlvaEvents["#{event_name}"]["input"]): Promise<AlvaEvents["#{event_name}"]["output"]> => {
+                  return new Promise((resolve) => {
+                      live.pushEvent("#{event_name}", payload, (reply: AlvaEvents["#{event_name}"]["output"]) => {
+                          if (reply.ok) {
+                              config?.onSuccess?.(reply.data, "#{event_name}");
+                          } else {
+                              config?.onError?.(reply.error, "#{event_name}");
+                          }
+                          resolve(reply);
+                      });
+                  });
+              },
+              use_#{action_name}_form: (
+                  options: Extract<AlvaEvents["#{event_name}"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["#{event_name}"]["input"], object>, keyof AlvaEvents>
+              ) => {
+                  return useAlvaForm("#{event_name}", options);
+              }#{query_ts}
+      """
+    end)
+  end
+
+  defp generate_domain_signals(signal_map, domain, domain_prefix) do
+    signal_map
+    |> Enum.filter(fn {_k, {_, sig}} ->
+      String.starts_with?(sig.name, domain_prefix) or sig.name == domain
+    end)
+    |> Enum.map_join(",\n", fn {_k, {_, sig}} ->
+      signal_name =
+        if String.starts_with?(sig.name, domain_prefix),
+          do: String.replace_prefix(sig.name, domain_prefix, ""),
+          else: sig.name
+
+      """
+              on_#{signal_name}: (
+                  input: AlvaSignals["#{sig.name}"] extends { input: infer I } ? I : Record<string, never>,
+                  callback: (payload: AlvaSignals["#{sig.name}"]["payload"]) => void
+              ) => {
+                  live.pushEvent("alva:subscribe_signal", { name: "#{sig.name}", input }, () => {});
+                  useLiveEvent("#{sig.name}", callback);
+                  onUnmounted(() => {
+                      live.pushEvent("alva:unsubscribe_signal", { name: "#{sig.name}", input }, () => {});
+                  });
+              }
+      """
+    end)
   end
 end
