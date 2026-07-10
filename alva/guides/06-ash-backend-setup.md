@@ -30,7 +30,7 @@ defmodule MyApp.Catalog.Product do
     # 3. Map PubSub Occurrences to SDK Signals
     signal(:product_updated_signal, 
       name: "catalog.product_updated", 
-      authorize_with: :read, 
+      authorize_with: :list, 
       # The "on" array listens for occurrences published by the pub_sub block
       on: ["updated"]
     )
