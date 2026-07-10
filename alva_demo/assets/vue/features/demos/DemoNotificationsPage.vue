@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { useAlva } from "../../../js/alva/composables/useAlva";
+import { useAlva } from "../../../js/alva";
 import type { AlvaSignals } from "../../../js/alva/signals";
 
 type NotificationSignal = AlvaSignals["demo_notifications.sent"]["payload"];

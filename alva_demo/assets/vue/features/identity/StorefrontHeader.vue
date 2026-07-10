@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { useAlvaApi } from "../../../js/alva/composables/useAlvaApi";
+import { useAlva } from "../../../js/alva";
 import { useDebounce } from "../../utils/debounce";
 import { useRouteQueryPatch } from "../../shared/useRouteQueryPatch";
 
-const api = useAlvaApi();
+const alva = useAlva();
 
 const props = defineProps<{
   recentOrderCount: number;
@@ -47,7 +47,7 @@ const handleIdentityChange = useDebounce(async (newName: string) => {
   }
 
   const requestId = ++latestIdentityRequest;
-  const result = await api.call["support.get_conversation"]({
+  const result = await alva.support.get_conversation({
     customer_name: trimmed
   });
 

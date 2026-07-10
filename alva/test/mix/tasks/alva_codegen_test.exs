@@ -93,13 +93,11 @@ defmodule Mix.Tasks.Alva.CodegenTest do
     use_alva_path = Path.join([composables_dir, "useAlva.ts"])
     use_alva_form_path = Path.join([composables_dir, "useAlvaForm.ts"])
     use_alva_upload_path = Path.join([composables_dir, "useAlvaUpload.ts"])
-    ash_path = Path.join([composables_dir, "ash.ts"])
 
     assert File.exists?(events_path)
     assert File.exists?(use_alva_path)
     assert File.exists?(use_alva_form_path)
     assert File.exists?(use_alva_upload_path)
-    assert File.exists?(ash_path)
     assert File.exists?(index_path)
     assert File.exists?(types_path)
     assert File.exists?(signals_path)
@@ -145,17 +143,6 @@ defmodule Mix.Tasks.Alva.CodegenTest do
     signals_content = File.read!(signals_path)
     assert String.contains?(signals_content, ~s("test_signal"))
     assert String.contains?(signals_content, ~s(payload: Types.Resource;))
-
-    ash_path = Path.join(composables_dir, "ash.ts")
-    assert File.exists?(ash_path)
-
-    ash_content = File.read!(ash_path)
-    assert String.contains?(ash_content, "import { onUnmounted } from \"vue\"")
-    assert String.contains?(ash_content, "import { useLiveVue, useLiveEvent } from \"live_vue\"")
-    assert String.contains?(ash_content, "import type { AlvaSignals } from \"../signals\"")
-    assert String.contains?(ash_content, "name: K,")
-    assert String.contains?(ash_content, ~s(alva:subscribe_signal))
-    assert String.contains?(ash_content, ~s(alva:unsubscribe_signal))
 
     use_alva_form_content = File.read!(use_alva_form_path)
     assert String.contains?(use_alva_form_content, "import { reactive } from \"vue\"")

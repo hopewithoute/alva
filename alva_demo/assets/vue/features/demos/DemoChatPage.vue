@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useAlva } from "../../../js/alva/composables/useAlva";
+import { useAlva } from "../../../js/alva";
 
 const alva = useAlva();
 

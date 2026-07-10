@@ -5,15 +5,13 @@ import { ref, watch, type Ref, type WatchSource } from "vue";
 import { useLiveVue } from "live_vue";
 import type { AlvaEvents } from "../events";
 
-export interface AlvaQueryOptions<Input> {
+export interface AlvaQueryOptions {
     debounceMs?: number;
-    enabled?: boolean | Ref<boolean> | (() => boolean);
 }
 
 export interface AlvaQueryReturn<Output> {
     data: Ref<Output | null>;
     loading: Ref<boolean>;
-    error: Ref<any | null>;
     refetch: () => Promise<void>;
 }
 
@@ -24,36 +22,26 @@ export function useAlvaQuery<
 >(
     queryEvent: K,
     inputGetter: WatchSource<Input>,
-    options: AlvaQueryOptions<Input> = {}
+    options: AlvaQueryOptions = {}
 ): AlvaQueryReturn<Output> {
     const live = useLiveVue();
     const data = ref<Output | null>(null) as Ref<Output | null>;
     const loading = ref(false);
-    const error = ref<any | null>(null);
 
     const debounceMs = options.debounceMs ?? 0;
     let timeoutId: any;
-
-    const isEnabled = () => {
-        if (options.enabled === undefined) return true;
-        if (typeof options.enabled === "function") return options.enabled();
-        if (typeof options.enabled === "object" && "value" in options.enabled) return options.enabled.value;
-        return !!options.enabled;
-    };
+    let currentRequestId = 0;
 
     const fetchQuery = async (currentInput: Input) => {
-        if (!isEnabled()) return;
+        const requestId = ++currentRequestId;
         
-        loading.value = true;
-        error.value = null;
-
         return new Promise<void>((resolve) => {
             live.pushEvent(queryEvent as string, currentInput as any, (reply: any) => {
+                if (requestId !== currentRequestId) return resolve();
+                
                 loading.value = false;
                 if (reply.ok) {
                     data.value = reply.data;
-                } else {
-                    error.value = reply.error;
                 }
                 resolve();
             });
@@ -61,6 +49,7 @@ export function useAlvaQuery<
     };
 
     const debouncedFetch = (currentInput: Input) => {
+        loading.value = true;
         if (debounceMs > 0) {
             clearTimeout(timeoutId);
             timeoutId = setTimeout(() => {
@@ -78,9 +67,9 @@ export function useAlvaQuery<
     return {
         data,
         loading,
-        error,
         refetch: async () => {
             const currentInput = typeof inputGetter === "function" ? (inputGetter as any)() : (inputGetter as any).value;
+            loading.value = true;
             await fetchQuery(currentInput);
         }
     };

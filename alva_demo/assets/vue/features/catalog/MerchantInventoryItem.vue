@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { useAlvaUpload } from "../../../js/alva/composables/useAlvaUpload";
-import { useAlva } from "../../../js/alva/composables/useAlva";
+import { useAlva } from "../../../js/alva";
 import type { Product } from "../../../js/alva/types";
 import Button from "../../shared/ui/button/Button.vue";
 
@@ -40,7 +39,7 @@ const adjustStock = async () => {
   }
 };
 
-const mediaUpload = useAlvaUpload("media", { maxFiles: 1 });
+const mediaUpload = alva.use_upload("media", { maxFiles: 1 });
 const isSavingUpload = ref(false);
 const uploadError = ref<string | null>(null);
 const isUploading = computed(() => isSavingUpload.value || mediaUpload.progress.value > 0);

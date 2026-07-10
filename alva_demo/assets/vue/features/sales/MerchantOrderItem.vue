@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useAlvaApi } from "../../../js/alva/composables/useAlvaApi";
+import { useAlva } from "../../../js/alva";
 import type { Order } from "../../../js/alva/types";
 import OrderStatusBadge from "../../shared/ui/badge/OrderStatusBadge.vue";
 import Button from "../../shared/ui/button/Button.vue";
@@ -9,7 +9,7 @@ const props = defineProps<{
   order: Order;
 }>();
 
-const api = useAlvaApi();
+const alva = useAlva();
 const pendingAction = ref<"begin_processing" | "fulfill" | null>(null);
 const operationError = ref<string | null>(null);
 
@@ -38,7 +38,7 @@ const runOrderAction = async () => {
     if (props.order.lifecycle_status === "new") {
       pendingAction.value = "begin_processing";
 
-      const result = await api.call["sales.begin_processing"]({ id: props.order.id });
+      const result = await alva.sales.begin_processing({ id: props.order.id });
 
       if (!result.ok) {
         operationError.value = result.error?.message || "Failed to begin processing order.";
@@ -46,7 +46,7 @@ const runOrderAction = async () => {
     } else if (props.order.lifecycle_status === "processing") {
       pendingAction.value = "fulfill";
 
-      const result = await api.call["sales.fulfill"]({ id: props.order.id });
+      const result = await alva.sales.fulfill({ id: props.order.id });
 
       if (!result.ok) {
         operationError.value = result.error?.message || "Failed to fulfill order.";

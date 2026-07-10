@@ -5,6 +5,7 @@ import { useLiveVue, useLiveEvent } from "live_vue";
 import { onUnmounted } from "vue";
 import { useAlvaForm, type AlvaFormOptions } from "./useAlvaForm";
 import { useAlvaQuery } from "./useAlvaQuery";
+import { useAlvaUpload } from "./useAlvaUpload";
 import type { AlvaEvents } from "../events";
 import type { AlvaSignals } from "../signals";
 
@@ -62,7 +63,7 @@ export function useAlva(config?: AlvaConfig) {
         },
         use_list_products_query: (
             inputGetter: () => AlvaEvents["catalog.list_products"]["input"],
-            options?: import("./useAlvaQuery").AlvaQueryOptions<AlvaEvents["catalog.list_products"]["input"]>
+            options?: import("./useAlvaQuery").AlvaQueryOptions
         ) => {
             return useAlvaQuery("catalog.list_products", inputGetter, options);
         }
@@ -108,7 +109,7 @@ export function useAlva(config?: AlvaConfig) {
         },
         use_list_messages_query: (
             inputGetter: () => AlvaEvents["demo_chat.list_messages"]["input"],
-            options?: import("./useAlvaQuery").AlvaQueryOptions<AlvaEvents["demo_chat.list_messages"]["input"]>
+            options?: import("./useAlvaQuery").AlvaQueryOptions
         ) => {
             return useAlvaQuery("demo_chat.list_messages", inputGetter, options);
         }
@@ -154,7 +155,7 @@ export function useAlva(config?: AlvaConfig) {
         },
         use_list_entries_query: (
             inputGetter: () => AlvaEvents["demo_feed.list_entries"]["input"],
-            options?: import("./useAlvaQuery").AlvaQueryOptions<AlvaEvents["demo_feed.list_entries"]["input"]>
+            options?: import("./useAlvaQuery").AlvaQueryOptions
         ) => {
             return useAlvaQuery("demo_feed.list_entries", inputGetter, options);
         }
@@ -268,7 +269,7 @@ export function useAlva(config?: AlvaConfig) {
         },
         use_list_orders_query: (
             inputGetter: () => AlvaEvents["sales.list_orders"]["input"],
-            options?: import("./useAlvaQuery").AlvaQueryOptions<AlvaEvents["sales.list_orders"]["input"]>
+            options?: import("./useAlvaQuery").AlvaQueryOptions
         ) => {
             return useAlvaQuery("sales.list_orders", inputGetter, options);
         }
@@ -314,7 +315,7 @@ export function useAlva(config?: AlvaConfig) {
         },
         use_get_conversation_query: (
             inputGetter: () => AlvaEvents["support.get_conversation"]["input"],
-            options?: import("./useAlvaQuery").AlvaQueryOptions<AlvaEvents["support.get_conversation"]["input"]>
+            options?: import("./useAlvaQuery").AlvaQueryOptions
         ) => {
             return useAlvaQuery("support.get_conversation", inputGetter, options);
         }
@@ -339,7 +340,7 @@ export function useAlva(config?: AlvaConfig) {
         },
         use_list_conversations_query: (
             inputGetter: () => AlvaEvents["support.list_conversations"]["input"],
-            options?: import("./useAlvaQuery").AlvaQueryOptions<AlvaEvents["support.list_conversations"]["input"]>
+            options?: import("./useAlvaQuery").AlvaQueryOptions
         ) => {
             return useAlvaQuery("support.list_conversations", inputGetter, options);
         }
@@ -364,7 +365,7 @@ export function useAlva(config?: AlvaConfig) {
         },
         use_list_messages_query: (
             inputGetter: () => AlvaEvents["support.list_messages"]["input"],
-            options?: import("./useAlvaQuery").AlvaQueryOptions<AlvaEvents["support.list_messages"]["input"]>
+            options?: import("./useAlvaQuery").AlvaQueryOptions
         ) => {
             return useAlvaQuery("support.list_messages", inputGetter, options);
         }
@@ -389,6 +390,9 @@ export function useAlva(config?: AlvaConfig) {
         }
 
     }
-
+,
+        use_upload: (name: string, options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload(name, options);
+        }
     };
 }

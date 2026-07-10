@@ -75,11 +75,12 @@ vi.mock("alva", async () => {
   uploadMock.files = ref([]);
 
   return {
-    useAlvaApi: () => ({
-      call: apiCall,
-      on: vi.fn()
+    useAlva: () => ({
+      catalog: { upload_media: apiCall },
+      sales: { begin_processing: apiCall, fulfill: apiCall },
+      support: { send_message: apiCall },
+      use_upload: () => uploadMock,
     }),
-    useAlvaUpload: () => uploadMock,
     useAlvaStream: (name: string, input: unknown) => {
       streamCalls.push({ name, input });
 

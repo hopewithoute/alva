@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { useAlvaApi } from "../../../js/alva/composables/useAlvaApi";
+import { useAlva } from "../../../js/alva";
 import type { Product, Order } from "../../../js/alva/types";
 import Button from "../../shared/ui/button/Button.vue";
 
@@ -9,7 +9,7 @@ const props = defineProps<{
   connectedCustomerName?: string | null;
 }>();
 
-const api = useAlvaApi();
+const alva = useAlva();
 
 const emit = defineEmits<{
   (e: "order-placed", order: Order): void;
@@ -29,7 +29,7 @@ const buyProduct = async () => {
   isOrdering.value = true;
 
   try {
-    const result = await api.call["sales.create_order"]({
+    const result = await alva.sales.create_order({
       customer_name: props.connectedCustomerName,
       product_id: props.product.id,
       quantity: 1,

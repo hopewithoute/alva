@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, reactive, watch, computed, nextTick } from "vue";
-import { useAlvaApi } from "../../../js/alva/composables/useAlvaApi";
+import { useAlva } from "../../../js/alva";
 import type { Conversation, SupportMessage } from "../../../js/alva/types";
 import type { ConversationFilters } from "../merchant/types";
 import Button from "../../shared/ui/button/Button.vue";
 import { useDebounce } from "../../utils/debounce";
 import { useRouteQueryPatch } from "../../shared/useRouteQueryPatch";
 
-const api = useAlvaApi();
+const alva = useAlva();
 
 const props = defineProps<{
   conversations?: Conversation[];
@@ -92,7 +92,7 @@ const sendReply = async () => {
   send_reply_error.value = null;
 
   try {
-    const result = await api.call["support.send_message"]({
+    const result = await alva.support.send_message({
       text: text,
       sender: "merchant",
       conversation_id: props.activeConversationId,
