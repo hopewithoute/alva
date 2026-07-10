@@ -1,6 +1,8 @@
 # Alva
 
-<img src="guides/alva.png" width="250" alt="Alva Logo">
+<p align="center">
+  <img src="guides/alva.png" width="250" alt="Alva Logo">
+</p>
 
 **Alva** (Ash Live Vue Adapter) is a fully typed, auto-generated TypeScript SDK for Vue 3 that seamlessly bridges your Vue frontend with your Elixir/Ash backend via Phoenix LiveView.
 
