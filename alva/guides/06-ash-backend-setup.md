@@ -14,16 +14,25 @@ defmodule MyApp.Catalog.Product do
     notifiers: [Ash.Notifier.PubSub], # Required for signals
     extensions: [Alva.Resource]
 
+  pub_sub do
+    module MyAppWeb.Endpoint
+    prefix "product"
+    
+    # 1. Publish occurrences when actions run
+    publish :update, ["updated"]
+  end
+
   alva do
-    # 1. Map Ash Actions to SDK Events
+    # 2. Map Ash Actions to SDK Events
     event(:catalog_list_products, name: "catalog.list_products", action: :list)
     event(:catalog_create_product, name: "catalog.create_product", action: :create)
     
-    # 2. Map PubSub Occurrences to SDK Signals
+    # 3. Map PubSub Occurrences to SDK Signals
     signal(:product_updated_signal, 
       name: "catalog.product_updated", 
       authorize_with: :read, 
-      on: [:update]
+      # The "on" array listens for occurrences published by the pub_sub block
+      on: ["updated"]
     )
   end
 
