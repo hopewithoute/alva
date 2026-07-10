@@ -542,9 +542,6 @@ defmodule Mix.Tasks.Alva.Codegen do
     // Do not edit manually.
 
     export { useAlva } from "./composables/useAlva";
-    export { useAlvaForm } from "./composables/useAlvaForm";
-    export { useAlvaQuery } from "./composables/useAlvaQuery";
-    export { useAlvaUpload } from "./composables/useAlvaUpload";
     export type { AlvaConfig, AlvaError } from "./composables/useAlva";
     export type { AlvaFormOptions } from "./composables/useAlvaForm";
     export type { AlvaQueryOptions, AlvaQueryReturn } from "./composables/useAlvaQuery";
