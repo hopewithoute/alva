@@ -1,8 +1,31 @@
 defmodule Alva.Error do
+  @moduledoc since: "0.1.0"
   @moduledoc """
-  Normalizes Ash errors into a standard format for LiveVue.
+  Normalizes Ash errors into a standard format consumed by the Vue frontend.
+
+  Error types produced by `format/2`:
+
+    * `"not_found"` - The requested resource was not found.
+    * `"validation"` - One or more fields failed validation. Includes a `fields` map
+      with field-name keys and string-array values.
+    * `"conflict"` - A global (non-field) conflict error with a `code` key.
+    * `"forbidden"` - The actor is not authorized for the action.
+    * `"unknown"` - An unhandled error. In dev/test, includes `details` with the
+      formatted stacktrace. In production, returns a generic message.
+
+  Configuration:
+
+    * `:alva, :expose_unknown_errors` - Set to `true` to expose error details in production.
+      Defaults to `true` in dev/test, `false` in prod.
   """
 
+  @doc """
+  Formats an Ash error into a standardized map for the frontend.
+
+  Accepts any Ash error struct and returns a map with `:type`, `:message`,
+  and optionally `:fields` or `:details`.
+  """
+  @doc since: "0.1.0"
   def format(error, stacktrace \\ nil)
 
   def format(%Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{} | _]}, _stacktrace),

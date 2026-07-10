@@ -1,20 +1,30 @@
 defmodule Alva.Serializer do
+  @moduledoc since: "0.1.0"
   @moduledoc """
   Translates Ash records into JSON-friendly payloads, extracting explicitly exposed metadata
   and stripping internal fields.
 
   ### Type Coercion
   During serialization, some Erlang/Elixir specific types are safely coerced for JSON:
-  * **Tuples** are converted to lists (e.g., `{:ok, val}` becomes `["ok", val]`).
-  * **Atoms** (other than `true`, `false`, and `nil`) are converted to strings.
+    * **Tuples** are converted to lists (e.g., `{:ok, val}` becomes `["ok", val]`).
+    * **Atoms** (other than `true`, `false`, and `nil`) are converted to strings.
+    * **Date/Time structs** (`DateTime`, `NaiveDateTime`, `Date`, `Time`) are ISO8601 formatted.
+    * **Ash not-loaded fields** and **forbidden fields** are omitted from the output.
+    * **`can_*` permission fields** are extracted and returned as metadata.
+
+  See `Alva.Registry.public_fields/1` for how public fields are determined.
   """
 
   @doc """
-  Serializes a record or list of records. 
+  Serializes a record or list of records.
 
-  Options:
-  - `:expose_metadata` (list of atoms) - Keys to extract from `__metadata__` and return alongside the payload.
+  Returns a tuple `{stripped_payload, exposed_metadata}`.
+
+  ## Options
+    * `:expose_metadata` (list of atoms) - Keys to extract from `__metadata__`
+      and return alongside the payload.
   """
+  @doc since: "0.1.0"
   def serialize(record, opts \\ [])
 
   def serialize(record, opts)
@@ -50,6 +60,10 @@ defmodule Alva.Serializer do
 
   defp extract_exposed_metadata(_, _), do: %{}
 
+  @doc """
+  Recursively strips Ash metadata and converts types to JSON-safe values.
+  """
+  @doc since: "0.1.0"
   def strip_metadata(%DateTime{} = datetime), do: DateTime.to_iso8601(datetime)
   def strip_metadata(%NaiveDateTime{} = datetime), do: NaiveDateTime.to_iso8601(datetime)
   def strip_metadata(%Date{} = date), do: Date.to_iso8601(date)

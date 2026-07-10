@@ -1,11 +1,13 @@
 defmodule Alva.Domain.Transformers.VerifyAndPersistEvents do
+  @moduledoc since: "0.1.0"
   @moduledoc """
-  A Spark DSL transformer for `Alva.Domain` (currently deprecated/unused in V2).
+  A Spark DSL transformer for `Alva.Domain`.
 
-  This module historically validated that the resources attached to an Ash domain 
-  properly implemented their Alva configurations. In the V2 architecture, this 
+  This module historically validated that the resources attached to an Ash domain
+  properly implemented their Alva configurations. In the V2 architecture, this
   resolution is handled dynamically by `Alva.Registry`.
   """
+  @moduledoc deprecated: "Use the dynamic runtime resolution in `Alva.Registry` instead."
 
   use Spark.Dsl.Transformer
 

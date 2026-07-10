@@ -1,11 +1,25 @@
 defmodule Alva.Resource.Event do
+  @moduledoc since: "0.1.0"
   @moduledoc """
   Represents a single `event` definition within an `Alva.Resource` block.
 
   This struct is the target of the Spark DSL for the `event` entity. It holds the parsed
-  configuration mapping an Ash action to a LiveVue event, including advanced options like 
+  configuration mapping an Ash action to a LiveVue event, including advanced options like
   `expose_metadata`, `lookup`, and `validate_only`.
   """
+  @typedoc """
+  A parsed event configuration mapping an Ash action to a frontend event.
+  """
+  @type t :: %__MODULE__{
+          key: atom(),
+          name: String.t(),
+          action: atom(),
+          lookup: atom() | nil,
+          expose_metadata: [atom()],
+          enable_filter: boolean(),
+          validate_only: boolean(),
+          __spark_metadata__: term()
+        }
   defstruct [
     :key,
     :name,
@@ -19,6 +33,7 @@ defmodule Alva.Resource.Event do
 end
 
 defmodule Alva.Resource.Signal do
+  @moduledoc since: "0.1.0"
   @moduledoc """
   Represents a single `signal` definition within an `Alva.Resource` block.
 
@@ -26,6 +41,17 @@ defmodule Alva.Resource.Signal do
   configuration linking a frontend PubSub subscription request to an underlying Ash PubSub
   occurrence, including authorization requirements via `authorize_with`.
   """
+  @typedoc """
+  A parsed signal configuration linking a PubSub occurrence to a frontend signal.
+  """
+  @type t :: %__MODULE__{
+          key: atom(),
+          name: String.t(),
+          authorize_with: atom(),
+          on: [atom() | String.t()],
+          expose_metadata: [atom()],
+          __spark_metadata__: term()
+        }
   defstruct [
     :key,
     :name,
@@ -37,6 +63,7 @@ defmodule Alva.Resource.Signal do
 end
 
 defmodule Alva.Resource do
+  @moduledoc since: "0.1.0"
   @moduledoc """
   Spark DSL Extension for LiveVue configuration in Ash Resources.
 

@@ -1,10 +1,22 @@
 defmodule Alva.Codegen.InputContract do
+  @moduledoc since: "0.1.0"
   @moduledoc """
-  Generates TypeScript input shapes for Ash Actions.
+  Generates TypeScript input type shapes for Ash actions.
+
+  Produces a TypeScript object type representing the input shape required
+  by a given event, including arguments, primary keys, attributes, filters,
+  and pagination options. Handles optional vs required fields based on
+  action configuration (`:accept`, `:require_attributes`, `:allow_nil_input`).
+
+  See `Alva.Codegen.DtoGenerator` for the output type generation.
   """
 
   alias Alva.Codegen.TypeMapper
 
+  @doc """
+  Generates the TypeScript input type for a given event's action.
+  """
+  @doc since: "0.1.0"
   def generate_input_shape(resource, event_def, action, indent \\ "") do
     if action.type in [:read, :create, :update, :action] do
       policy_fields = resource_policy_fields(resource)

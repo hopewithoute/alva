@@ -1,11 +1,46 @@
 defmodule Alva.Dispatcher do
+  @moduledoc since: "0.1.0"
   @moduledoc """
   Dynamically routes events from Vue to Ash actions based on Spark DSL.
+
+  This is the core routing engine of Alva. When the frontend calls an event
+  (e.g. `alva.catalog.list_products()`), the `dispatch/3` function resolves
+  the event name against the `Alva.Registry`, looks up the target `Ash.Resource`
+  action, executes it, and returns a normalized result.
+
+  ## Event Resolution
+
+  Events are resolved either through an `:otp_app` (host application) or a list of
+  `:domains`. The dispatcher also handles:
+
+    - File upload consumption via `Phoenix.LiveView` upload entries
+    - Actor and tenant injection from socket assigns
+    - Pagination options (`:page`, `:sort`)
+    - Dry-run validation for create/update events (`validate_only`)
+    - Telemetry instrumentation (`[:alva, :dispatch, :stop]`)
+
+  See `Alva.Resource` for how events are defined, and `Alva.LiveView` for how
+  dispatching is wired into the LiveView lifecycle.
   """
   require Logger
 
   @upload_temp_dir_name "alva_uploads"
 
+  @doc """
+  Routes a frontend event to the matching Ash action.
+
+  ## Options
+
+    * `:socket` - A `Phoenix.LiveView.Socket` for upload consumption and auth resolution.
+    * `:otp_app` - The host OTP app for registry lookup.
+    * `:domains` - A list of `Ash.Domain` modules (used when `:otp_app` is not provided).
+    * `:actor` - The actor for Ash authorization (auto-resolved from socket assigns).
+    * `:tenant` - The tenant for Ash multitenancy (auto-resolved from socket assigns).
+
+  Returns `%{ok: true, data: payload}` on success, or
+  `%{ok: false, error: error_map}` on failure.
+  """
+  @doc since: "0.1.0"
   def dispatch(event_name, params, opts \\ []) do
     start_time = System.monotonic_time()
 

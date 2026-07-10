@@ -1,10 +1,22 @@
 defmodule Alva.Codegen.DtoGenerator do
+  @moduledoc since: "0.1.0"
   @moduledoc """
-  Generates TypeScript interfaces for Ash resources.
+  Generates TypeScript interfaces for Ash resources and their filter types.
+
+  Produces the `types.ts` file that defines TypeScript interfaces for each
+  Ash resource, plus filter interfaces for resources with `enable_filter: true`.
+  Also provides `output_type/2` to determine the return type of an event.
+
+  See `Mix.Tasks.Alva.Codegen` for the full code generation pipeline.
   """
 
   alias Alva.Codegen.TypeMapper
 
+  @doc """
+  Generates the complete `types.ts` content including base filter types,
+  resource filter interfaces, and resource data interfaces.
+  """
+  @doc since: "0.1.0"
   def generate_types_ts(resources, events_map \\ nil) do
     interfaces =
       resources
@@ -87,6 +99,13 @@ defmodule Alva.Codegen.DtoGenerator do
     gather_related_resources(rest ++ related, MapSet.union(visited, MapSet.new(related)))
   end
 
+  @doc """
+  Determines the TypeScript output type for a given event.
+
+  Returns `"InterfaceName[]"` for list reads, or `"InterfaceName"` for
+  single-record reads, lookups, and mutations.
+  """
+  @doc since: "0.1.0"
   def output_type(resource, event_def) do
     action = Ash.Resource.Info.action(resource, event_def.action)
     interface = interface_name(resource)
@@ -98,6 +117,12 @@ defmodule Alva.Codegen.DtoGenerator do
     end
   end
 
+  @doc """
+  Derives the TypeScript interface name from an Ash resource module.
+
+  Uses the last segment of the module name (e.g. `MyApp.Catalog.Product` → `Product`).
+  """
+  @doc since: "0.1.0"
   def interface_name(resource) do
     resource |> Module.split() |> List.last()
   end

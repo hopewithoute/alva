@@ -1,8 +1,28 @@
 defmodule Alva.Codegen.TypeMapper do
+  @moduledoc since: "0.1.0"
   @moduledoc """
-  Maps Ash types to TypeScript types.
+  Maps Ash type specifications to TypeScript type annotations.
+
+  ## Type Mapping
+
+    * `:string`, `:uuid`, `:ci_string`, date/time types → `string`
+    * `:integer`, `:float`, `:decimal` → `number`
+    * `:boolean` → `boolean`
+    * `:map` → `Record<string, any>`
+    * `:file` → `File` (or `string[]` for arrays of files)
+    * `{:array, inner}` → `InnerType[]`
+    * Embedded resources → inline object type
+    * Enums → union of string literals
+    * Union types (`one_of`) → union of mapped types
+    * Unknown types → `any`
+
+  See `Alva.Codegen.InputContract` and `Alva.Codegen.DtoGenerator` for consumers.
   """
 
+  @doc """
+  Maps a single Ash type to its TypeScript equivalent.
+  """
+  @doc since: "0.1.0"
   def map_type(type, constraints \\ [])
 
   def map_type({:array, type}, constraints) do

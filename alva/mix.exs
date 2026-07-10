@@ -7,9 +7,13 @@ defmodule Alva.MixProject do
       version: "0.1.0",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
+      name: "Alva",
+      source_url: "https://github.com/hopewithoute/alva",
+      homepage_url: "https://hex.pm/packages/alva",
       deps: deps(),
       dialyzer: [plt_add_apps: [:mix]],
-      test_coverage: [tool: ExCoveralls]
+      test_coverage: [tool: ExCoveralls],
+      docs: &docs/0
     ]
   end
 
@@ -32,6 +36,39 @@ defmodule Alva.MixProject do
     ]
   end
 
+  defp docs do
+    [
+      main: "Alva",
+      extras: [
+        "README.md",
+        "guides/01-getting-started.md",
+        "guides/02-queries-and-actions.md",
+        "guides/03-forms-and-mutations.md",
+        "guides/04-uploads.md",
+        "guides/05-signals.md",
+        "guides/06-ash-backend-setup.md",
+        "guides/07-liveview-integration.md"
+      ],
+      extra_section: "GUIDES",
+      groups_for_modules: [
+        "Core",
+        ~r/^Alva\.(Resource|LiveView|Dispatcher|Serializer|Result|Error|Test)$/,
+        "Codegen",
+        ~r/^Alva\.Codegen\./,
+        "Introspection",
+        ~r/^Alva\.(Registry|Domain)(\.|$)/
+      ],
+      groups_for_extras: [
+        "Getting Started",
+        ~r/^guides\/01-/,
+        "Core Concepts",
+        ~r/^guides\/0[2-5]-/,
+        "Advanced",
+        ~r/^guides\/0[6-7]-/
+      ]
+    ]
+  end
+
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
@@ -43,7 +80,8 @@ defmodule Alva.MixProject do
       {:ex_slop, "~> 0.1", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:sourceror, "~> 1.7", only: [:dev, :test]},
-      {:excoveralls, "~> 0.18", only: :test}
+      {:excoveralls, "~> 0.18", only: :test},
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false}
     ]
   end
 end

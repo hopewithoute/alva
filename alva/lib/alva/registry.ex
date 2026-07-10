@@ -1,9 +1,32 @@
 defmodule Alva.Registry do
+  @moduledoc since: "0.1.0"
   @moduledoc """
   Host-app registry boundary for Alva runtime and code generation.
+
   Consolidates introspection across the App, Domain, and Resource levels.
+  Provides cached access to event and signal maps, file upload arguments,
+  and uniqueness verification across domains.
+
+  ## Registry Resolution
+
+  The registry is built from the host application's `Ash.Info.domains/1`.
+  It is cached via `:persistent_term` in production and rebuilt on every
+  call in dev/test for hot-reload support.
+
+  See `Alva.Domain` for how domains are configured, and `Alva.Resource`
+  for how events and signals are defined per resource.
   """
 
+  @typedoc """
+  The registry struct holding cached introspection data for a host application.
+  """
+  @type t :: %__MODULE__{
+          otp_app: atom() | nil,
+          domains: [atom()],
+          event_map: %{String.t() => {atom(), Alva.Resource.Event.t()}},
+          signal_map: %{String.t() => {atom(), Alva.Resource.Signal.t()}},
+          file_upload_arguments: [term()]
+        }
   defstruct otp_app: nil,
             domains: [],
             event_map: %{},
@@ -14,12 +37,8 @@ defmodule Alva.Registry do
 
   # --- INTERNAL SPARK ADAPTER ---
   defmodule SparkAdapter do
-    @moduledoc """
-    Internal state struct for `Alva.Registry`.
-
-    Holds the cached mappings of domains, event actions, and signals across all
-    resources registered with the host application's Ash domains.
-    """
+    @moduledoc since: "0.1.0"
+    @moduledoc false
     def get_persisted(module, key, default) do
       Spark.Dsl.Extension.get_persisted(module, key, default)
     end
@@ -33,6 +52,12 @@ defmodule Alva.Registry do
   # APP LEVEL INTROSPECTION
   # ==========================================
 
+  @doc """
+  Builds or retrieves the cached `Alva.Registry` struct for the given OTP app.
+  In dev/test the registry is rebuilt on every call; in production it is cached
+  via `:persistent_term`.
+  """
+  @doc since: "0.1.0"
   def registry(otp_app) when is_atom(otp_app) and not is_nil(otp_app) do
     if cache_registry?() do
       cache_key = {@registry_cache_key, otp_app}
@@ -51,10 +76,19 @@ defmodule Alva.Registry do
     end
   end
 
+  @doc """
+  Returns the full event name-to-`{resource, event}` map for the given OTP app.
+  """
+  @doc since: "0.1.0"
   def event_map(otp_app) when is_atom(otp_app) and not is_nil(otp_app) do
     registry(otp_app).event_map
   end
 
+  @doc """
+  Looks up a single event by its string name.
+  Returns `{:ok, resource, event}` or `:error`.
+  """
+  @doc since: "0.1.0"
   def fetch_event(otp_app, event_name)
       when is_atom(otp_app) and not is_nil(otp_app) and is_binary(event_name) do
     case Map.fetch(event_map(otp_app), event_name) do
@@ -63,10 +97,19 @@ defmodule Alva.Registry do
     end
   end
 
+  @doc """
+  Returns the full signal name-to-`{resource, signal}` map for the given OTP app.
+  """
+  @doc since: "0.1.0"
   def signal_map(otp_app) when is_atom(otp_app) and not is_nil(otp_app) do
     registry(otp_app).signal_map
   end
 
+  @doc """
+  Looks up a single signal by its string name.
+  Returns `{:ok, resource, signal}` or `:error`.
+  """
+  @doc since: "0.1.0"
   def fetch_signal(otp_app, signal_name)
       when is_atom(otp_app) and not is_nil(otp_app) and is_binary(signal_name) do
     case Map.fetch(signal_map(otp_app), signal_name) do
@@ -75,8 +118,13 @@ defmodule Alva.Registry do
     end
   end
 
+  @doc """
+  Resolves the OTP app name from a socket or endpoint module.
+  """
+  @doc since: "0.1.0"
   def otp_app(%{endpoint: endpoint}), do: otp_app(endpoint)
 
+  @doc since: "0.1.0"
   def otp_app(endpoint) when is_atom(endpoint) do
     cond do
       function_exported?(endpoint, :otp_app, 0) ->
@@ -95,6 +143,7 @@ defmodule Alva.Registry do
 
   def otp_app(_), do: nil
 
+  @doc since: "0.1.0"
   def verify_host_app_command_uniqueness!(current_domain, current_event_map) do
     verify_host_app_uniqueness!(
       current_domain,
@@ -104,6 +153,7 @@ defmodule Alva.Registry do
     )
   end
 
+  @doc since: "0.1.0"
   def verify_host_app_signal_uniqueness!(current_domain, current_signal_map) do
     verify_host_app_uniqueness!(
       current_domain,
@@ -264,14 +314,26 @@ defmodule Alva.Registry do
   # DOMAIN LEVEL INTROSPECTION
   # ==========================================
 
+  @doc """
+  Returns the event map persisted on the given domain module at compile time.
+  """
+  @doc since: "0.1.0"
   def alva_event_map(domain) do
     SparkAdapter.get_persisted(domain, :alva_event_map, %{})
   end
 
+  @doc """
+  Returns the signal map persisted on the given domain module at compile time.
+  """
+  @doc since: "0.1.0"
   def alva_signal_map(domain) do
     SparkAdapter.get_persisted(domain, :alva_signal_map, %{})
   end
 
+  @doc """
+  Collects all file upload arguments from events across the given domain.
+  """
+  @doc since: "0.1.0"
   def file_upload_arguments(domain) do
     domain
     |> alva_event_map()
@@ -297,10 +359,18 @@ defmodule Alva.Registry do
   # RESOURCE LEVEL INTROSPECTION
   # ==========================================
 
+  @doc """
+  Returns all `Alva.Resource.Event` entities defined on the given resource.
+  """
+  @doc since: "0.1.0"
   def events(resource) do
     get_live_vue_entities(resource, Alva.Resource.Event)
   end
 
+  @doc """
+  Returns all `Alva.Resource.Signal` entities defined on the given resource.
+  """
+  @doc since: "0.1.0"
   def signals(resource) do
     get_live_vue_entities(resource, Alva.Resource.Signal)
   end
@@ -310,6 +380,11 @@ defmodule Alva.Registry do
     |> Enum.filter(&is_struct(&1, module))
   end
 
+  @doc """
+  Returns all public field names (attributes, calculations, relationships, aggregates)
+  for the given Ash resource.
+  """
+  @doc since: "0.1.0"
   def public_fields(resource) do
     [
       Ash.Resource.Info.public_attributes(resource),

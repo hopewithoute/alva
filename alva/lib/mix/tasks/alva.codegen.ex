@@ -1,15 +1,38 @@
 defmodule Mix.Tasks.Alva.Codegen do
   @shortdoc "Generates TypeScript bindings for LiveVue events"
+  @moduledoc since: "0.1.0"
   @moduledoc """
   Generates TypeScript bindings for LiveVue events defined in Ash resources.
 
   Reads the host application's configured `ash_domains`.
   Outputs generated files to `:alva, :output_dir` (defaults to `assets/js/alva`).
+
+  ## Generated Files
+
+    * `types.ts` - TypeScript interfaces for all Ash resources and filter types
+    * `events.ts` - Type-safe event map with input/output types
+    * `signals.ts` - Type-safe signal map with payload types
+    * `composables/useAlva.ts` - Main Vue composable with domain-scoped methods
+    * `composables/useAlvaForm.ts` - Form handling composable
+    * `composables/useAlvaQuery.ts` - Reactive query composable with debouncing
+    * `composables/useAlvaUpload.ts` - File upload composable
+    * `index.ts` - Public exports
+
+  ## Usage
+
+      mix alva.codegen
+
+  See `Alva.Codegen.DtoGenerator`, `Alva.Codegen.InputContract`, and
+  `Alva.Codegen.TypeMapper` for the individual code generation modules.
   """
 
   use Mix.Task
 
   @impl true
+  @doc """
+  Executes the code generation pipeline.
+  """
+  @doc since: "0.1.0"
   def run(_args) do
     Mix.Task.run("compile")
 

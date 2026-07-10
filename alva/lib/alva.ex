@@ -1,7 +1,8 @@
 defmodule Alva do
+  @moduledoc since: "0.1.0"
   @moduledoc """
   Alva provides a fully typed, auto-generated TypeScript SDK for Vue 3 that seamlessly 
-  bridges your Vue frontend with your Elixir/Ash backend via Phoenix LiveView.
+  bridges your Vue frontend with your Elixir/Ash backend via `Phoenix.LiveView`.
 
   ## Overview
 
@@ -16,6 +17,6 @@ defmodule Alva do
   - `Alva.LiveView`: A macro to inject auto-syncing data streams and upload handlers into Phoenix LiveViews.
   - `mix alva.codegen`: The mix task that reads your backend configuration and outputs a strict TypeScript API.
 
-  For detailed guides, please see the module documentation for `Alva.Resource` and `Alva.LiveView`.
+  For detailed walkthroughs, see the module documentation for `Alva.Resource` and `Alva.LiveView`, or the [Getting Started guide](guides/01-getting-started.md).
   """
 end

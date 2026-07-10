@@ -1,4 +1,5 @@
 defmodule Alva.LiveView do
+  @moduledoc since: "0.1.0"
   @moduledoc """
   A macro to inject Alva-specific functionality into Phoenix LiveViews.
 
@@ -140,6 +141,13 @@ defmodule Alva.LiveView do
     end)
   end
 
+  @doc """
+  Re-fetches stream data using the current route params.
+
+  Call this in `handle_params/3` whenever route params change to refresh
+  stream contents. Each stream's `scope` is re-resolved against the new params.
+  """
+  @doc since: "0.1.0"
   def reconfigure_streams(socket, params \\ %{}) do
     state = alva_state(socket)
 

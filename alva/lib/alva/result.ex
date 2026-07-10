@@ -1,7 +1,19 @@
 defmodule Alva.Result do
+  @moduledoc since: "0.1.0"
   @moduledoc """
   Applies LiveView-specific side effects to the socket based on the result
-  of an Alva.Dispatcher.dispatch/3 call and a requested strategy.
+  of an `Alva.Dispatcher.dispatch/3` call and a requested strategy.
+
+  ## Supported Strategies
+
+    * `{:stream_insert, key}` - Inserts data into a `Phoenix.LiveView` stream.
+    * `{:stream_delete, key}` - Deletes data from a `Phoenix.LiveView` stream.
+    * `{:assign, key}` - Assigns data to the socket.
+    * `{:push_event, event_name}` - Pushes a `Phoenix.LiveView` event to the client.
+    * `{:navigate, to}` - Navigates to a new LiveView path.
+    * `{:patch, to}` - Patches the current LiveView path.
+    * `{:custom, module}` - Delegates to a custom module's `handle_result/2`.
+    * `{:reply, :data}` - Default. Returns data without side effects.
   """
 
   @doc """

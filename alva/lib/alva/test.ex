@@ -1,12 +1,17 @@
 defmodule Alva.Test do
+  @moduledoc since: "0.1.0"
   @moduledoc """
   Provides test helpers for verifying Alva dispatch events.
+
+  Use these macros in your Phoenix `ConnCase` or `LiveViewCase` tests to
+  assert that dispatches succeed or return forbidden errors.
   """
 
   @doc """
   Executes an event dispatch and asserts that the result is successful.
   Returns the successful result map.
   """
+  @doc since: "0.1.0"
   defmacro assert_dispatch_ok(socket, event, params \\ %{}, opts \\ []) do
     quote bind_quoted: [socket: socket, event: event, params: params, opts: opts] do
       result = Alva.Test.do_dispatch(socket, event, params, opts)
@@ -19,6 +24,7 @@ defmodule Alva.Test do
   Executes an event dispatch and asserts that the result is a forbidden error.
   Returns the error result map.
   """
+  @doc since: "0.1.0"
   defmacro assert_dispatch_forbidden(socket, event, params \\ %{}, opts \\ []) do
     quote bind_quoted: [socket: socket, event: event, params: params, opts: opts] do
       result = Alva.Test.do_dispatch(socket, event, params, opts)
