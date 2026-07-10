@@ -4,6 +4,8 @@ Alva provides a fully typed, auto-generated TypeScript SDK for Vue 3 that seamle
 
 ## Installation
 
+> **Prerequisite:** Alva relies on the [LiveVue](https://hexdocs.pm/live_vue) package to function. You must have `live_vue` installed and configured in your Phoenix project. While Alva does not list `live_vue` as a hard Elixir dependency, the generated TypeScript SDK heavily depends on `live_vue` hooks on the frontend.
+
 Add `alva` to your `mix.exs` dependencies:
 
 ```elixir
