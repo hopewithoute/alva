@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { ash } from "../../../js/alva/composables/ash";
-import { useAlvaApi } from "../../../js/alva/composables/useAlvaApi";
+import { useAlva } from "../../../js/alva/composables/useAlva";
 import type { AlvaSignals } from "../../../js/alva/signals";
 
 type NotificationSignal = AlvaSignals["demo_notifications.sent"]["payload"];
@@ -12,9 +11,9 @@ const sending = ref(false);
 const error = ref<string | null>(null);
 const notices = ref<NotificationSignal[]>([]);
 
-const api = useAlvaApi();
+const alva = useAlva();
 
-ash.on("demo_notifications.sent", {}, (payload) => {
+alva.demo_notifications.on_sent({}, (payload) => {
   notices.value.unshift(payload);
 });
 
@@ -25,7 +24,7 @@ const sendNotification = async () => {
   sending.value = true;
   error.value = null;
 
-  const result = await api.call["demo_notifications.send"]({
+  const result = await alva.demo_notifications.send({
     title: trimmedTitle,
     severity: severity.value,
   });

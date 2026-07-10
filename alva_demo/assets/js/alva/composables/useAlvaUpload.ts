@@ -62,7 +62,7 @@ export function useAlvaUpload(name: string, options?: AlvaUploadOptions) {
         return missingUpload(name);
     }
 
-    const upload = useLiveUpload(getUploadConfig, {
+    const upload = useLiveUpload(getUploadConfig as any, {
         changeEvent: ALVA_UPLOAD_CHANGE_EVENT,
         submitEvent: ALVA_UPLOAD_SUBMIT_EVENT,
         ...(options || {}),

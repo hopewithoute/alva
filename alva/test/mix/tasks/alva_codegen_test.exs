@@ -86,46 +86,58 @@ defmodule Mix.Tasks.Alva.CodegenTest do
 
     events_path = Path.join(tmp_dir, "events.ts")
     composables_dir = Path.join(tmp_dir, "composables")
-    use_alva_api_path = Path.join(composables_dir, "useAlvaApi.ts")
-    use_alva_form_path = Path.join(composables_dir, "useAlvaForm.ts")
-    use_alva_upload_path = Path.join(composables_dir, "useAlvaUpload.ts")
     index_path = Path.join(tmp_dir, "index.ts")
     types_path = Path.join(tmp_dir, "types.ts")
     signals_path = Path.join(tmp_dir, "signals.ts")
 
+    use_alva_path = Path.join([composables_dir, "useAlva.ts"])
+    use_alva_form_path = Path.join([composables_dir, "useAlvaForm.ts"])
+    use_alva_upload_path = Path.join([composables_dir, "useAlvaUpload.ts"])
+    ash_path = Path.join([composables_dir, "ash.ts"])
+
     assert File.exists?(events_path)
-    assert File.exists?(use_alva_api_path)
+    assert File.exists?(use_alva_path)
     assert File.exists?(use_alva_form_path)
     assert File.exists?(use_alva_upload_path)
+    assert File.exists?(ash_path)
     assert File.exists?(index_path)
     assert File.exists?(types_path)
     assert File.exists?(signals_path)
 
     events_content = File.read!(events_path)
-    # Verify the structure rather than exact string formatting
-    assert String.contains?(events_content, "export type AlvaEvents =")
-    assert String.contains?(events_content, "test.create")
-    assert String.contains?(events_content, "AlvaResult<Types.Resource>")
+    use_alva_content = File.read!(use_alva_path)
+    index_content = File.read!(index_path)
+
+    assert events_content =~ "export type AlvaEvents ="
+    assert use_alva_content =~ "export function useAlva("
+    assert use_alva_content =~ "create:"
+    assert use_alva_content =~ "test_signal:"
+    assert index_content =~ "export { useAlva } from \"./composables/useAlva\""
     # Verify input shape generation is hooked up (the Resource actions have no arguments in test)
     assert String.contains?(events_content, "input:")
     assert String.contains?(events_content, ~s(media: string;))
     refute String.contains?(events_content, ~s(media: File;))
+    assert String.contains?(events_content, "AlvaResult<Types.Resource>")
 
     types_content = File.read!(types_path)
     assert String.contains?(types_content, "export type AlvaResult")
     assert String.contains?(types_content, "export interface Resource")
 
-    use_alva_api_content = File.read!(use_alva_api_path)
-    assert String.contains?(use_alva_api_content, "import { useLiveVue } from \"live_vue\"")
-    assert String.contains?(use_alva_api_content, "import type { AlvaEvents } from \"../events\"")
-    assert String.contains?(use_alva_api_content, ~s("test.create"))
-    assert String.contains?(use_alva_api_content, "live.pushEvent")
+    assert String.contains?(
+             use_alva_content,
+             "import { useLiveVue, useLiveEvent } from \"live_vue\""
+           )
+
+    assert String.contains?(use_alva_content, "import type { AlvaEvents } from \"../events\"")
+    assert String.contains?(use_alva_content, "import type { AlvaSignals } from \"../signals\"")
+    assert String.contains?(use_alva_content, "export function useAlva(")
+    assert String.contains?(use_alva_content, "live.pushEvent")
 
     index_content = File.read!(index_path)
 
     assert String.contains?(
              index_content,
-             "export { useAlvaApi } from \"./composables/useAlvaApi\""
+             "export { useAlva } from \"./composables/useAlva\""
            )
 
     assert String.contains?(index_content, "export type { AlvaEvents } from \"./events\"")

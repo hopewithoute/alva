@@ -68,11 +68,11 @@ export function useAlvaForm<
             if (rollbackFn) rollbackFn();
 
             if (result?.error?.fields) {
-                clearFormErrors(pseudoForm.errors);
+                clearFormErrors(pseudoForm.errors as Record<string, string[]>);
                 Object.assign(pseudoForm.errors, result.error.fields);
             }
         } else {
-            clearFormErrors(pseudoForm.errors);
+            clearFormErrors(pseudoForm.errors as Record<string, string[]>);
         }
 
         return result;

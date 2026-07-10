@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useAlvaApi } from "../../../js/alva/composables/useAlvaApi";
+import { useAlva } from "../../../js/alva/composables/useAlva";
 
-const api = useAlvaApi();
+const alva = useAlva();
 
 type ChatMessage = {
   id: string;
@@ -32,7 +32,7 @@ const sendMessage = async () => {
   sending.value = true;
   error.value = null;
 
-  const result = await api.call["demo_chat.send_message"]({
+  const result = await alva.demo_chat.send_message({
     author: trimmedAuthor,
     text: trimmedText,
   });
