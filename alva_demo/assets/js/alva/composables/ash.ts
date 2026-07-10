@@ -8,7 +8,7 @@ import type { AlvaSignals } from "../signals";
 export const ash = {
     on: <K extends keyof AlvaSignals>(
         name: K,
-        input: Record<string, never>,
+        input: AlvaSignals[K] extends { input: infer I } ? I : Record<string, never>,
         callback: (payload: AlvaSignals[K]["payload"]) => void
     ) => {
         const live = useLiveVue();

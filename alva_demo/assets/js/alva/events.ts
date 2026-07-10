@@ -17,6 +17,8 @@ export type AlvaEvents = {
     input: {
               query?: string;
               max_stock?: number;
+              page?: Types.PaginationInput;
+              sort?: string | string[];
             };
     output: AlvaResult<Types.Product[]>;
   };
@@ -30,7 +32,10 @@ export type AlvaEvents = {
   };
 
   "demo_chat.list_messages": {
-    input: Record<string, never>;
+    input: {
+              page?: Types.PaginationInput;
+              sort?: string | string[];
+            };
     output: AlvaResult<Types.ChatMessage[]>;
   };
 
@@ -45,6 +50,8 @@ export type AlvaEvents = {
   "demo_feed.list_entries": {
     input: {
               page_limit?: number;
+              page?: Types.PaginationInput;
+              sort?: string | string[];
             };
     output: AlvaResult<Types.FeedEntry[]>;
   };
@@ -86,6 +93,8 @@ export type AlvaEvents = {
               customer_query?: string;
               require_customer?: boolean;
               product_query?: string;
+              page?: Types.PaginationInput;
+              sort?: string | string[];
             };
     output: AlvaResult<Types.Order[]>;
   };
@@ -100,6 +109,8 @@ export type AlvaEvents = {
   "support.get_conversation": {
     input: {
               customer_name: string;
+              page?: Types.PaginationInput;
+              sort?: string | string[];
             };
     output: AlvaResult<Types.Conversation>;
   };
@@ -108,6 +119,8 @@ export type AlvaEvents = {
     input: {
               customer_query?: string;
               needs_merchant_reply?: boolean;
+              page?: Types.PaginationInput;
+              sort?: string | string[];
             };
     output: AlvaResult<Types.Conversation[]>;
   };
@@ -115,6 +128,8 @@ export type AlvaEvents = {
   "support.list_messages": {
     input: {
               conversation_id?: string;
+              page?: Types.PaginationInput;
+              sort?: string | string[];
             };
     output: AlvaResult<Types.SupportMessage[]>;
   };

@@ -5,6 +5,14 @@ export type AlvaResult<T> =
   | { ok: true; data: T; meta?: Record<string, any> }
   | { ok: false; error: any; meta?: Record<string, any> };
 
+export interface PaginationInput {
+  limit?: number;
+  offset?: number;
+  after?: string;
+  before?: string;
+  count?: boolean;
+}
+
 export interface BaseFieldFilter<T> {
   eq?: T | null;
   not_eq?: T | null;
