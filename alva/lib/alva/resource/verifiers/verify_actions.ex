@@ -1,5 +1,12 @@
 defmodule Alva.Resource.Verifiers.VerifyActions do
-  @moduledoc false
+  @moduledoc """
+  A Spark DSL verifier for `Alva.Resource`.
+
+  This verifier ensures that all events declared in the `alva do ... end` block point to
+  valid, existing Ash actions. It specifically checks that:
+  - The specified action exists.
+  - The specified action is configured as `public?(true)`.
+  """
 
   use Spark.Dsl.Verifier
 

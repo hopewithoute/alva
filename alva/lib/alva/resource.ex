@@ -1,5 +1,11 @@
 defmodule Alva.Resource.Event do
-  @moduledoc false
+  @moduledoc """
+  Represents a single `event` definition within an `Alva.Resource` block.
+
+  This struct is the target of the Spark DSL for the `event` entity. It holds the parsed
+  configuration mapping an Ash action to a LiveVue event, including advanced options like 
+  `expose_metadata`, `lookup`, and `validate_only`.
+  """
   defstruct [
     :key,
     :name,
@@ -13,7 +19,13 @@ defmodule Alva.Resource.Event do
 end
 
 defmodule Alva.Resource.Signal do
-  @moduledoc false
+  @moduledoc """
+  Represents a single `signal` definition within an `Alva.Resource` block.
+
+  This struct is the target of the Spark DSL for the `signal` entity. It holds the parsed
+  configuration linking a frontend PubSub subscription request to an underlying Ash PubSub
+  occurrence, including authorization requirements via `authorize_with`.
+  """
   defstruct [
     :key,
     :name,

@@ -14,7 +14,12 @@ defmodule Alva.Registry do
 
   # --- INTERNAL SPARK ADAPTER ---
   defmodule SparkAdapter do
-    @moduledoc false
+    @moduledoc """
+    Internal state struct for `Alva.Registry`.
+
+    Holds the cached mappings of domains, event actions, and signals across all
+    resources registered with the host application's Ash domains.
+    """
     def get_persisted(module, key, default) do
       Spark.Dsl.Extension.get_persisted(module, key, default)
     end
