@@ -1,6 +1,6 @@
 # Alva
 
-![Alva Logo](guides/alva.png)
+<img src="guides/alva.png" width="250" alt="Alva Logo">
 
 A fully typed, auto-generated TypeScript SDK for Vue 3 that seamlessly bridges your Vue frontend with your Elixir/Ash backend via Phoenix LiveView.
 
