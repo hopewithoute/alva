@@ -13,8 +13,8 @@ export type AlvaFormOptions<FormValues, EventKeys> = {
     onOptimisticSubmit?: (formData: FormValues) => (() => void) | void;
 };
 
-type AlvaFormReturn<K extends keyof AlvaEvents, FormValues extends object> =
-    UseLiveFormReturn<FormValues> & {
+export type AlvaFormReturn<K extends keyof AlvaEvents, FormValues extends object> =
+    Omit<UseLiveFormReturn<FormValues>, "submit"> & {
         submit: () => Promise<AlvaEvents[K]["output"]>;
     };
 
@@ -68,11 +68,11 @@ export function useAlvaForm<
             if (rollbackFn) rollbackFn();
 
             if (result?.error?.fields) {
-                clearFormErrors(pseudoForm.errors as Record<string, string[]>);
+                clearFormErrors(pseudoForm.errors as any);
                 Object.assign(pseudoForm.errors, result.error.fields);
             }
         } else {
-            clearFormErrors(pseudoForm.errors as Record<string, string[]>);
+            clearFormErrors(pseudoForm.errors as any);
         }
 
         return result;

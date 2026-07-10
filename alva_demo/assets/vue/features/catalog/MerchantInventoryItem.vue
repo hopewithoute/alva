@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { useAlvaUpload } from "../../../js/alva/composables/useAlvaUpload";
-import { useAlvaApi } from "../../../js/alva/composables/useAlvaApi";
+import { useAlva } from "../../../js/alva/composables/useAlva";
 import type { Product } from "../../../js/alva/types";
 import Button from "../../shared/ui/button/Button.vue";
 
@@ -9,22 +9,26 @@ const props = defineProps<{
   product: Product;
 }>();
 
-const api = useAlvaApi();
-const stockInput = ref(props.product.stock);
+const alva = useAlva();
+
+const stockForm = alva.catalog.use_adjust_stock_form({
+  initialValues: {
+    id: props.product.id,
+    stock: props.product.stock,
+  }
+});
+
 const isAdjusting = ref(false);
 const adjustmentError = ref<string | null>(null);
 
 const adjustStock = async () => {
-  if (stockInput.value < 0 || isAdjusting.value) return;
+  if ((stockForm.field('stock').value.value ?? 0) < 0 || isAdjusting.value) return;
 
   isAdjusting.value = true;
   adjustmentError.value = null;
 
   try {
-    const result = await api.call["catalog.adjust_stock"]({
-      id: props.product.id,
-      stock: stockInput.value
-    });
+    const result = await stockForm.submit();
 
     if (!result.ok) {
       adjustmentError.value = result.error?.message || "Failed to update stock.";
@@ -45,10 +49,10 @@ const triggerMediaUpload = async () => {
   if (isUploading.value) return;
   uploadError.value = null;
 
-  const upload_request = mediaUpload.dispatch(async ({ primaryReference }) => {
+  const upload_request = mediaUpload.dispatch(async ({ primaryReference }: { primaryReference: string }) => {
     isSavingUpload.value = true;
 
-    const result = await api.call["catalog.upload_media"]({
+    const result = await alva.catalog.upload_media({
       id: props.product.id,
       media: primaryReference,
     });
@@ -104,10 +108,12 @@ const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
     </div>
 
     <div class="flex flex-wrap items-center gap-3">
-      <input type="number" min="0" class="w-24 rounded-md border border-zinc-300 px-3 py-1.5 text-sm" v-model="stockInput" />
-      <Button size="sm" variant="secondary" class="min-w-[104px]" @click="adjustStock" :disabled="isAdjusting">
-        {{ isAdjusting ? "Saving..." : "Update Stock" }}
-      </Button>
+      <form @submit.prevent="adjustStock" class="flex items-center gap-2">
+        <input type="number" min="0" class="w-24 rounded-md border border-zinc-300 px-3 py-1.5 text-sm" v-model="stockForm.field('stock').value.value" />
+        <Button type="submit" size="sm" variant="secondary" class="min-w-[104px]" :disabled="isAdjusting">
+          {{ isAdjusting ? "Saving..." : "Update Stock" }}
+        </Button>
+      </form>
 
       <div class="flex w-28 flex-col gap-1">
         <Button :data-testid="`merchant-upload-media-${product.id}`" size="sm" variant="secondary" class="min-w-[112px]" @click="triggerMediaUpload" :disabled="isUploading">

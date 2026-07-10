@@ -153,6 +153,11 @@ defmodule Mix.Tasks.Alva.Codegen do
                                 resolve(reply);
                             });
                         });
+                    },
+                    use_#{action_name}_form: (
+                        options: Extract<AlvaEvents["#{event_name}"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["#{event_name}"]["input"], object>, keyof AlvaEvents>
+                    ) => {
+                        return useAlvaForm("#{event_name}", options);
                     }
             """
           end)
@@ -197,6 +202,7 @@ defmodule Mix.Tasks.Alva.Codegen do
 
     import { useLiveVue, useLiveEvent } from "live_vue";
     import { onUnmounted } from "vue";
+    import { useAlvaForm, type AlvaFormOptions } from "./useAlvaForm";
     import type { AlvaEvents } from "../events";
     import type { AlvaSignals } from "../signals";
 
@@ -241,8 +247,8 @@ defmodule Mix.Tasks.Alva.Codegen do
         onOptimisticSubmit?: (formData: FormValues) => (() => void) | void;
     };
 
-    type AlvaFormReturn<K extends keyof AlvaEvents, FormValues extends object> =
-        UseLiveFormReturn<FormValues> & {
+    export type AlvaFormReturn<K extends keyof AlvaEvents, FormValues extends object> =
+        Omit<UseLiveFormReturn<FormValues>, "submit"> & {
             submit: () => Promise<AlvaEvents[K]["output"]>;
         };
 
@@ -296,11 +302,11 @@ defmodule Mix.Tasks.Alva.Codegen do
                 if (rollbackFn) rollbackFn();
 
                 if (result?.error?.fields) {
-                    clearFormErrors(pseudoForm.errors);
+                    clearFormErrors(pseudoForm.errors as any);
                     Object.assign(pseudoForm.errors, result.error.fields);
                 }
             } else {
-                clearFormErrors(pseudoForm.errors);
+                clearFormErrors(pseudoForm.errors as any);
             }
 
             return result;
@@ -382,7 +388,7 @@ defmodule Mix.Tasks.Alva.Codegen do
             return missingUpload(name);
         }
 
-        const upload = useLiveUpload(getUploadConfig, {
+        const upload = useLiveUpload(getUploadConfig as any, {
             changeEvent: ALVA_UPLOAD_CHANGE_EVENT,
             submitEvent: ALVA_UPLOAD_SUBMIT_EVENT,
             ...(options || {}),

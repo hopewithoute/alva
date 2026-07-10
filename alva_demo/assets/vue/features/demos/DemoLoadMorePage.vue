@@ -18,7 +18,7 @@ const entries = computed(() => props.feed_entries ?? []);
 const nextLimit = computed(() => entries.value.length + 5);
 const hasMore = computed(() => entries.value.length < 12);
 
-const { patchQuery, isPatching } = useRouteQueryPatch();
+const { patchQuery } = useRouteQueryPatch();
 
 const handleLoadMore = () => {
   patchQuery({ limit: String(nextLimit.value) });
@@ -48,10 +48,9 @@ const handleLoadMore = () => {
         <button
           v-if="hasMore"
           @click="handleLoadMore"
-          :disabled="isPatching"
-          class="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50 disabled:opacity-50"
+          class="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
         >
-          {{ isPatching ? 'Loading...' : 'Load 5 More' }}
+          Load 5 More
         </button>
         <span
           v-else

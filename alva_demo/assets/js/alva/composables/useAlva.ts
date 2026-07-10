@@ -3,6 +3,7 @@
 
 import { useLiveVue, useLiveEvent } from "live_vue";
 import { onUnmounted } from "vue";
+import { useAlvaForm, type AlvaFormOptions } from "./useAlvaForm";
 import type { AlvaEvents } from "../events";
 import type { AlvaSignals } from "../signals";
 
@@ -34,6 +35,11 @@ export function useAlva(config?: AlvaConfig) {
                     resolve(reply);
                 });
             });
+        },
+        use_adjust_stock_form: (
+            options: Extract<AlvaEvents["catalog.adjust_stock"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["catalog.adjust_stock"]["input"], object>, keyof AlvaEvents>
+        ) => {
+            return useAlvaForm("catalog.adjust_stock", options);
         }
 ,
         list_products: (payload: AlvaEvents["catalog.list_products"]["input"]): Promise<AlvaEvents["catalog.list_products"]["output"]> => {
@@ -47,6 +53,11 @@ export function useAlva(config?: AlvaConfig) {
                     resolve(reply);
                 });
             });
+        },
+        use_list_products_form: (
+            options: Extract<AlvaEvents["catalog.list_products"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["catalog.list_products"]["input"], object>, keyof AlvaEvents>
+        ) => {
+            return useAlvaForm("catalog.list_products", options);
         }
 ,
         upload_media: (payload: AlvaEvents["catalog.upload_media"]["input"]): Promise<AlvaEvents["catalog.upload_media"]["output"]> => {
@@ -60,6 +71,11 @@ export function useAlva(config?: AlvaConfig) {
                     resolve(reply);
                 });
             });
+        },
+        use_upload_media_form: (
+            options: Extract<AlvaEvents["catalog.upload_media"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["catalog.upload_media"]["input"], object>, keyof AlvaEvents>
+        ) => {
+            return useAlvaForm("catalog.upload_media", options);
         }
 
     }
@@ -76,6 +92,11 @@ export function useAlva(config?: AlvaConfig) {
                     resolve(reply);
                 });
             });
+        },
+        use_list_messages_form: (
+            options: Extract<AlvaEvents["demo_chat.list_messages"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["demo_chat.list_messages"]["input"], object>, keyof AlvaEvents>
+        ) => {
+            return useAlvaForm("demo_chat.list_messages", options);
         }
 ,
         send_message: (payload: AlvaEvents["demo_chat.send_message"]["input"]): Promise<AlvaEvents["demo_chat.send_message"]["output"]> => {
@@ -89,6 +110,11 @@ export function useAlva(config?: AlvaConfig) {
                     resolve(reply);
                 });
             });
+        },
+        use_send_message_form: (
+            options: Extract<AlvaEvents["demo_chat.send_message"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["demo_chat.send_message"]["input"], object>, keyof AlvaEvents>
+        ) => {
+            return useAlvaForm("demo_chat.send_message", options);
         }
 
     }
@@ -105,6 +131,11 @@ export function useAlva(config?: AlvaConfig) {
                     resolve(reply);
                 });
             });
+        },
+        use_list_entries_form: (
+            options: Extract<AlvaEvents["demo_feed.list_entries"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["demo_feed.list_entries"]["input"], object>, keyof AlvaEvents>
+        ) => {
+            return useAlvaForm("demo_feed.list_entries", options);
         }
 
     }
@@ -121,6 +152,11 @@ export function useAlva(config?: AlvaConfig) {
                     resolve(reply);
                 });
             });
+        },
+        use_send_form: (
+            options: Extract<AlvaEvents["demo_notifications.send"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["demo_notifications.send"]["input"], object>, keyof AlvaEvents>
+        ) => {
+            return useAlvaForm("demo_notifications.send", options);
         }
 ,
         on_sent: (
@@ -148,6 +184,11 @@ export function useAlva(config?: AlvaConfig) {
                     resolve(reply);
                 });
             });
+        },
+        use_begin_processing_form: (
+            options: Extract<AlvaEvents["sales.begin_processing"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["sales.begin_processing"]["input"], object>, keyof AlvaEvents>
+        ) => {
+            return useAlvaForm("sales.begin_processing", options);
         }
 ,
         create_order: (payload: AlvaEvents["sales.create_order"]["input"]): Promise<AlvaEvents["sales.create_order"]["output"]> => {
@@ -161,6 +202,11 @@ export function useAlva(config?: AlvaConfig) {
                     resolve(reply);
                 });
             });
+        },
+        use_create_order_form: (
+            options: Extract<AlvaEvents["sales.create_order"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["sales.create_order"]["input"], object>, keyof AlvaEvents>
+        ) => {
+            return useAlvaForm("sales.create_order", options);
         }
 ,
         fulfill: (payload: AlvaEvents["sales.fulfill"]["input"]): Promise<AlvaEvents["sales.fulfill"]["output"]> => {
@@ -174,6 +220,11 @@ export function useAlva(config?: AlvaConfig) {
                     resolve(reply);
                 });
             });
+        },
+        use_fulfill_form: (
+            options: Extract<AlvaEvents["sales.fulfill"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["sales.fulfill"]["input"], object>, keyof AlvaEvents>
+        ) => {
+            return useAlvaForm("sales.fulfill", options);
         }
 ,
         list_orders: (payload: AlvaEvents["sales.list_orders"]["input"]): Promise<AlvaEvents["sales.list_orders"]["output"]> => {
@@ -187,6 +238,11 @@ export function useAlva(config?: AlvaConfig) {
                     resolve(reply);
                 });
             });
+        },
+        use_list_orders_form: (
+            options: Extract<AlvaEvents["sales.list_orders"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["sales.list_orders"]["input"], object>, keyof AlvaEvents>
+        ) => {
+            return useAlvaForm("sales.list_orders", options);
         }
 
     }
@@ -203,6 +259,11 @@ export function useAlva(config?: AlvaConfig) {
                     resolve(reply);
                 });
             });
+        },
+        use_create_form: (
+            options: Extract<AlvaEvents["support.create"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["support.create"]["input"], object>, keyof AlvaEvents>
+        ) => {
+            return useAlvaForm("support.create", options);
         }
 ,
         get_conversation: (payload: AlvaEvents["support.get_conversation"]["input"]): Promise<AlvaEvents["support.get_conversation"]["output"]> => {
@@ -216,6 +277,11 @@ export function useAlva(config?: AlvaConfig) {
                     resolve(reply);
                 });
             });
+        },
+        use_get_conversation_form: (
+            options: Extract<AlvaEvents["support.get_conversation"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["support.get_conversation"]["input"], object>, keyof AlvaEvents>
+        ) => {
+            return useAlvaForm("support.get_conversation", options);
         }
 ,
         list_conversations: (payload: AlvaEvents["support.list_conversations"]["input"]): Promise<AlvaEvents["support.list_conversations"]["output"]> => {
@@ -229,6 +295,11 @@ export function useAlva(config?: AlvaConfig) {
                     resolve(reply);
                 });
             });
+        },
+        use_list_conversations_form: (
+            options: Extract<AlvaEvents["support.list_conversations"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["support.list_conversations"]["input"], object>, keyof AlvaEvents>
+        ) => {
+            return useAlvaForm("support.list_conversations", options);
         }
 ,
         list_messages: (payload: AlvaEvents["support.list_messages"]["input"]): Promise<AlvaEvents["support.list_messages"]["output"]> => {
@@ -242,6 +313,11 @@ export function useAlva(config?: AlvaConfig) {
                     resolve(reply);
                 });
             });
+        },
+        use_list_messages_form: (
+            options: Extract<AlvaEvents["support.list_messages"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["support.list_messages"]["input"], object>, keyof AlvaEvents>
+        ) => {
+            return useAlvaForm("support.list_messages", options);
         }
 ,
         send_message: (payload: AlvaEvents["support.send_message"]["input"]): Promise<AlvaEvents["support.send_message"]["output"]> => {
@@ -255,6 +331,11 @@ export function useAlva(config?: AlvaConfig) {
                     resolve(reply);
                 });
             });
+        },
+        use_send_message_form: (
+            options: Extract<AlvaEvents["support.send_message"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["support.send_message"]["input"], object>, keyof AlvaEvents>
+        ) => {
+            return useAlvaForm("support.send_message", options);
         }
 
     }
