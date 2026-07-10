@@ -32,7 +32,9 @@ defmodule MyAppWeb.StorefrontLive do
         sync_on: [:create, :fulfill]
       ]
     ],
-    # Automatically handle LiveView uploads linked to Alva forms
+    # `uploads`: An array of strings that must exactly match the `name` property of an `event` 
+    # defined in your Alva.Resource block (e.g., name: "catalog.upload_media").
+    # This automatically configures LiveView's `allow_upload/3` for the associated file arguments.
     uploads: ["catalog.upload_media"]
 
   def handle_params(params, _uri, socket) do
