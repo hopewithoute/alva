@@ -51,17 +51,17 @@ defineExpose<CustomerOrderDrawerExpose>({ selectOrder });
 
 <template>
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/45 p-4"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     @click.self="emit('close')"
   >
-    <div class="w-full max-w-4xl rounded-2xl border border-zinc-200 bg-white shadow-2xl">
-      <div class="flex items-start justify-between gap-4 border-b border-zinc-200 px-6 py-5">
+    <div class="w-full max-w-4xl rounded-2xl border border-[var(--color-rule)] bg-[var(--color-paper)] shadow-2xl">
+      <div class="flex items-start justify-between gap-4 border-b border-[var(--color-rule)] px-6 py-5">
         <div>
-          <p class="text-sm font-medium text-zinc-500">Recent Orders</p>
-          <h2 class="text-xl font-semibold text-zinc-950">
+          <p class="text-sm font-medium text-[var(--color-ink-2)]">Recent Orders</p>
+          <h2 class="text-xl font-semibold text-[var(--color-ink)]" style="font-family: var(--font-display);">
             {{ connectedCustomerName || "Customer" }}
           </h2>
-          <p class="mt-1 text-sm text-zinc-500">
+          <p class="mt-1 text-sm text-[var(--color-ink-2)]">
             {{ recentOrderCount }} orders, {{ recentOrderItems }} items
             currently tracked in this showcase.
           </p>
@@ -80,8 +80,8 @@ defineExpose<CustomerOrderDrawerExpose>({ selectOrder });
             class="w-full rounded-xl border px-4 py-3 text-left transition-colors"
             :class="
               selectedOrder?.id === order.id
-                ? 'border-zinc-900 bg-zinc-950 text-white'
-                : 'border-zinc-200 bg-white hover:bg-zinc-50'
+                ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-paper)]'
+                : 'border-[var(--color-rule)] bg-[var(--color-paper)] hover:bg-[var(--color-rule)]'
             "
             @click="selectOrder(order.id)"
           >
@@ -95,18 +95,18 @@ defineExpose<CustomerOrderDrawerExpose>({ selectOrder });
             </div>
             <p
               class="mt-2 text-xs"
-              :class="selectedOrder?.id === order.id ? 'text-zinc-300' : 'text-zinc-500'"
+              :class="selectedOrder?.id === order.id ? 'text-zinc-300' : 'text-[var(--color-ink-2)]'"
             >
               {{ order.lifecycle_status }}
             </p>
           </button>
         </div>
 
-        <div v-if="selectedOrder" class="rounded-xl border border-zinc-200 bg-zinc-50/60 p-5">
+        <div v-if="selectedOrder" class="rounded-xl border border-[var(--color-rule)] bg-[var(--color-rule)]/60 p-5">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p class="text-sm font-medium text-zinc-500">Order Detail</p>
-              <h3 class="mt-1 text-2xl font-semibold text-zinc-950">
+              <p class="text-sm font-medium text-[var(--color-ink-2)]">Order Detail</p>
+              <h3 class="mt-1 text-2xl font-semibold text-[var(--color-ink)]" style="font-family: var(--font-display);">
                 {{ selectedOrder.product?.name || selectedOrder.product_id }}
               </h3>
             </div>
@@ -114,17 +114,17 @@ defineExpose<CustomerOrderDrawerExpose>({ selectOrder });
           </div>
 
           <dl class="mt-6 grid gap-4 sm:grid-cols-2">
-            <div class="rounded-lg border border-zinc-200 bg-white p-4">
-              <dt class="text-xs font-medium uppercase tracking-wide text-zinc-500">Customer</dt>
-              <dd class="mt-2 text-sm font-medium text-zinc-950">{{ selectedOrder.customer_name }}</dd>
+            <div class="rounded-lg border border-[var(--color-rule)] bg-[var(--color-paper)] p-4">
+              <dt class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink-2)]">Customer</dt>
+              <dd class="mt-2 text-sm font-medium text-[var(--color-ink)]">{{ selectedOrder.customer_name }}</dd>
             </div>
-            <div class="rounded-lg border border-zinc-200 bg-white p-4">
-              <dt class="text-xs font-medium uppercase tracking-wide text-zinc-500">Quantity</dt>
-              <dd class="mt-2 text-sm font-medium text-zinc-950">{{ selectedOrder.quantity }} item(s)</dd>
+            <div class="rounded-lg border border-[var(--color-rule)] bg-[var(--color-paper)] p-4">
+              <dt class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink-2)]">Quantity</dt>
+              <dd class="mt-2 text-sm font-medium text-[var(--color-ink)]">{{ selectedOrder.quantity }} item(s)</dd>
             </div>
-            <div class="rounded-lg border border-zinc-200 bg-white p-4 sm:col-span-2">
-              <dt class="text-xs font-medium uppercase tracking-wide text-zinc-500">What happens next</dt>
-              <dd class="mt-2 text-sm text-zinc-600">
+            <div class="rounded-lg border border-[var(--color-rule)] bg-[var(--color-paper)] p-4 sm:col-span-2">
+              <dt class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink-2)]">What happens next</dt>
+              <dd class="mt-2 text-sm text-[var(--color-ink-2)]">
                 <span v-if="selectedOrder.lifecycle_status === 'new'">The merchant will see this order in the Merchant Console and can begin processing it.</span>
                 <span v-else-if="selectedOrder.lifecycle_status === 'processing'">The merchant is actively processing this order. Keep the support chat nearby if you need help.</span>
                 <span v-else>This order has been fulfilled and should now be complete.</span>

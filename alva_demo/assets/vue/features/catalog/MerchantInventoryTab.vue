@@ -49,29 +49,29 @@ const clearInventoryFilters = () => {
 </script>
 
 <template>
-  <section class="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-    <div class="flex flex-col gap-4 border-b border-zinc-200 pb-5 md:flex-row md:items-center md:justify-between">
+  <section class="rounded-xl border border-[var(--color-rule)] bg-[var(--color-paper)] p-6 shadow-sm">
+    <div class="flex flex-col gap-4 border-b border-[var(--color-rule)] pb-5 md:flex-row md:items-center md:justify-between">
       <div class="flex items-center gap-3">
-        <h2 class="text-lg font-semibold text-zinc-900">Inventory</h2>
-        <span class="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-zinc-700">
+        <h2 class="text-lg font-semibold text-[var(--color-ink)]" style="font-family: var(--font-display);">Inventory</h2>
+        <span class="inline-flex items-center rounded-full bg-[var(--color-rule)] px-2.5 py-1 text-[var(--color-ink-2)]">
           {{ props.products?.length || 0 }} products
         </span>
       </div>
 
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <label class="flex min-w-[200px] flex-col gap-2 text-sm font-medium text-zinc-700">
+        <label class="flex min-w-[200px] flex-col gap-2 text-sm font-medium text-[var(--color-ink-2)]">
           <input
             v-model="inventory_filters.query"
             data-testid="merchant-inventory-query"
             type="text"
             placeholder="Search by name or description"
-            class="h-9 rounded-md border border-zinc-300 px-3 text-sm font-normal text-zinc-950"
+            class="h-9 rounded-md border border-[var(--color-rule)] px-3 text-sm font-normal text-[var(--color-ink)]"
           />
         </label>
 
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <label class="flex items-center gap-2 text-sm font-medium text-zinc-700">
-          <input v-model="inventory_filters.low_stock" type="checkbox" class="h-4 w-4 rounded border-zinc-300" />
+          <label class="flex items-center gap-2 text-sm font-medium text-[var(--color-ink-2)]">
+          <input v-model="inventory_filters.low_stock" type="checkbox" class="h-4 w-4 rounded border-[var(--color-rule)]" />
           Low stock only
         </label>
         <div class="h-6 w-px bg-zinc-200 hidden sm:block"></div>
@@ -82,7 +82,7 @@ const clearInventoryFilters = () => {
       </div>
     </div>
 
-    <div v-if="!props.products?.length" class="py-12 text-center text-sm text-zinc-500">
+    <div v-if="!props.products?.length" class="py-12 text-center text-sm text-[var(--color-ink-2)]">
       No products match your current filters.
     </div>
     <div v-else class="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-2">

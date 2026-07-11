@@ -156,7 +156,8 @@ defmodule Alva.LiveView do
         resource: stream_meta.resource,
         source: stream_meta.source,
         scope: Map.get(stream_meta, :scope, %{}),
-        sync_on: stream_meta.sync_on
+        sync_on: stream_meta.sync_on,
+        reset: true
       ]
 
       configure_stream(acc_socket, name, config, params, state.otp_app)
@@ -174,6 +175,7 @@ defmodule Alva.LiveView do
     source = Keyword.fetch!(config, :source)
     scope_def = Keyword.get(config, :scope, %{})
     sync_on = Keyword.get(config, :sync_on, [])
+    reset = Keyword.get(config, :reset, false)
 
     scope_args =
       Map.new(scope_def, fn {arg_name, assign_key} ->
@@ -182,12 +184,12 @@ defmodule Alva.LiveView do
       end)
 
     socket
-    |> load_stream_data(name, resource, source, scope_args)
+    |> load_stream_data(name, resource, source, scope_args, reset)
     |> setup_stream_pubsub(resource, sync_on, scope_args)
     |> register_stream_meta(name, resource, source, scope_def, scope_args, sync_on)
   end
 
-  defp load_stream_data(socket, name, resource, source, scope_args) do
+  defp load_stream_data(socket, name, resource, source, scope_args, reset) do
     {actor, tenant} = socket_actor_tenant(socket)
 
     query =
@@ -201,7 +203,7 @@ defmodule Alva.LiveView do
         {:error, _} -> []
       end
 
-    Phoenix.LiveView.stream(socket, name, records)
+    Phoenix.LiveView.stream(socket, name, records, reset: reset)
   end
 
   defp setup_stream_pubsub(socket, resource, sync_on, scope_args) do

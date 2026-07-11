@@ -1,14 +1,37 @@
 <script setup lang="ts">
 import { cn } from "@/vue/lib/utils"
+import { cva, type VariantProps } from "class-variance-authority"
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",
+  {
+    variants: {
+      variant: {
+        primary: "bg-[var(--color-ink)] text-[var(--color-paper)] hover:opacity-90 disabled:bg-[var(--color-rule)] disabled:text-[var(--color-ink-2)]",
+        secondary: "border border-[var(--color-rule)] bg-[var(--color-paper)] text-[var(--color-ink)] hover:bg-[var(--color-rule)] disabled:border-[var(--color-rule)] disabled:bg-[var(--color-rule)] disabled:text-[var(--color-ink-2)]",
+      },
+      size: {
+        sm: "h-8 px-3 text-xs",
+        md: "h-9 px-4",
+      }
+    },
+    defaultVariants: {
+      variant: "primary",
+      size: "md",
+    }
+  }
+)
+
+type ButtonVariants = VariantProps<typeof buttonVariants>
 
 defineOptions({
   inheritAttrs: false,
 })
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
-    variant?: "primary" | "secondary"
-    size?: "sm" | "md"
+    variant?: ButtonVariants["variant"]
+    size?: ButtonVariants["size"]
     disabled?: boolean
     class?: string
   }>(),
@@ -25,17 +48,7 @@ withDefaults(
   <button
     v-bind="$attrs"
     :disabled="disabled"
-    :class="
-      cn(
-        'inline-flex h-9 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors',
-        size === 'sm' ? 'h-8 px-3 text-xs' : '',
-        variant === 'primary'
-          ? 'bg-zinc-950 text-white hover:bg-zinc-800 disabled:bg-zinc-300 disabled:text-zinc-500'
-          : 'border border-zinc-300 bg-white text-zinc-950 hover:bg-zinc-100 disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400',
-        'disabled:cursor-not-allowed disabled:opacity-70',
-        $props.class,
-      )
-    "
+    :class="cn(buttonVariants({ variant, size }), props.class)"
   >
     <slot />
   </button>

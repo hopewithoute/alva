@@ -79,18 +79,18 @@ const handleOrderError = (error: string) => {
         </div>
       </div>
 
-      <div class="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-        <label class="text-sm font-medium text-zinc-700 whitespace-nowrap">Search Catalog</label>
+      <div class="flex items-center gap-4 rounded-xl border border-[var(--color-rule)] bg-[var(--color-paper)] p-4 shadow-sm">
+        <label class="text-sm font-medium text-[var(--color-ink-2)] whitespace-nowrap">Search Catalog</label>
         <input
           v-model="searchQuery"
           type="text"
           placeholder="Type to search products..."
-          class="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm"
+          class="flex-1 rounded-md border border-[var(--color-rule)] px-3 py-2 text-sm"
         />
-        <div v-if="loadingProducts" class="text-xs text-zinc-500">Searching...</div>
+        <div v-if="loadingProducts" class="text-xs text-[var(--color-ink-2)]">Searching...</div>
       </div>
 
-      <div v-if="!displayProducts" class="rounded-xl border border-dashed border-zinc-200 bg-white p-6 text-sm text-zinc-500">
+      <div v-if="!displayProducts" class="rounded-xl border border-dashed border-[var(--color-rule)] bg-[var(--color-paper)] p-6 text-sm text-[var(--color-ink-2)]">
         Loading catalog...
       </div>
       <div v-else class="grid grid-cols-1 gap-6 sm:grid-cols-2 2xl:grid-cols-3">

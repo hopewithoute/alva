@@ -83,24 +83,24 @@ const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 rounded-lg border border-zinc-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+  <div class="flex flex-col gap-4 rounded-lg border border-[var(--color-rule)] p-4 sm:flex-row sm:items-center sm:justify-between">
     <div class="flex min-w-0 items-center gap-4">
-      <div v-if="product.media_reference" class="h-12 w-12 shrink-0 overflow-hidden rounded border border-zinc-200 bg-zinc-100">
+      <div v-if="product.media_reference" class="h-12 w-12 shrink-0 overflow-hidden rounded border border-[var(--color-rule)] bg-[var(--color-rule)]">
         <img :src="`/images/${product.media_reference}`" class="h-full w-full object-cover" />
       </div>
-      <div v-else class="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-zinc-200 bg-zinc-100 text-xs text-zinc-400">
+      <div v-else class="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-[var(--color-rule)] bg-[var(--color-rule)] text-xs text-[var(--color-ink-2)]">
         No img
       </div>
 
       <div class="min-w-0">
         <div class="flex flex-wrap items-center gap-2">
-          <p class="font-medium text-zinc-900">{{ product.name }}</p>
+          <p class="font-medium text-[var(--color-ink)]">{{ product.name }}</p>
           <span :class="['inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium', getProductStockTone()]">
             {{ product.stock }} in stock
           </span>
         </div>
-        <p class="mt-1 text-sm text-zinc-500">{{ product.description }}</p>
-        <p class="mt-2 text-xs font-medium text-zinc-500">{{ formatPrice(product.price) }}</p>
+        <p class="mt-1 text-sm text-[var(--color-ink-2)]">{{ product.description }}</p>
+        <p class="mt-2 text-xs font-medium text-[var(--color-ink-2)]">{{ formatPrice(product.price) }}</p>
         <p v-if="adjustmentError" class="mt-2 text-xs text-red-600">{{ adjustmentError }}</p>
         <p v-if="uploadError" class="mt-2 text-xs text-red-600">{{ uploadError }}</p>
       </div>
@@ -108,7 +108,7 @@ const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
     <div class="flex flex-wrap items-center gap-3">
       <form @submit.prevent="adjustStock" class="flex items-center gap-2">
-        <input type="number" min="0" class="w-24 rounded-md border border-zinc-300 px-3 py-1.5 text-sm" v-model="stockForm.field('stock').value.value" />
+        <input type="number" min="0" class="w-24 rounded-md border border-[var(--color-rule)] px-3 py-1.5 text-sm" v-model="stockForm.field('stock').value.value" />
         <Button type="submit" size="sm" variant="secondary" class="min-w-[104px]" :disabled="isAdjusting">
           {{ isAdjusting ? "Saving..." : "Update Stock" }}
         </Button>
@@ -119,7 +119,7 @@ const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
           {{ isUploading ? "Uploading..." : "Upload Media" }}
         </Button>
         <div v-if="isUploading" class="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200">
-          <div :data-testid="`merchant-upload-progress-bar-${product.id}`" class="h-full bg-blue-600 transition-all duration-300" :style="{ width: `${mediaUpload.progress.value}%` }"></div>
+          <div :data-testid="`merchant-upload-progress-bar-${product.id}`" class="h-full bg-[var(--color-accent)] text-[var(--color-accent-ink)] transition-all duration-300" :style="{ width: `${mediaUpload.progress.value}%` }"></div>
         </div>
       </div>
     </div>

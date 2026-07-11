@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import { useAlva } from "../../../js/alva";
 import type { AlvaSignals } from "../../../js/alva/signals";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/vue/components/ui/select";
 
 type NotificationSignal = AlvaSignals["demo_notifications.sent"]["payload"];
 
@@ -46,37 +47,40 @@ const severityTone = (value: NotificationSignal["severity"]) => {
 <template>
   <section class="space-y-6">
     <div class="max-w-3xl space-y-3">
-      <p class="text-sm font-medium uppercase tracking-wide text-zinc-500">Signals Demo</p>
-      <h1 class="text-3xl font-semibold tracking-tight text-zinc-950">Semantic notifications stay out of list state.</h1>
-      <p class="text-sm text-zinc-600">
+      <p class="text-sm font-medium uppercase tracking-wide text-[var(--color-ink-2)]">Signals Demo</p>
+      <h1 class="text-3xl font-semibold tracking-tight text-[var(--color-ink)]" style="font-family: var(--font-display);">Semantic notifications stay out of list state.</h1>
+      <p class="text-sm text-[var(--color-ink-2)]">
         This route listens for a single signal and renders each payload like a toast log, without
         routing those occurrences through a collection or local list reconciliation path.
       </p>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-      <form class="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm" @submit.prevent="sendNotification">
+      <form class="space-y-4 rounded-xl border border-[var(--color-rule)] bg-[var(--color-paper)] p-5 shadow-sm" @submit.prevent="sendNotification">
         <div class="space-y-1">
-          <label class="text-sm font-medium text-zinc-700" for="demo-notification-title">Title</label>
+          <label class="text-sm font-medium text-[var(--color-ink-2)]" for="demo-notification-title">Title</label>
           <input
             id="demo-notification-title"
             v-model="title"
-            class="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            class="w-full rounded-md border border-[var(--color-rule)] px-3 py-2 text-sm"
             type="text"
           />
         </div>
 
         <div class="space-y-1">
-          <label class="text-sm font-medium text-zinc-700" for="demo-notification-severity">Severity</label>
-          <select
-            id="demo-notification-severity"
-            v-model="severity"
-            class="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-          >
-            <option value="info">Info</option>
-            <option value="success">Success</option>
-            <option value="warning">Warning</option>
-          </select>
+          <label class="text-sm font-medium text-[var(--color-ink-2)]" for="demo-notification-severity">Severity</label>
+          <Select v-model="severity">
+            <SelectTrigger id="demo-notification-severity" class="w-full h-9 rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)]">
+              <SelectValue placeholder="Select severity" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="info">Info</SelectItem>
+                <SelectItem value="success">Success</SelectItem>
+                <SelectItem value="warning">Warning</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
 
         <p v-if="error" class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -84,7 +88,7 @@ const severityTone = (value: NotificationSignal["severity"]) => {
         </p>
 
         <button
-          class="rounded-md bg-zinc-950 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+          class="rounded-md bg-[var(--color-ink)] text-[var(--color-paper)] px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
           :disabled="sending || !title.trim()"
           type="submit"
         >
@@ -92,15 +96,15 @@ const severityTone = (value: NotificationSignal["severity"]) => {
         </button>
       </form>
 
-      <div class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <div class="rounded-xl border border-[var(--color-rule)] bg-[var(--color-paper)] p-5 shadow-sm">
         <div class="mb-4 flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-zinc-950">Signal Log</h2>
-          <span class="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600">
+          <h2 class="text-lg font-semibold text-[var(--color-ink)]" style="font-family: var(--font-display);">Signal Log</h2>
+          <span class="rounded-full bg-[var(--color-rule)] px-2.5 py-1 text-xs font-medium text-[var(--color-ink-2)]">
             {{ notices.length }} received
           </span>
         </div>
 
-        <div v-if="notices.length === 0" class="rounded-lg border border-dashed border-zinc-200 bg-zinc-50 px-4 py-5 text-sm text-zinc-500">
+        <div v-if="notices.length === 0" class="rounded-lg border border-dashed border-[var(--color-rule)] bg-[var(--color-rule)] px-4 py-5 text-sm text-[var(--color-ink-2)]">
           Publish a signal to see it appear here.
         </div>
 

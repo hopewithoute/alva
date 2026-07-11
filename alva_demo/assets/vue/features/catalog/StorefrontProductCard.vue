@@ -49,24 +49,24 @@ const buyProduct = async () => {
 </script>
 
 <template>
-  <div class="flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-    <div class="flex h-48 items-center justify-center overflow-hidden bg-zinc-100">
+  <div class="flex flex-col overflow-hidden rounded-xl border border-[var(--color-rule)] bg-[var(--color-paper)] shadow-sm">
+    <div class="flex h-48 items-center justify-center overflow-hidden bg-[var(--color-rule)]">
       <img
         v-if="product.media_reference"
         :src="`/images/${product.media_reference}`"
         :alt="product.name"
         class="h-full w-full object-cover"
       />
-      <div v-else class="text-zinc-400">No Image</div>
+      <div v-else class="text-[var(--color-ink-2)]">No Image</div>
     </div>
     <div class="flex flex-1 flex-col p-5">
-      <h3 class="text-lg font-medium text-zinc-900">
+      <h3 class="text-lg font-medium text-[var(--color-ink)]" style="font-family: var(--font-display);">
         {{ product.name }}
       </h3>
-      <p class="mt-1 text-sm text-zinc-500">{{ product.description }}</p>
+      <p class="mt-1 text-sm text-[var(--color-ink-2)]">{{ product.description }}</p>
       <div class="mt-4 flex items-center justify-between text-sm">
-        <span class="text-zinc-600">Stock: {{ product.stock }} available</span>
-        <span class="font-semibold text-zinc-900">{{ formatPrice(product.price) }}</span>
+        <span class="text-[var(--color-ink-2)]">Stock: {{ product.stock }} available</span>
+        <span class="font-semibold text-[var(--color-ink)]">{{ formatPrice(product.price) }}</span>
       </div>
 
       <div class="mt-auto pt-5">

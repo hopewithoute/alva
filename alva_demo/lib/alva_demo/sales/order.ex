@@ -100,6 +100,7 @@ defmodule AlvaDemo.Sales.Order do
       require_atomic?(false)
       validate({AlvaDemo.Sales.Validations.TransitionFrom, state: :new})
       change(set_attribute(:lifecycle_status, :processing))
+      change(load(:product))
     end
 
     update :fulfill do
@@ -107,6 +108,7 @@ defmodule AlvaDemo.Sales.Order do
       require_atomic?(false)
       validate({AlvaDemo.Sales.Validations.TransitionFrom, state: :processing})
       change(set_attribute(:lifecycle_status, :fulfilled))
+      change(load(:product))
     end
   end
 

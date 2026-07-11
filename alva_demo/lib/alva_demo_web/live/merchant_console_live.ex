@@ -7,19 +7,29 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
       sales_orders: [
         resource: AlvaDemo.Sales.Order,
         source: :list,
-        scope: %{},
+        scope: %{
+          status: :order_status,
+          customer_query: :order_customer_query,
+          product_query: :order_product_query
+        },
         sync_on: [:create, :begin_processing, :fulfill]
       ],
       products: [
         resource: AlvaDemo.Catalog.Product,
         source: :list,
-        scope: %{},
+        scope: %{
+          query: :inv_query,
+          max_stock: :inv_max_stock
+        },
         sync_on: [:adjust_stock, :upload_media]
       ],
       conversations: [
         resource: AlvaDemo.Support.Conversation,
         source: :list,
-        scope: %{},
+        scope: %{
+          customer_query: :conv_customer_query,
+          needs_merchant_reply: :conv_needs_reply
+        },
         sync_on: [:create, :assign_merchant, :close]
       ],
       support_messages: [
@@ -102,6 +112,13 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
       is_conversation_filtered:
         normalize_optional_string(params["conv_customer"]) != nil or
           params["conv_waiting"] == "true",
+      order_status: normalize_optional_string(params["order_status"]) || "all",
+      order_customer_query: normalize_optional_string(params["order_customer"]) || "",
+      order_product_query: normalize_optional_string(params["order_product"]) || "",
+      inv_query: normalize_optional_string(params["inv_query"]) || "",
+      inv_max_stock: if(params["inv_low_stock"] == "true", do: 25, else: nil),
+      conv_customer_query: normalize_optional_string(params["conv_customer"]) || "",
+      conv_needs_reply: if(params["conv_waiting"] == "true", do: true, else: nil),
       order_filters: %{
         status: normalize_optional_string(params["order_status"]) || "all",
         customer: normalize_optional_string(params["order_customer"]) || "",

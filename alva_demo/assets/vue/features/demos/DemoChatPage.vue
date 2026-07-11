@@ -50,9 +50,9 @@ const sendMessage = async () => {
 <template>
   <section class="space-y-6">
     <div class="max-w-3xl space-y-3">
-      <p class="text-sm font-medium uppercase tracking-wide text-zinc-500">Stream Demo</p>
-      <h1 class="text-3xl font-semibold tracking-tight text-zinc-950">Chat messages append in realtime.</h1>
-      <p class="text-sm text-zinc-600">
+      <p class="text-sm font-medium uppercase tracking-wide text-[var(--color-ink-2)]">Stream Demo</p>
+      <h1 class="text-3xl font-semibold tracking-tight text-[var(--color-ink)]" style="font-family: var(--font-display);">Chat messages append in realtime.</h1>
+      <p class="text-sm text-[var(--color-ink-2)]">
         This page keeps one subscription-backed stream pattern in view:
         commands create chat messages, and the server-owned stream appends
         those messages across every open page.
@@ -60,23 +60,23 @@ const sendMessage = async () => {
     </div>
 
     <div class="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-      <form class="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm" @submit.prevent="sendMessage">
+      <form class="space-y-4 rounded-xl border border-[var(--color-rule)] bg-[var(--color-paper)] p-5 shadow-sm" @submit.prevent="sendMessage">
         <div class="space-y-1">
-          <label class="text-sm font-medium text-zinc-700" for="demo-chat-author">Author</label>
+          <label class="text-sm font-medium text-[var(--color-ink-2)]" for="demo-chat-author">Author</label>
           <input
             id="demo-chat-author"
             v-model="author"
-            class="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            class="w-full rounded-md border border-[var(--color-rule)] px-3 py-2 text-sm"
             type="text"
           />
         </div>
 
         <div class="space-y-1">
-          <label class="text-sm font-medium text-zinc-700" for="demo-chat-text">Message</label>
+          <label class="text-sm font-medium text-[var(--color-ink-2)]" for="demo-chat-text">Message</label>
           <textarea
             id="demo-chat-text"
             v-model="text"
-            class="min-h-[120px] w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            class="min-h-[120px] w-full rounded-md border border-[var(--color-rule)] px-3 py-2 text-sm"
             placeholder="Send a line and watch the stream append it."
           ></textarea>
         </div>
@@ -86,7 +86,7 @@ const sendMessage = async () => {
         </p>
 
         <button
-          class="rounded-md bg-zinc-950 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+          class="rounded-md bg-[var(--color-ink)] text-[var(--color-paper)] px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
           :disabled="sending || !author.trim() || !text.trim()"
           type="submit"
         >
@@ -94,10 +94,10 @@ const sendMessage = async () => {
         </button>
       </form>
 
-      <div class="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <div class="rounded-xl border border-[var(--color-rule)] bg-[var(--color-paper)] p-5 shadow-sm">
         <div class="mb-4 flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-zinc-950">Live Stream</h2>
-          <span class="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600">
+          <h2 class="text-lg font-semibold text-[var(--color-ink)]" style="font-family: var(--font-display);">Live Stream</h2>
+          <span class="rounded-full bg-[var(--color-rule)] px-2.5 py-1 text-xs font-medium text-[var(--color-ink-2)]">
             {{ messages.length }} messages
           </span>
         </div>
@@ -106,10 +106,10 @@ const sendMessage = async () => {
           <div
             v-for="message in messages"
             :key="message.id"
-            class="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3"
+            class="rounded-lg border border-[var(--color-rule)] bg-[var(--color-rule)] px-4 py-3"
           >
-            <p class="text-sm font-semibold text-zinc-900">{{ message.author }}</p>
-            <p class="mt-1 text-sm text-zinc-600">{{ message.text }}</p>
+            <p class="text-sm font-semibold text-[var(--color-ink)]">{{ message.author }}</p>
+            <p class="mt-1 text-sm text-[var(--color-ink-2)]">{{ message.text }}</p>
           </div>
         </div>
       </div>

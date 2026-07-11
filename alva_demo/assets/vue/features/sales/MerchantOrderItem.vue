@@ -76,11 +76,11 @@ const formatDateTime = (isoString: string) => {
 
 <template>
   <div
-    class="flex flex-col gap-4 rounded-lg border border-zinc-200 p-4 transition-colors hover:bg-zinc-50 lg:flex-row lg:items-center lg:justify-between"
+    class="flex flex-col gap-4 rounded-lg border border-[var(--color-rule)] p-4 transition-colors hover:bg-[var(--color-rule)] lg:flex-row lg:items-center lg:justify-between"
   >
     <div class="min-w-0">
       <div class="flex flex-wrap items-center gap-2">
-        <p class="font-medium text-zinc-900">
+        <p class="font-medium text-[var(--color-ink)]">
           Order by
           <span class="font-semibold">{{ order.customer_name }}</span>
         </p>
@@ -91,10 +91,10 @@ const formatDateTime = (isoString: string) => {
           New
         </span>
       </div>
-      <p class="mt-1 text-sm text-zinc-500">
+      <p class="mt-1 text-sm text-[var(--color-ink-2)]">
         {{ getOrderProductName() }} (Qty: {{ order.quantity }})
       </p>
-      <p class="mt-2 text-xs text-zinc-400">
+      <p class="mt-2 text-xs text-[var(--color-ink-2)]">
         {{ formatDateTime(order.created_at) }}
       </p>
       <p v-if="operationError" class="mt-2 text-xs text-red-600">

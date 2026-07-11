@@ -2,6 +2,111 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
+@layer base {
+  :root {
+    --color-paper: oklch(98.5% 0.004 250);
+    --color-ink: oklch(24% 0.02 258);
+    --color-ink-2: oklch(34% 0.018 257);
+    --color-rule: oklch(91% 0.004 250);
+    --color-rule-2: oklch(85% 0.004 250);
+    --color-accent: oklch(58% 0.20 256);
+    --color-accent-ink: #fff;
+    --color-graphite: oklch(22% 0.016 260);
+
+    --font-display: "Space Grotesk", sans-serif;
+    --font-body: "Inter", sans-serif;
+    --font-mono: "JetBrains Mono", monospace;
+
+    /* Shadcn mappings */
+    --background: var(--color-paper);
+    --foreground: var(--color-ink);
+    --popover: var(--color-paper);
+    --popover-foreground: var(--color-ink);
+    --card: var(--color-paper);
+    --card-foreground: var(--color-ink);
+    --primary: var(--color-ink);
+    --primary-foreground: var(--color-paper);
+    --secondary: var(--color-rule);
+    --secondary-foreground: var(--color-ink);
+    --muted: var(--color-rule);
+    --muted-foreground: var(--color-ink-2);
+    --accent: var(--color-rule);
+    --accent-foreground: var(--color-ink);
+    --destructive: oklch(50% 0.20 20);
+    --destructive-foreground: oklch(100% 0 0);
+    --border: var(--color-rule);
+    --input: var(--color-rule);
+    --ring: var(--color-accent);
+    --radius: 0.375rem;
+  }
+
+  :root.dark {
+    color-scheme: dark;
+    --color-paper: oklch(16% 0.01 260);
+    --color-ink: oklch(98.5% 0.004 250);
+    --color-ink-2: oklch(75% 0.01 250);
+    --color-rule: oklch(26% 0.01 260);
+    --color-rule-2: oklch(34% 0.015 260);
+    --color-accent: oklch(65% 0.20 256);
+    --color-accent-ink: #fff;
+    --color-graphite: oklch(12% 0.01 260);
+  }
+}
+
+input[type="text"], input[type="number"], input[type="password"], input[type="email"], select, textarea {
+  background-color: transparent;
+  color: var(--color-ink);
+}
+
+html, body { 
+  overflow-x: clip; 
+}
+body { 
   margin: 0;
+  background: var(--color-paper); 
+  color: var(--color-ink-2);
+  font-family: var(--font-body); 
+  font-weight: 400; 
+}
+
+/* Reveal — the whole motion engine */
+.reveal { 
+  opacity: 0; 
+  transform: translateY(10px);
+  transition: opacity .6s cubic-bezier(0.16,1,0.3,1), transform .6s cubic-bezier(0.16,1,0.3,1); 
+}
+.reveal.is-in { 
+  opacity: 1; 
+  transform: none; 
+}
+
+/* The code hero — dark graphite card, hairline-framed */
+.code-card { 
+  background: var(--color-graphite); 
+  border: 1px solid var(--color-rule-2);
+  border-radius: 10px; 
+  box-shadow: 0 1px 2px oklch(24% 0.02 258 / 0.05);
+  font-family: var(--font-mono); 
+}
+.code-card .tok-key, .status--ok { 
+  color: var(--color-accent); 
+}
+.status--ok { 
+  font: 500 0.75rem/1 var(--font-mono); 
+  letter-spacing: .06em; 
+}
+
+/* Bordered nav + the one cobalt button (6px, never a pill) */
+.nav { 
+  border-bottom: 1px solid var(--color-rule); 
+  backdrop-filter: blur(8px); 
+}
+.btn--primary { 
+  background: var(--color-accent); 
+  color: var(--color-accent-ink);
+  border-radius: 6px; 
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
 }

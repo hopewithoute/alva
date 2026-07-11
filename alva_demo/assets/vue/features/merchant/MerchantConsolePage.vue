@@ -67,14 +67,14 @@ const active_tab_description = computed(() => {
 
 <template>
   <div class="space-y-6" data-testid="merchant-console-vue">
-    <section class="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
+    <section class="rounded-xl border border-[var(--color-rule)] bg-[var(--color-paper)] p-6 shadow-sm">
       <div class="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
         <div class="space-y-2">
-          <p class="text-sm font-medium text-zinc-500">Merchant Console surface</p>
-          <h1 class="text-2xl font-semibold text-zinc-950">
+          <p class="text-sm font-medium text-[var(--color-ink-2)]">Merchant Console surface</p>
+          <h1 class="text-2xl font-semibold text-[var(--color-ink)]" style="font-family: var(--font-display);">
             Operate orders, inventory, and support from one queue.
           </h1>
-          <p class="max-w-3xl text-sm text-zinc-500">
+          <p class="max-w-3xl text-sm text-[var(--color-ink-2)]">
             This showcase keeps the merchant side operational: new orders, low
             stock, and customer replies stay visible while filters stay on the
             same subscription-backed surface.
@@ -90,11 +90,11 @@ const active_tab_description = computed(() => {
             </div>
           </div>
 
-          <div class="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
-            <p class="text-xs font-medium uppercase tracking-wide text-zinc-500">In Progress</p>
+          <div class="rounded-lg border border-[var(--color-rule)] bg-[var(--color-rule)] p-4">
+            <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink-2)]">In Progress</p>
             <div class="mt-2 flex items-end justify-between gap-3">
-              <span class="text-3xl font-semibold text-zinc-900">{{ props.processing_orders_count ?? 0 }}</span>
-              <span class="text-sm text-zinc-500">Processing</span>
+              <span class="text-3xl font-semibold text-[var(--color-ink)]">{{ props.processing_orders_count ?? 0 }}</span>
+              <span class="text-sm text-[var(--color-ink-2)]">Processing</span>
             </div>
           </div>
         </div>
@@ -102,7 +102,7 @@ const active_tab_description = computed(() => {
     </section>
 
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <nav class="flex gap-2 rounded-lg border border-zinc-200 bg-white p-1 shadow-sm sm:w-auto" aria-label="Merchant Tabs">
+      <nav class="flex gap-2 rounded-lg border border-[var(--color-rule)] bg-[var(--color-paper)] p-1 shadow-sm sm:w-auto" aria-label="Merchant Tabs">
         <button
           v-for="tab in merchant_tabs"
           :key="tab.value"
@@ -112,21 +112,21 @@ const active_tab_description = computed(() => {
           :class="[
             'relative rounded-md px-4 py-2 text-sm font-medium transition-colors',
             active_tab === tab.value
-              ? 'bg-zinc-100 text-zinc-950 shadow-sm'
-              : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900'
+              ? 'bg-[var(--color-rule)] text-[var(--color-ink)] shadow-sm'
+              : 'text-[var(--color-ink-2)] hover:bg-[var(--color-rule)] hover:text-[var(--color-ink)]'
           ]"
         >
           {{ tab.label }}
           <span
             v-if="tab.count > 0"
             class="ml-2 inline-flex h-5 items-center justify-center rounded-full px-2 text-[11px] font-medium"
-            :class="tab.value === 'orders' ? 'bg-zinc-950 text-white' : 'bg-red-100 text-red-700'"
+            :class="tab.value === 'orders' ? 'bg-[var(--color-ink)] text-[var(--color-paper)]' : 'bg-red-100 text-red-700'"
           >
             {{ tab.count }}
           </span>
         </button>
       </nav>
-      <p class="text-sm text-zinc-500">{{ active_tab_description }}</p>
+      <p class="text-sm text-[var(--color-ink-2)]">{{ active_tab_description }}</p>
     </div>
 
     <!-- Features Content -->

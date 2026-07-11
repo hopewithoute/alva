@@ -1,14 +1,23 @@
 <script setup lang="ts">
-import { getStatusColor } from "../../utils/ui";
 import type { Order } from "../../../../js/alva/types";
+import { Badge } from "@/vue/components/ui/badge";
 
-defineProps<{
+const props = defineProps<{
   status: Order["lifecycle_status"];
 }>();
+
+const getVariant = (status: string) => {
+  switch (status) {
+    case 'new': return 'default';
+    case 'processing': return 'secondary';
+    case 'fulfilled': return 'outline';
+    default: return 'outline';
+  }
+};
 </script>
 
 <template>
-  <div :class="['rounded-full border px-3 py-1 text-sm font-medium capitalize', getStatusColor(status)]">
+  <Badge :variant="getVariant(status)" class="capitalize px-3 py-1 text-sm font-medium">
     {{ status }}
-  </div>
+  </Badge>
 </template>

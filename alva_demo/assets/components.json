@@ -8,7 +8,6 @@
     "baseColor": "zinc",
     "cssVariables": true
   },
-  "framework": "vite",
   "aliases": {
     "components": "@/vue/components",
     "utils": "@/vue/lib/utils"

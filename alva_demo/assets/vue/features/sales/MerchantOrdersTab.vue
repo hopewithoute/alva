@@ -4,6 +4,7 @@ import type { Order } from "../../../js/alva/types";
 import type { OrderFilters } from "../merchant/types";
 import MerchantOrderItem from "./MerchantOrderItem.vue";
 import Button from "../../shared/ui/button/Button.vue";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/vue/components/ui/select";
 import { useDebounce } from "../../utils/debounce";
 import { useRouteQueryPatch } from "../../shared/useRouteQueryPatch";
 
@@ -59,26 +60,30 @@ const order_status_options: Array<{ label: string; value: Order["lifecycle_statu
 </script>
 
 <template>
-  <section class="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-    <div class="flex flex-col gap-4 border-b border-zinc-200 pb-5 md:flex-row md:items-center md:justify-between">
+  <section class="rounded-xl border border-[var(--color-rule)] bg-[var(--color-paper)] p-6 shadow-sm">
+    <div class="flex flex-col gap-4 border-b border-[var(--color-rule)] pb-5 md:flex-row md:items-center md:justify-between">
       <div class="flex items-center gap-3">
-        <h2 class="text-lg font-semibold text-zinc-900">Orders</h2>
-        <span class="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-zinc-700">
+        <h2 class="text-lg font-semibold text-[var(--color-ink)]" style="font-family: var(--font-display);">Orders</h2>
+        <span class="inline-flex items-center rounded-full bg-[var(--color-rule)] px-2.5 py-1 text-[var(--color-ink-2)]">
           {{ salesOrders?.length || 0 }} orders
         </span>
       </div>
 
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <label class="flex items-center gap-2 text-sm font-medium text-zinc-700">
+        <label class="flex items-center gap-2 text-sm font-medium text-[var(--color-ink-2)]">
           <span>Status</span>
-          <select
-            v-model="order_filters.status"
-            class="h-9 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-normal text-zinc-950"
-          >
-            <option v-for="opt in order_status_options" :key="opt.value" :value="opt.value">
-              {{ opt.label }}
-            </option>
-          </select>
+          <Select v-model="order_filters.status">
+            <SelectTrigger class="w-[140px] h-9 bg-transparent border-[var(--color-rule)] text-[var(--color-ink)]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem v-for="opt in order_status_options" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </label>
         <div class="h-6 w-px bg-zinc-200 hidden sm:block"></div>
         <input
@@ -86,13 +91,13 @@ const order_status_options: Array<{ label: string; value: Order["lifecycle_statu
           data-testid="merchant-order-customer-query"
           type="text"
           placeholder="Filter by customer"
-          class="h-9 w-40 rounded-md border border-zinc-300 px-3 text-sm font-normal text-zinc-950"
+          class="h-9 w-40 rounded-md border border-[var(--color-rule)] px-3 text-sm font-normal text-[var(--color-ink)] bg-transparent"
         />
         <input
           v-model="order_filters.product"
           type="text"
           placeholder="Filter by product"
-          class="h-9 w-40 rounded-md border border-zinc-300 px-3 text-sm font-normal text-zinc-950"
+          class="h-9 w-40 rounded-md border border-[var(--color-rule)] px-3 text-sm font-normal text-[var(--color-ink)] bg-transparent"
         />
         <Button variant="secondary" size="sm" :disabled="!isOrderFiltered" @click="clearOrderFilters">
           Reset
@@ -100,7 +105,7 @@ const order_status_options: Array<{ label: string; value: Order["lifecycle_statu
       </div>
     </div>
 
-    <div v-if="!salesOrders?.length" class="py-12 text-center text-sm text-zinc-500">
+    <div v-if="!salesOrders?.length" class="py-12 text-center text-sm text-[var(--color-ink-2)]">
       No orders match your current filters.
     </div>
     <div v-else class="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
