@@ -18,7 +18,7 @@ Welcome to the Alva (Ash Live Vue Adapter) repository! This repository is struct
 
 ## 📦 Projects
 
-- **[Alva Core (`/alva`)](./alva)**: A fully typed, auto-generated TypeScript SDK for Vue 3 that seamlessly bridges your Vue frontend with your Elixir/Ash backend via Phoenix LiveView. Check out the [Core README](./alva/README.md) for installation and usage.
+- **[Alva Core (`/alva`)](./alva)**: An Ash Extension and Phoenix LiveView adapter that securely bridges your Elixir backend with a Vue 3 frontend. It completely eliminates manual API routing by auto-generating a fully typed TypeScript SDK and seamlessly handling forms, streams, file uploads, and PubSub signals over LiveView WebSockets. Check out the [Core README](./alva/README.md) for installation and usage.
 - **[Alva Demo (`/alva_demo`)](./alva_demo)**: A demonstration application showing how to integrate and use Alva in a real-world scenario.
 
 ## 📚 Documentation
