@@ -26,51 +26,62 @@ const handleLoadMore = () => {
 </script>
 
 <template>
-  <section class="space-y-6">
-    <div class="max-w-3xl space-y-3">
-      <p class="text-sm font-medium uppercase tracking-wide text-[var(--color-ink-2)]">Stream Pagination Demo</p>
-      <h1 class="text-3xl font-semibold tracking-tight text-[var(--color-ink)]" style="font-family: var(--font-display);">Load more through a subscription-backed stream.</h1>
-      <p class="text-sm text-[var(--color-ink-2)]">
-        The older query-binding bridge is gone in this repo. This example keeps
-        data server-owned: Vue asks for a larger slice with
-        <code>loadMore(...)</code>, the backend reruns the stream source, and
-        LiveView grows the visible stream without a second client-owned list.
-      </p>
-    </div>
+  <div class="max-w-4xl mx-auto py-16 px-6 lg:px-12">
+    <article class="space-y-16">
+      
+      <!-- Header -->
+      <header class="space-y-8 pb-12 border-b border-[var(--color-rule)]">
+        <h1 class="text-4xl md:text-5xl font-normal text-[var(--color-ink)]" style="font-family: var(--font-display); line-height: 1.1;">
+          Load more through a subscription-backed stream.
+        </h1>
+        <p class="text-lg text-[var(--color-ink-2)] max-w-[65ch]" style="line-height: 1.7;">
+          The older query-binding bridge is gone in this repo. This example keeps
+          data server-owned: Vue asks for a larger slice with
+          <code class="px-1.5 py-0.5 bg-[var(--color-rule-2)] font-mono text-sm">loadMore(...)</code>, the backend reruns the stream source, and
+          LiveView grows the visible stream without a second client-owned list.
+        </p>
+      </header>
 
-    <div class="rounded-xl border border-[var(--color-rule)] bg-[var(--color-paper)] p-5 shadow-sm">
-      <div class="mb-4 flex items-center justify-between gap-4">
-        <div>
-          <h2 class="text-lg font-semibold text-[var(--color-ink)]" style="font-family: var(--font-display);">Visible Feed Entries</h2>
-          <p class="text-sm text-[var(--color-ink-2)]">Current stream size: {{ entries.length }}</p>
+      <!-- Main Document Area -->
+      <section class="space-y-12">
+        <div class="flex items-baseline justify-between">
+          <h2 class="text-2xl font-normal text-[var(--color-ink)]" style="font-family: var(--font-display);">Visible Feed Entries</h2>
+          <span class="text-xs text-[var(--color-ink-2)] uppercase tracking-[0.1em]" style="font-family: var(--font-mono)">
+            Size: {{ entries.length }}
+          </span>
         </div>
 
-        <button
-          v-if="hasMore"
-          @click="handleLoadMore"
-          class="rounded-md border border-[var(--color-rule)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-rule)]"
-        >
-          Load 5 More
-        </button>
-        <span
-          v-else
-          class="rounded-md bg-[var(--color-rule)] px-4 py-2 text-sm font-medium text-[var(--color-ink-2)]"
-        >
-          Fully loaded
-        </span>
-      </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-16">
+          <article
+            v-for="entry in entries"
+            :key="entry.id"
+            class="space-y-3"
+          >
+            <div class="border-t border-[var(--color-ink)] pt-4">
+              <p class="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--color-ink-2)]" style="font-family: var(--font-mono)">Pattern {{ entry.position }}</p>
+            </div>
+            <h3 class="text-xl font-normal text-[var(--color-ink)]" style="font-family: var(--font-display);">{{ entry.title }}</h3>
+            <p class="text-base text-[var(--color-ink-2)]" style="line-height: 1.7;">{{ entry.summary }}</p>
+          </article>
+        </div>
 
-      <div class="grid gap-3 md:grid-cols-2">
-        <article
-          v-for="entry in entries"
-          :key="entry.id"
-          class="rounded-lg border border-[var(--color-rule)] bg-[var(--color-rule)] px-4 py-4"
-        >
-          <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink-2)]">Pattern {{ entry.position }}</p>
-          <h3 class="mt-2 text-base font-semibold text-[var(--color-ink)]" style="font-family: var(--font-display);">{{ entry.title }}</h3>
-          <p class="mt-2 text-sm text-[var(--color-ink-2)]">{{ entry.summary }}</p>
-        </article>
-      </div>
-    </div>
-  </section>
+        <div class="pt-12 border-t border-[var(--color-rule)] flex justify-center">
+          <button
+            v-if="hasMore"
+            @click="handleLoadMore"
+            class="btn--primary px-8 py-4 text-xs font-semibold hover:opacity-90 transition-opacity"
+          >
+            Load 5 More
+          </button>
+          <span
+            v-else
+            class="text-sm italic text-[var(--color-ink-2)]" style="font-family: var(--font-display)"
+          >
+            Fully loaded. No more entries.
+          </span>
+        </div>
+      </section>
+
+    </article>
+  </div>
 </template>

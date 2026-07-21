@@ -42,7 +42,8 @@ defmodule AlvaDemoWeb.MerchantConsoleLive do
     uploads: ["catalog.upload_media"]
 
   def handle_params(params, _uri, socket) do
-    {:noreply, socket |> assign(console_route_assigns(params)) |> Alva.LiveView.reconfigure_streams(params)}
+    {:noreply,
+     socket |> assign(console_route_assigns(params)) |> Alva.LiveView.reconfigure_streams(params)}
   end
 
   def render(assigns) do

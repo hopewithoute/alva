@@ -47,7 +47,7 @@ defmodule AlvaDemo.Demos.Notification do
     attribute :severity, :atom do
       allow_nil?(false)
       public?(true)
-      constraints(one_of: [:info, :success, :warning])
+      constraints(one_of: [:info, :success, :warning, :danger, :error])
     end
 
     create_timestamp :created_at do
