@@ -77,48 +77,45 @@ watch(customerName, (newName) => {
 </script>
 
 <template>
-  <div class="rounded-xl border border-[var(--color-rule)] bg-[var(--color-paper)] p-6 shadow-sm">
-    <div class="space-y-6">
-      <div class="space-y-2">
-        <p class="text-sm font-medium text-[var(--color-ink-2)]">
-          Customer Storefront surface
-        </p>
-        <h1 class="text-2xl font-semibold text-[var(--color-ink)]" style="font-family: var(--font-display);">
+  <div class="border-b border-[var(--color-rule)] pb-12">
+    <div class="space-y-8">
+      <div class="space-y-4 max-w-3xl">
+        <h1 class="text-4xl lg:text-5xl font-normal text-[var(--color-ink)]" style="font-family: var(--font-display); line-height: 1.1;">
           Browse the catalog and keep your support thread close.
         </h1>
-        <p class="max-w-2xl text-sm text-[var(--color-ink-2)]">
+        <p class="text-base text-[var(--color-ink-2)]" style="line-height: 1.6;">
           Enter your customer name once to place orders, track status from
           Recent Orders, and keep chatting with merchant support in the side
           panel.
         </p>
       </div>
 
-      <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <label class="flex min-w-[240px] flex-col gap-2 text-sm font-medium text-[var(--color-ink-2)]">
+      <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between pt-4 border-t border-[var(--color-rule)]">
+        <label class="flex min-w-[280px] flex-col gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-[var(--color-ink)]" style="font-family: var(--font-mono)">
           <span>Your Name</span>
           <input
             id="customerName"
             v-model="customerName"
             type="text"
             placeholder="e.g. Alice"
-            class="h-11 rounded-md border border-[var(--color-rule)] px-3 text-sm font-normal text-[var(--color-ink)]"
+            class="h-10 rounded-none border-0 border-b border-[var(--color-rule-2)] bg-transparent px-0 text-sm font-normal text-[var(--color-ink)] focus:border-[var(--color-ink)] focus:outline-none focus:ring-0"
           />
         </label>
 
         <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
           <button
             type="button"
-            class="inline-flex h-11 min-w-[190px] items-center justify-between rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] px-4 text-left transition-colors hover:bg-[var(--color-rule)] disabled:cursor-not-allowed disabled:border-[var(--color-rule)] disabled:bg-[var(--color-rule)]"
+            class="inline-flex h-11 min-w-[220px] items-center justify-between rounded-none border border-[var(--color-ink)] bg-transparent px-4 text-left transition-colors hover:bg-[var(--color-ink)] hover:text-[var(--color-paper)] group disabled:cursor-not-allowed disabled:border-[var(--color-rule)] disabled:opacity-50"
             :disabled="recentOrderCount === 0"
             @click="emit('open-orders')"
           >
             <span class="space-y-0.5">
-              <span class="block text-[11px] font-medium uppercase tracking-wide text-[var(--color-ink-2)]">Recent Orders</span>
-              <span class="block text-sm font-medium text-[var(--color-ink)]">
+              <span class="block text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-ink-2)] group-hover:text-[var(--color-paper)] transition-colors" style="font-family: var(--font-mono)">Recent Orders</span>
+              <span class="block text-xs font-medium uppercase tracking-[0.05em]">
                 {{ recentOrderCount === 0 ? "No orders yet" : `${recentOrderCount} orders` }}
               </span>
             </span>
-            <span class="inline-flex min-w-[2rem] items-center justify-center rounded-full bg-[var(--color-ink)] text-[var(--color-paper)] px-2 py-1 text-xs font-semibold">
+            <span class="inline-flex min-w-[1.5rem] items-center justify-center rounded-none bg-[var(--color-ink)] text-[var(--color-paper)] group-hover:bg-[var(--color-paper)] group-hover:text-[var(--color-ink)] px-2 py-0.5 text-xs font-mono transition-colors">
               {{ recentOrderItems }}
             </span>
           </button>

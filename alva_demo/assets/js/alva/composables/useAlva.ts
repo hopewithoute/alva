@@ -2,7 +2,7 @@
 // Do not edit manually.
 
 import { useLiveVue, useLiveEvent } from "live_vue";
-import { onUnmounted } from "vue";
+import { ref, computed, onUnmounted } from "vue";
 import { useAlvaForm, type AlvaFormOptions } from "./useAlvaForm";
 import { useAlvaQuery } from "./useAlvaQuery";
 import { useAlvaUpload } from "./useAlvaUpload";
@@ -28,7 +28,12 @@ export function useAlva(config?: AlvaConfig) {
     catalog: {
         adjust_stock: (payload: AlvaEvents["catalog.adjust_stock"]["input"]): Promise<AlvaEvents["catalog.adjust_stock"]["output"]> => {
             return new Promise((resolve) => {
+                const startTime = performance.now();
                 live.pushEvent("catalog.adjust_stock", payload, (reply: AlvaEvents["catalog.adjust_stock"]["output"]) => {
+                    const durationMs = Math.round(performance.now() - startTime);
+                    if (typeof window !== "undefined" && (window as any).__ALVA_RECORD_TELEMETRY__) {
+                        (window as any).__ALVA_RECORD_TELEMETRY__("catalog.adjust_stock", durationMs, reply.ok);
+                    }
                     if (reply.ok) {
                         config?.onSuccess?.(reply.data, "catalog.adjust_stock");
                     } else {
@@ -42,11 +47,63 @@ export function useAlva(config?: AlvaConfig) {
             options: Extract<AlvaEvents["catalog.adjust_stock"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["catalog.adjust_stock"]["input"], object>, keyof AlvaEvents>
         ) => {
             return useAlvaForm("catalog.adjust_stock", options);
+        },
+        use_adjust_stock_upload: (options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload("catalog.adjust_stock", options);
         }
+,
+        get_product: (payload: AlvaEvents["catalog.get_product"]["input"]): Promise<AlvaEvents["catalog.get_product"]["output"]> => {
+            return new Promise((resolve) => {
+                const startTime = performance.now();
+                live.pushEvent("catalog.get_product", payload, (reply: AlvaEvents["catalog.get_product"]["output"]) => {
+                    const durationMs = Math.round(performance.now() - startTime);
+                    if (typeof window !== "undefined" && (window as any).__ALVA_RECORD_TELEMETRY__) {
+                        (window as any).__ALVA_RECORD_TELEMETRY__("catalog.get_product", durationMs, reply.ok);
+                    }
+                    if (reply.ok) {
+                        config?.onSuccess?.(reply.data, "catalog.get_product");
+                    } else {
+                        config?.onError?.(reply.error, "catalog.get_product");
+                    }
+                    resolve(reply);
+                });
+            });
+        },
+        use_get_product_form: (
+            options: Extract<AlvaEvents["catalog.get_product"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["catalog.get_product"]["input"], object>, keyof AlvaEvents>
+        ) => {
+            return useAlvaForm("catalog.get_product", options);
+        },
+        use_get_product_upload: (options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload("catalog.get_product", options);
+        },
+        use_get_product_query: (
+            inputGetter: () => AlvaEvents["catalog.get_product"]["input"],
+            options?: import("./useAlvaQuery").AlvaQueryOptions
+        ) => {
+            return useAlvaQuery("catalog.get_product", inputGetter, options);
+        },
+        use_get_product_by_id: (
+            idGetter: import("vue").WatchSource<string | null | undefined>,
+            options?: import("./useAlvaQuery").AlvaQueryOptions
+        ) => {
+            const inputGetter = () => {
+                const id = typeof idGetter === "function" ? idGetter() : (idGetter as any)?.value;
+                return id ? ({ id: id } as any) : null;
+            };
+            return useAlvaQuery("catalog.get_product", inputGetter, options);
+        }
+
+
 ,
         list_products: (payload: AlvaEvents["catalog.list_products"]["input"]): Promise<AlvaEvents["catalog.list_products"]["output"]> => {
             return new Promise((resolve) => {
+                const startTime = performance.now();
                 live.pushEvent("catalog.list_products", payload, (reply: AlvaEvents["catalog.list_products"]["output"]) => {
+                    const durationMs = Math.round(performance.now() - startTime);
+                    if (typeof window !== "undefined" && (window as any).__ALVA_RECORD_TELEMETRY__) {
+                        (window as any).__ALVA_RECORD_TELEMETRY__("catalog.list_products", durationMs, reply.ok);
+                    }
                     if (reply.ok) {
                         config?.onSuccess?.(reply.data, "catalog.list_products");
                     } else {
@@ -61,17 +118,36 @@ export function useAlva(config?: AlvaConfig) {
         ) => {
             return useAlvaForm("catalog.list_products", options);
         },
+        use_list_products_upload: (options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload("catalog.list_products", options);
+        },
         use_list_products_query: (
             inputGetter: () => AlvaEvents["catalog.list_products"]["input"],
             options?: import("./useAlvaQuery").AlvaQueryOptions
         ) => {
             return useAlvaQuery("catalog.list_products", inputGetter, options);
+        },
+        use_list_products_by_id: (
+            idGetter: import("vue").WatchSource<string | null | undefined>,
+            options?: import("./useAlvaQuery").AlvaQueryOptions
+        ) => {
+            const inputGetter = () => {
+                const id = typeof idGetter === "function" ? idGetter() : (idGetter as any)?.value;
+                return id ? ({ id: id } as any) : null;
+            };
+            return useAlvaQuery("catalog.list_products", inputGetter, options);
         }
+
 
 ,
         upload_media: (payload: AlvaEvents["catalog.upload_media"]["input"]): Promise<AlvaEvents["catalog.upload_media"]["output"]> => {
             return new Promise((resolve) => {
+                const startTime = performance.now();
                 live.pushEvent("catalog.upload_media", payload, (reply: AlvaEvents["catalog.upload_media"]["output"]) => {
+                    const durationMs = Math.round(performance.now() - startTime);
+                    if (typeof window !== "undefined" && (window as any).__ALVA_RECORD_TELEMETRY__) {
+                        (window as any).__ALVA_RECORD_TELEMETRY__("catalog.upload_media", durationMs, reply.ok);
+                    }
                     if (reply.ok) {
                         config?.onSuccess?.(reply.data, "catalog.upload_media");
                     } else {
@@ -85,6 +161,9 @@ export function useAlva(config?: AlvaConfig) {
             options: Extract<AlvaEvents["catalog.upload_media"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["catalog.upload_media"]["input"], object>, keyof AlvaEvents>
         ) => {
             return useAlvaForm("catalog.upload_media", options);
+        },
+        use_upload_media_upload: (options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload("catalog.upload_media", options);
         }
 
     }
@@ -92,7 +171,12 @@ export function useAlva(config?: AlvaConfig) {
     demo_chat: {
         list_messages: (payload: AlvaEvents["demo_chat.list_messages"]["input"]): Promise<AlvaEvents["demo_chat.list_messages"]["output"]> => {
             return new Promise((resolve) => {
+                const startTime = performance.now();
                 live.pushEvent("demo_chat.list_messages", payload, (reply: AlvaEvents["demo_chat.list_messages"]["output"]) => {
+                    const durationMs = Math.round(performance.now() - startTime);
+                    if (typeof window !== "undefined" && (window as any).__ALVA_RECORD_TELEMETRY__) {
+                        (window as any).__ALVA_RECORD_TELEMETRY__("demo_chat.list_messages", durationMs, reply.ok);
+                    }
                     if (reply.ok) {
                         config?.onSuccess?.(reply.data, "demo_chat.list_messages");
                     } else {
@@ -107,17 +191,36 @@ export function useAlva(config?: AlvaConfig) {
         ) => {
             return useAlvaForm("demo_chat.list_messages", options);
         },
+        use_list_messages_upload: (options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload("demo_chat.list_messages", options);
+        },
         use_list_messages_query: (
             inputGetter: () => AlvaEvents["demo_chat.list_messages"]["input"],
             options?: import("./useAlvaQuery").AlvaQueryOptions
         ) => {
             return useAlvaQuery("demo_chat.list_messages", inputGetter, options);
+        },
+        use_list_messages_by_id: (
+            idGetter: import("vue").WatchSource<string | null | undefined>,
+            options?: import("./useAlvaQuery").AlvaQueryOptions
+        ) => {
+            const inputGetter = () => {
+                const id = typeof idGetter === "function" ? idGetter() : (idGetter as any)?.value;
+                return id ? ({ id: id } as any) : null;
+            };
+            return useAlvaQuery("demo_chat.list_messages", inputGetter, options);
         }
+
 
 ,
         send_message: (payload: AlvaEvents["demo_chat.send_message"]["input"]): Promise<AlvaEvents["demo_chat.send_message"]["output"]> => {
             return new Promise((resolve) => {
+                const startTime = performance.now();
                 live.pushEvent("demo_chat.send_message", payload, (reply: AlvaEvents["demo_chat.send_message"]["output"]) => {
+                    const durationMs = Math.round(performance.now() - startTime);
+                    if (typeof window !== "undefined" && (window as any).__ALVA_RECORD_TELEMETRY__) {
+                        (window as any).__ALVA_RECORD_TELEMETRY__("demo_chat.send_message", durationMs, reply.ok);
+                    }
                     if (reply.ok) {
                         config?.onSuccess?.(reply.data, "demo_chat.send_message");
                     } else {
@@ -131,6 +234,9 @@ export function useAlva(config?: AlvaConfig) {
             options: Extract<AlvaEvents["demo_chat.send_message"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["demo_chat.send_message"]["input"], object>, keyof AlvaEvents>
         ) => {
             return useAlvaForm("demo_chat.send_message", options);
+        },
+        use_send_message_upload: (options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload("demo_chat.send_message", options);
         }
 
     }
@@ -138,7 +244,12 @@ export function useAlva(config?: AlvaConfig) {
     demo_feed: {
         list_entries: (payload: AlvaEvents["demo_feed.list_entries"]["input"]): Promise<AlvaEvents["demo_feed.list_entries"]["output"]> => {
             return new Promise((resolve) => {
+                const startTime = performance.now();
                 live.pushEvent("demo_feed.list_entries", payload, (reply: AlvaEvents["demo_feed.list_entries"]["output"]) => {
+                    const durationMs = Math.round(performance.now() - startTime);
+                    if (typeof window !== "undefined" && (window as any).__ALVA_RECORD_TELEMETRY__) {
+                        (window as any).__ALVA_RECORD_TELEMETRY__("demo_feed.list_entries", durationMs, reply.ok);
+                    }
                     if (reply.ok) {
                         config?.onSuccess?.(reply.data, "demo_feed.list_entries");
                     } else {
@@ -153,12 +264,26 @@ export function useAlva(config?: AlvaConfig) {
         ) => {
             return useAlvaForm("demo_feed.list_entries", options);
         },
+        use_list_entries_upload: (options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload("demo_feed.list_entries", options);
+        },
         use_list_entries_query: (
             inputGetter: () => AlvaEvents["demo_feed.list_entries"]["input"],
             options?: import("./useAlvaQuery").AlvaQueryOptions
         ) => {
             return useAlvaQuery("demo_feed.list_entries", inputGetter, options);
+        },
+        use_list_entries_by_id: (
+            idGetter: import("vue").WatchSource<string | null | undefined>,
+            options?: import("./useAlvaQuery").AlvaQueryOptions
+        ) => {
+            const inputGetter = () => {
+                const id = typeof idGetter === "function" ? idGetter() : (idGetter as any)?.value;
+                return id ? ({ id: id } as any) : null;
+            };
+            return useAlvaQuery("demo_feed.list_entries", inputGetter, options);
         }
+
 
 
     }
@@ -166,7 +291,12 @@ export function useAlva(config?: AlvaConfig) {
     demo_notifications: {
         send: (payload: AlvaEvents["demo_notifications.send"]["input"]): Promise<AlvaEvents["demo_notifications.send"]["output"]> => {
             return new Promise((resolve) => {
+                const startTime = performance.now();
                 live.pushEvent("demo_notifications.send", payload, (reply: AlvaEvents["demo_notifications.send"]["output"]) => {
+                    const durationMs = Math.round(performance.now() - startTime);
+                    if (typeof window !== "undefined" && (window as any).__ALVA_RECORD_TELEMETRY__) {
+                        (window as any).__ALVA_RECORD_TELEMETRY__("demo_notifications.send", durationMs, reply.ok);
+                    }
                     if (reply.ok) {
                         config?.onSuccess?.(reply.data, "demo_notifications.send");
                     } else {
@@ -180,6 +310,9 @@ export function useAlva(config?: AlvaConfig) {
             options: Extract<AlvaEvents["demo_notifications.send"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["demo_notifications.send"]["input"], object>, keyof AlvaEvents>
         ) => {
             return useAlvaForm("demo_notifications.send", options);
+        },
+        use_send_upload: (options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload("demo_notifications.send", options);
         }
 ,
         on_sent: (
@@ -191,6 +324,25 @@ export function useAlva(config?: AlvaConfig) {
             onUnmounted(() => {
                 live.pushEvent("alva:unsubscribe_signal", { name: "demo_notifications.sent", input }, () => {});
             });
+        },
+        use_sent_state: (
+            input: AlvaSignals["demo_notifications.sent"] extends { input: infer I } ? I : Record<string, never> = {} as any
+        ) => {
+            const data = ref<AlvaSignals["demo_notifications.sent"]["payload"][]>([]);
+            const latest = ref<AlvaSignals["demo_notifications.sent"]["payload"] | null>(null);
+            const count = computed(() => data.value.length);
+            const clear = () => { data.value = []; latest.value = null; };
+
+            live.pushEvent("alva:subscribe_signal", { name: "demo_notifications.sent", input }, () => {});
+            useLiveEvent("demo_notifications.sent", (payload: any) => {
+                latest.value = payload;
+                data.value.unshift(payload);
+            });
+            onUnmounted(() => {
+                live.pushEvent("alva:unsubscribe_signal", { name: "demo_notifications.sent", input }, () => {});
+            });
+
+            return { data, latest, count, clear };
         }
 
     }
@@ -198,7 +350,12 @@ export function useAlva(config?: AlvaConfig) {
     sales: {
         begin_processing: (payload: AlvaEvents["sales.begin_processing"]["input"]): Promise<AlvaEvents["sales.begin_processing"]["output"]> => {
             return new Promise((resolve) => {
+                const startTime = performance.now();
                 live.pushEvent("sales.begin_processing", payload, (reply: AlvaEvents["sales.begin_processing"]["output"]) => {
+                    const durationMs = Math.round(performance.now() - startTime);
+                    if (typeof window !== "undefined" && (window as any).__ALVA_RECORD_TELEMETRY__) {
+                        (window as any).__ALVA_RECORD_TELEMETRY__("sales.begin_processing", durationMs, reply.ok);
+                    }
                     if (reply.ok) {
                         config?.onSuccess?.(reply.data, "sales.begin_processing");
                     } else {
@@ -212,11 +369,19 @@ export function useAlva(config?: AlvaConfig) {
             options: Extract<AlvaEvents["sales.begin_processing"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["sales.begin_processing"]["input"], object>, keyof AlvaEvents>
         ) => {
             return useAlvaForm("sales.begin_processing", options);
+        },
+        use_begin_processing_upload: (options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload("sales.begin_processing", options);
         }
 ,
         create_order: (payload: AlvaEvents["sales.create_order"]["input"]): Promise<AlvaEvents["sales.create_order"]["output"]> => {
             return new Promise((resolve) => {
+                const startTime = performance.now();
                 live.pushEvent("sales.create_order", payload, (reply: AlvaEvents["sales.create_order"]["output"]) => {
+                    const durationMs = Math.round(performance.now() - startTime);
+                    if (typeof window !== "undefined" && (window as any).__ALVA_RECORD_TELEMETRY__) {
+                        (window as any).__ALVA_RECORD_TELEMETRY__("sales.create_order", durationMs, reply.ok);
+                    }
                     if (reply.ok) {
                         config?.onSuccess?.(reply.data, "sales.create_order");
                     } else {
@@ -230,11 +395,19 @@ export function useAlva(config?: AlvaConfig) {
             options: Extract<AlvaEvents["sales.create_order"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["sales.create_order"]["input"], object>, keyof AlvaEvents>
         ) => {
             return useAlvaForm("sales.create_order", options);
+        },
+        use_create_order_upload: (options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload("sales.create_order", options);
         }
 ,
         fulfill: (payload: AlvaEvents["sales.fulfill"]["input"]): Promise<AlvaEvents["sales.fulfill"]["output"]> => {
             return new Promise((resolve) => {
+                const startTime = performance.now();
                 live.pushEvent("sales.fulfill", payload, (reply: AlvaEvents["sales.fulfill"]["output"]) => {
+                    const durationMs = Math.round(performance.now() - startTime);
+                    if (typeof window !== "undefined" && (window as any).__ALVA_RECORD_TELEMETRY__) {
+                        (window as any).__ALVA_RECORD_TELEMETRY__("sales.fulfill", durationMs, reply.ok);
+                    }
                     if (reply.ok) {
                         config?.onSuccess?.(reply.data, "sales.fulfill");
                     } else {
@@ -248,11 +421,19 @@ export function useAlva(config?: AlvaConfig) {
             options: Extract<AlvaEvents["sales.fulfill"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["sales.fulfill"]["input"], object>, keyof AlvaEvents>
         ) => {
             return useAlvaForm("sales.fulfill", options);
+        },
+        use_fulfill_upload: (options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload("sales.fulfill", options);
         }
 ,
         list_orders: (payload: AlvaEvents["sales.list_orders"]["input"]): Promise<AlvaEvents["sales.list_orders"]["output"]> => {
             return new Promise((resolve) => {
+                const startTime = performance.now();
                 live.pushEvent("sales.list_orders", payload, (reply: AlvaEvents["sales.list_orders"]["output"]) => {
+                    const durationMs = Math.round(performance.now() - startTime);
+                    if (typeof window !== "undefined" && (window as any).__ALVA_RECORD_TELEMETRY__) {
+                        (window as any).__ALVA_RECORD_TELEMETRY__("sales.list_orders", durationMs, reply.ok);
+                    }
                     if (reply.ok) {
                         config?.onSuccess?.(reply.data, "sales.list_orders");
                     } else {
@@ -267,12 +448,26 @@ export function useAlva(config?: AlvaConfig) {
         ) => {
             return useAlvaForm("sales.list_orders", options);
         },
+        use_list_orders_upload: (options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload("sales.list_orders", options);
+        },
         use_list_orders_query: (
             inputGetter: () => AlvaEvents["sales.list_orders"]["input"],
             options?: import("./useAlvaQuery").AlvaQueryOptions
         ) => {
             return useAlvaQuery("sales.list_orders", inputGetter, options);
+        },
+        use_list_orders_by_id: (
+            idGetter: import("vue").WatchSource<string | null | undefined>,
+            options?: import("./useAlvaQuery").AlvaQueryOptions
+        ) => {
+            const inputGetter = () => {
+                const id = typeof idGetter === "function" ? idGetter() : (idGetter as any)?.value;
+                return id ? ({ id: id } as any) : null;
+            };
+            return useAlvaQuery("sales.list_orders", inputGetter, options);
         }
+
 
 
     }
@@ -280,7 +475,12 @@ export function useAlva(config?: AlvaConfig) {
     support: {
         create: (payload: AlvaEvents["support.create"]["input"]): Promise<AlvaEvents["support.create"]["output"]> => {
             return new Promise((resolve) => {
+                const startTime = performance.now();
                 live.pushEvent("support.create", payload, (reply: AlvaEvents["support.create"]["output"]) => {
+                    const durationMs = Math.round(performance.now() - startTime);
+                    if (typeof window !== "undefined" && (window as any).__ALVA_RECORD_TELEMETRY__) {
+                        (window as any).__ALVA_RECORD_TELEMETRY__("support.create", durationMs, reply.ok);
+                    }
                     if (reply.ok) {
                         config?.onSuccess?.(reply.data, "support.create");
                     } else {
@@ -294,11 +494,19 @@ export function useAlva(config?: AlvaConfig) {
             options: Extract<AlvaEvents["support.create"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["support.create"]["input"], object>, keyof AlvaEvents>
         ) => {
             return useAlvaForm("support.create", options);
+        },
+        use_create_upload: (options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload("support.create", options);
         }
 ,
         get_conversation: (payload: AlvaEvents["support.get_conversation"]["input"]): Promise<AlvaEvents["support.get_conversation"]["output"]> => {
             return new Promise((resolve) => {
+                const startTime = performance.now();
                 live.pushEvent("support.get_conversation", payload, (reply: AlvaEvents["support.get_conversation"]["output"]) => {
+                    const durationMs = Math.round(performance.now() - startTime);
+                    if (typeof window !== "undefined" && (window as any).__ALVA_RECORD_TELEMETRY__) {
+                        (window as any).__ALVA_RECORD_TELEMETRY__("support.get_conversation", durationMs, reply.ok);
+                    }
                     if (reply.ok) {
                         config?.onSuccess?.(reply.data, "support.get_conversation");
                     } else {
@@ -313,17 +521,36 @@ export function useAlva(config?: AlvaConfig) {
         ) => {
             return useAlvaForm("support.get_conversation", options);
         },
+        use_get_conversation_upload: (options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload("support.get_conversation", options);
+        },
         use_get_conversation_query: (
             inputGetter: () => AlvaEvents["support.get_conversation"]["input"],
             options?: import("./useAlvaQuery").AlvaQueryOptions
         ) => {
             return useAlvaQuery("support.get_conversation", inputGetter, options);
+        },
+        use_get_conversation_by_id: (
+            idGetter: import("vue").WatchSource<string | null | undefined>,
+            options?: import("./useAlvaQuery").AlvaQueryOptions
+        ) => {
+            const inputGetter = () => {
+                const id = typeof idGetter === "function" ? idGetter() : (idGetter as any)?.value;
+                return id ? ({ id: id } as any) : null;
+            };
+            return useAlvaQuery("support.get_conversation", inputGetter, options);
         }
+
 
 ,
         list_conversations: (payload: AlvaEvents["support.list_conversations"]["input"]): Promise<AlvaEvents["support.list_conversations"]["output"]> => {
             return new Promise((resolve) => {
+                const startTime = performance.now();
                 live.pushEvent("support.list_conversations", payload, (reply: AlvaEvents["support.list_conversations"]["output"]) => {
+                    const durationMs = Math.round(performance.now() - startTime);
+                    if (typeof window !== "undefined" && (window as any).__ALVA_RECORD_TELEMETRY__) {
+                        (window as any).__ALVA_RECORD_TELEMETRY__("support.list_conversations", durationMs, reply.ok);
+                    }
                     if (reply.ok) {
                         config?.onSuccess?.(reply.data, "support.list_conversations");
                     } else {
@@ -338,17 +565,36 @@ export function useAlva(config?: AlvaConfig) {
         ) => {
             return useAlvaForm("support.list_conversations", options);
         },
+        use_list_conversations_upload: (options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload("support.list_conversations", options);
+        },
         use_list_conversations_query: (
             inputGetter: () => AlvaEvents["support.list_conversations"]["input"],
             options?: import("./useAlvaQuery").AlvaQueryOptions
         ) => {
             return useAlvaQuery("support.list_conversations", inputGetter, options);
+        },
+        use_list_conversations_by_id: (
+            idGetter: import("vue").WatchSource<string | null | undefined>,
+            options?: import("./useAlvaQuery").AlvaQueryOptions
+        ) => {
+            const inputGetter = () => {
+                const id = typeof idGetter === "function" ? idGetter() : (idGetter as any)?.value;
+                return id ? ({ id: id } as any) : null;
+            };
+            return useAlvaQuery("support.list_conversations", inputGetter, options);
         }
+
 
 ,
         list_messages: (payload: AlvaEvents["support.list_messages"]["input"]): Promise<AlvaEvents["support.list_messages"]["output"]> => {
             return new Promise((resolve) => {
+                const startTime = performance.now();
                 live.pushEvent("support.list_messages", payload, (reply: AlvaEvents["support.list_messages"]["output"]) => {
+                    const durationMs = Math.round(performance.now() - startTime);
+                    if (typeof window !== "undefined" && (window as any).__ALVA_RECORD_TELEMETRY__) {
+                        (window as any).__ALVA_RECORD_TELEMETRY__("support.list_messages", durationMs, reply.ok);
+                    }
                     if (reply.ok) {
                         config?.onSuccess?.(reply.data, "support.list_messages");
                     } else {
@@ -363,17 +609,36 @@ export function useAlva(config?: AlvaConfig) {
         ) => {
             return useAlvaForm("support.list_messages", options);
         },
+        use_list_messages_upload: (options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload("support.list_messages", options);
+        },
         use_list_messages_query: (
             inputGetter: () => AlvaEvents["support.list_messages"]["input"],
             options?: import("./useAlvaQuery").AlvaQueryOptions
         ) => {
             return useAlvaQuery("support.list_messages", inputGetter, options);
+        },
+        use_list_messages_by_id: (
+            idGetter: import("vue").WatchSource<string | null | undefined>,
+            options?: import("./useAlvaQuery").AlvaQueryOptions
+        ) => {
+            const inputGetter = () => {
+                const id = typeof idGetter === "function" ? idGetter() : (idGetter as any)?.value;
+                return id ? ({ id: id } as any) : null;
+            };
+            return useAlvaQuery("support.list_messages", inputGetter, options);
         }
+
 
 ,
         send_message: (payload: AlvaEvents["support.send_message"]["input"]): Promise<AlvaEvents["support.send_message"]["output"]> => {
             return new Promise((resolve) => {
+                const startTime = performance.now();
                 live.pushEvent("support.send_message", payload, (reply: AlvaEvents["support.send_message"]["output"]) => {
+                    const durationMs = Math.round(performance.now() - startTime);
+                    if (typeof window !== "undefined" && (window as any).__ALVA_RECORD_TELEMETRY__) {
+                        (window as any).__ALVA_RECORD_TELEMETRY__("support.send_message", durationMs, reply.ok);
+                    }
                     if (reply.ok) {
                         config?.onSuccess?.(reply.data, "support.send_message");
                     } else {
@@ -387,6 +652,9 @@ export function useAlva(config?: AlvaConfig) {
             options: Extract<AlvaEvents["support.send_message"]["input"], object> extends never ? never : AlvaFormOptions<Extract<AlvaEvents["support.send_message"]["input"], object>, keyof AlvaEvents>
         ) => {
             return useAlvaForm("support.send_message", options);
+        },
+        use_send_message_upload: (options?: import("./useAlvaUpload").AlvaUploadOptions) => {
+            return useAlvaUpload("support.send_message", options);
         }
 
     }

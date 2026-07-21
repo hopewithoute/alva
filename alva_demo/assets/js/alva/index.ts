@@ -2,6 +2,7 @@
 // Do not edit manually.
 
 export { useAlva } from "./composables/useAlva";
+export { useAlvaAssigns } from "./composables/useAlvaAssigns";
 export type { AlvaConfig, AlvaError } from "./composables/useAlva";
 export type { AlvaFormOptions } from "./composables/useAlvaForm";
 export type { AlvaQueryOptions, AlvaQueryReturn } from "./composables/useAlvaQuery";

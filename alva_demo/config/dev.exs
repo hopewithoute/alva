@@ -8,7 +8,8 @@ config :alva_demo, AlvaDemoWeb.Endpoint,
   secret_key_base:
     "commerce_showcase_dev_secret_key_base_that_is_long_enough_for_signed_cookie_sessions_123",
   watchers: [
-    npm: ["run", "dev", cd: Path.expand("../assets", __DIR__)]
+    npm: ["run", "dev", cd: Path.expand("../assets", __DIR__)],
+    mix: ["alva.codegen"]
   ]
 
 config :alva_demo, dev_routes: true

@@ -3,7 +3,7 @@ import { cn } from "@/vue/lib/utils"
 import { cva, type VariantProps } from "class-variance-authority"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",
+  "inline-flex items-center justify-center rounded-md text-sm font-medium transition-all duration-150 ease-out active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-70",
   {
     variants: {
       variant: {

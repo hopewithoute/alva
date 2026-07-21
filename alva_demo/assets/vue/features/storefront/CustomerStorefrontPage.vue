@@ -5,7 +5,7 @@ import StorefrontProductCard from "../catalog/StorefrontProductCard.vue";
 import CustomerOrderDrawer from "../sales/CustomerOrderDrawer.vue";
 import SupportChatWidget from "../support/SupportChatWidget.vue";
 import { ref } from "vue";
-import { useAlva } from "../../../js/alva";
+import { useAlva, useAlvaAssigns } from "../../../js/alva";
 import type { Order, Product, SupportMessage } from "../../../js/alva/types";
 
 const props = defineProps<{
@@ -22,11 +22,12 @@ const orderNotice = ref<string | null>(null);
 const orderDrawerRef = ref<any>(null);
 
 const alva = useAlva();
+const assigns = useAlvaAssigns();
 const searchQuery = ref("");
 
-const { data: queryProducts, loading: loadingProducts } = alva.catalog.use_list_products_query(
+const { data: queryProducts, loading: loadingProducts, error: queryError } = alva.catalog.use_list_products_query(
   () => ({ query: searchQuery.value }),
-  { debounceMs: 300 }
+  { debounceMs: 300, autoRefreshOnSignal: "catalog.product_updated" }
 );
 
 const displayProducts = computed(() => {
@@ -71,26 +72,26 @@ const handleOrderError = (error: string) => {
       />
 
       <div class="space-y-4">
-        <div v-if="orderError" class="rounded-md bg-red-50 p-3 text-sm text-red-700">
+        <div v-if="orderError" class="border border-[var(--color-danger-border)] bg-[var(--color-danger-surface)] p-3 text-sm text-[var(--color-danger)]">
           {{ orderError }}
         </div>
-        <div v-if="orderNotice" class="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">
+        <div v-if="orderNotice" class="border border-[var(--color-success-border)] bg-[var(--color-success-surface)] p-3 text-sm text-[var(--color-success)]">
           {{ orderNotice }}
         </div>
       </div>
 
-      <div class="flex items-center gap-4 rounded-xl border border-[var(--color-rule)] bg-[var(--color-paper)] p-4 shadow-sm">
-        <label class="text-sm font-medium text-[var(--color-ink-2)] whitespace-nowrap">Search Catalog</label>
+      <div class="flex items-center gap-6 border-b border-[var(--color-rule)] pb-6 pt-2">
+        <label class="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--color-ink)] whitespace-nowrap" style="font-family: var(--font-mono)">Search Catalog</label>
         <input
           v-model="searchQuery"
           type="text"
           placeholder="Type to search products..."
-          class="flex-1 rounded-md border border-[var(--color-rule)] px-3 py-2 text-sm"
+          class="flex-1 rounded-none border-0 border-b border-[var(--color-rule-2)] bg-transparent px-0 py-2 text-sm text-[var(--color-ink)] focus:border-[var(--color-ink)] focus:outline-none focus:ring-0"
         />
-        <div v-if="loadingProducts" class="text-xs text-[var(--color-ink-2)]">Searching...</div>
+        <div v-if="loadingProducts" class="text-xs text-[var(--color-ink-2)] italic" style="font-family: var(--font-display)">Searching...</div>
       </div>
 
-      <div v-if="!displayProducts" class="rounded-xl border border-dashed border-[var(--color-rule)] bg-[var(--color-paper)] p-6 text-sm text-[var(--color-ink-2)]">
+      <div v-if="!displayProducts" class="border border-dashed border-[var(--color-rule)] p-6 text-sm text-[var(--color-ink-2)] italic" style="font-family: var(--font-display)">
         Loading catalog...
       </div>
       <div v-else class="grid grid-cols-1 gap-6 sm:grid-cols-2 2xl:grid-cols-3">

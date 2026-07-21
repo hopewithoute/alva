@@ -1,11 +1,18 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref } from "vue";
 import { useAlva } from "../../../js/alva";
 import type { Product } from "../../../js/alva/types";
 import Button from "../../shared/ui/button/Button.vue";
 
 const props = defineProps<{
   product: Product;
+  isUploading?: boolean;
+  uploadProgress?: number;
+  uploadError?: string | null;
+}>();
+
+const emit = defineEmits<{
+  (e: "requestUpload"): void;
 }>();
 
 const alva = useAlva();
@@ -39,87 +46,66 @@ const adjustStock = async () => {
   }
 };
 
-const mediaUpload = alva.use_upload("media", { maxFiles: 1 });
-const isSavingUpload = ref(false);
-const uploadError = ref<string | null>(null);
-const isUploading = computed(() => isSavingUpload.value || mediaUpload.progress.value > 0);
-
-const triggerMediaUpload = async () => {
-  if (isUploading.value) return;
-  uploadError.value = null;
-
-  const upload_request = mediaUpload.dispatch(async ({ primaryReference }: { primaryReference: string }) => {
-    isSavingUpload.value = true;
-
-    const result = await alva.catalog.upload_media({
-      id: props.product.id,
-      media: primaryReference,
-    });
-
-    if (!result.ok) {
-      uploadError.value = result.error?.message || "Failed to upload media.";
-    }
-
-    isSavingUpload.value = false;
-    return result;
-  });
-
-  mediaUpload.showFilePicker();
-
-  try {
-    await upload_request;
-  } finally {
-    isSavingUpload.value = false;
-  }
-};
-
 const getProductStockTone = () => {
-  if (props.product.stock <= 0) return "bg-red-50 text-red-700 border-red-200";
-  if (props.product.stock <= 25) return "bg-amber-50 text-amber-700 border-amber-200";
-  return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (props.product.stock <= 0) return "bg-danger-surface text-danger border-danger-border";
+  if (props.product.stock <= 25) return "bg-warning-surface text-warning border-warning-border";
+  return "bg-success-surface text-success border-success-border";
 };
 
 const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 rounded-lg border border-[var(--color-rule)] p-4 sm:flex-row sm:items-center sm:justify-between">
-    <div class="flex min-w-0 items-center gap-4">
-      <div v-if="product.media_reference" class="h-12 w-12 shrink-0 overflow-hidden rounded border border-[var(--color-rule)] bg-[var(--color-rule)]">
+  <div class="flex flex-col gap-6 border-b border-[var(--color-rule)] pb-6 pt-4 lg:flex-row lg:items-center lg:justify-between">
+    <div class="flex min-w-0 items-start gap-4">
+      <div v-if="product.media_reference" class="h-16 w-16 shrink-0 overflow-hidden border border-[var(--color-rule)] bg-[var(--color-paper-2)]">
         <img :src="`/images/${product.media_reference}`" class="h-full w-full object-cover" />
       </div>
-      <div v-else class="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-[var(--color-rule)] bg-[var(--color-rule)] text-xs text-[var(--color-ink-2)]">
+      <div v-else class="flex h-16 w-16 shrink-0 items-center justify-center border border-[var(--color-rule)] bg-[var(--color-paper-2)] text-[10px] uppercase font-mono text-[var(--color-ink-2)]">
         No img
       </div>
 
-      <div class="min-w-0">
-        <div class="flex flex-wrap items-center gap-2">
-          <p class="font-medium text-[var(--color-ink)]">{{ product.name }}</p>
-          <span :class="['inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium', getProductStockTone()]">
+      <div class="min-w-0 space-y-1">
+        <div class="flex flex-wrap items-center gap-3">
+          <h3 class="text-xl font-normal text-[var(--color-ink)]" style="font-family: var(--font-display)">{{ product.name }}</h3>
+          <span :class="['border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em]', getProductStockTone()]" style="font-family: var(--font-mono)">
             {{ product.stock }} in stock
           </span>
         </div>
-        <p class="mt-1 text-sm text-[var(--color-ink-2)]">{{ product.description }}</p>
-        <p class="mt-2 text-xs font-medium text-[var(--color-ink-2)]">{{ formatPrice(product.price) }}</p>
-        <p v-if="adjustmentError" class="mt-2 text-xs text-red-600">{{ adjustmentError }}</p>
-        <p v-if="uploadError" class="mt-2 text-xs text-red-600">{{ uploadError }}</p>
+        <p class="text-sm text-[var(--color-ink-2)]" style="line-height: 1.5;">{{ product.description }}</p>
+        <p class="text-xs font-mono text-[var(--color-ink)] font-semibold">{{ formatPrice(product.price) }}</p>
+        <p v-if="adjustmentError" class="text-xs text-danger italic" style="font-family: var(--font-display)">{{ adjustmentError }}</p>
+        <p v-if="uploadError" class="text-xs text-danger italic" style="font-family: var(--font-display)">{{ uploadError }}</p>
       </div>
     </div>
 
-    <div class="flex flex-wrap items-center gap-3">
+    <!-- Actions Toolbar -->
+    <div class="flex flex-wrap items-center gap-4 lg:justify-end">
       <form @submit.prevent="adjustStock" class="flex items-center gap-2">
-        <input type="number" min="0" class="w-24 rounded-md border border-[var(--color-rule)] px-3 py-1.5 text-sm" v-model="stockForm.field('stock').value.value" />
-        <Button type="submit" size="sm" variant="secondary" class="min-w-[104px]" :disabled="isAdjusting">
+        <input 
+          type="number" 
+          min="0" 
+          class="w-20 h-9 rounded-none border-0 border-b border-[var(--color-rule-2)] bg-transparent px-2 text-sm font-mono text-[var(--color-ink)] focus:border-[var(--color-ink)] focus:outline-none focus:ring-0" 
+          v-model="stockForm.field('stock').value.value" 
+        />
+        <Button type="submit" size="sm" variant="secondary" class="rounded-none text-xs font-mono uppercase tracking-[0.1em]" :disabled="isAdjusting">
           {{ isAdjusting ? "Saving..." : "Update Stock" }}
         </Button>
       </form>
 
-      <div class="flex w-28 flex-col gap-1">
-        <Button :data-testid="`merchant-upload-media-${product.id}`" size="sm" variant="secondary" class="min-w-[112px]" @click="triggerMediaUpload" :disabled="isUploading">
+      <div class="flex flex-col gap-1">
+        <Button 
+          :data-testid="`merchant-upload-media-${product.id}`" 
+          size="sm" 
+          variant="secondary" 
+          class="rounded-none text-xs font-mono uppercase tracking-[0.1em]" 
+          @click="emit('requestUpload')" 
+          :disabled="isUploading"
+        >
           {{ isUploading ? "Uploading..." : "Upload Media" }}
         </Button>
-        <div v-if="isUploading" class="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200">
-          <div :data-testid="`merchant-upload-progress-bar-${product.id}`" class="h-full bg-[var(--color-accent)] text-[var(--color-accent-ink)] transition-all duration-300" :style="{ width: `${mediaUpload.progress.value}%` }"></div>
+        <div v-if="isUploading" class="h-1 w-full bg-[var(--color-rule)]">
+          <div :data-testid="`merchant-upload-progress-bar-${product.id}`" class="h-full bg-[var(--color-ink)] transition-all duration-300 ease-linear" :style="{ width: `${uploadProgress}%` }"></div>
         </div>
       </div>
     </div>

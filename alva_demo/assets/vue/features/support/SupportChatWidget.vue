@@ -131,35 +131,30 @@ watch(() => props.supportMessages, async () => {
 </script>
 
 <template>
-  <div class="flex h-full min-h-[620px] flex-col rounded-xl border border-[var(--color-rule)] bg-[var(--color-paper)] shadow-sm xl:sticky xl:top-24">
-    <div class="border-b border-[var(--color-rule)] px-5 py-4">
+  <div class="flex h-full min-h-[620px] flex-col border border-[var(--color-rule)] bg-[var(--color-paper)] xl:sticky xl:top-24">
+    <div class="border-b border-[var(--color-rule)] p-6 space-y-2">
       <div class="flex items-start justify-between gap-3">
         <div>
-          <p class="text-sm font-medium text-[var(--color-ink)]">Support Chat</p>
-          <p class="mt-1 text-sm text-[var(--color-ink-2)]">{{ chatStatus }}</p>
+          <p class="text-xs uppercase tracking-[0.1em] text-[var(--color-ink-2)]" style="font-family: var(--font-mono)">Support Chat</p>
+          <p class="mt-2 text-xl font-normal text-[var(--color-ink)]" style="font-family: var(--font-display)">{{ chatStatus }}</p>
         </div>
-        <span class="rounded-full border border-[var(--color-rule)] bg-[var(--color-rule)] px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-[var(--color-ink-2)]">
+        <span class="border border-[var(--color-rule)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-ink-2)]" style="font-family: var(--font-mono)">
           {{ isChatConnected ? "live" : "standby" }}
         </span>
       </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto bg-[var(--color-rule)]/40">
-      <div v-if="joinChatError || sendMessageError" class="m-5 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+    <div class="flex-1 overflow-y-auto bg-[var(--color-paper-2)]">
+      <div v-if="joinChatError || sendMessageError" class="m-5 border border-danger-border bg-danger-surface p-3 text-sm text-danger italic" style="font-family: var(--font-display)">
         {{ joinChatError || sendMessageError }}
       </div>
       <div v-if="!isChatConnected" class="flex h-[360px] flex-col items-center justify-center p-8 text-center text-sm text-[var(--color-ink-2)]">
-        <div class="mb-4 rounded-full bg-[var(--color-rule)] p-3">
-          <svg class="h-6 w-6 text-[var(--color-ink-2)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-          </svg>
-        </div>
-        <p>{{ chatStatus }}</p>
+        <p class="italic" style="font-family: var(--font-display)">{{ chatStatus }}</p>
         <Button
           v-if="connectedCustomerName"
           variant="secondary"
           size="sm"
-          class="mt-4"
+          class="btn--primary mt-6 px-6 py-2 text-xs"
           @click="joinChat"
           :disabled="isJoiningChat"
         >
@@ -167,8 +162,8 @@ watch(() => props.supportMessages, async () => {
         </Button>
       </div>
 
-      <div v-else ref="chatMessagesEl" class="h-[360px] space-y-4 overflow-y-auto p-4">
-        <div v-if="!supportMessages?.length" class="flex h-full flex-col items-center justify-center text-sm text-[var(--color-ink-2)]">
+      <div v-else ref="chatMessagesEl" class="h-[360px] space-y-4 overflow-y-auto p-6">
+        <div v-if="!supportMessages?.length" class="flex h-full flex-col items-center justify-center text-sm text-[var(--color-ink-2)] italic" style="font-family: var(--font-display)">
           <p>You're connected!</p>
           <p class="mt-1">Send a message to start the conversation.</p>
         </div>
@@ -180,11 +175,11 @@ watch(() => props.supportMessages, async () => {
           :class="msg.sender === 'shopper' ? 'justify-end' : 'justify-start'"
         >
           <div
-            class="max-w-[85%] rounded-2xl px-4 py-2 text-sm"
+            class="max-w-[85%] px-4 py-2 text-sm"
             :class="
               msg.sender === 'shopper'
-                ? 'bg-[var(--color-graphite)] text-white rounded-br-sm'
-                : 'bg-[var(--color-paper)] border border-[var(--color-rule)] text-[var(--color-ink)] shadow-sm rounded-bl-sm'
+                ? 'bg-[var(--color-accent)] text-[var(--color-accent-ink)]'
+                : 'border border-[var(--color-rule)] bg-[var(--color-paper)] text-[var(--color-ink)]'
             "
           >
             {{ msg.text }}
@@ -194,17 +189,17 @@ watch(() => props.supportMessages, async () => {
     </div>
 
     <div class="border-t border-[var(--color-rule)] bg-[var(--color-paper)] p-4">
-      <div class="flex gap-2">
+      <div class="flex gap-4">
         <input
           v-model="newMessageText"
           type="text"
           placeholder="Type a message..."
-          class="flex-1 rounded-md border border-[var(--color-rule)] px-3 text-sm font-normal text-[var(--color-ink)] disabled:cursor-not-allowed disabled:bg-[var(--color-rule)] disabled:text-[var(--color-ink-2)]"
+          class="flex-1 rounded-none border-0 border-b border-[var(--color-rule-2)] bg-transparent px-0 text-sm text-[var(--color-ink)] focus:border-[var(--color-ink)] focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
           :disabled="!connectedCustomerName"
           @keyup.enter="sendMessage"
         />
         <Button
-          variant="primary"
+          class="btn--primary px-6 text-xs"
           @click="sendMessage"
           :disabled="!newMessageText.trim() || isSendingMessage || !connectedCustomerName"
         >

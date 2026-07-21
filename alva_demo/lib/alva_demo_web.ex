@@ -3,7 +3,7 @@ defmodule AlvaDemoWeb do
   Entrypoint for the Commerce Showcase web interface.
   """
 
-  def static_paths, do: ~w(assets images favicon.ico robots.txt)
+  def static_paths, do: ~w(assets images favicon.ico favicon.svg robots.txt)
 
   def router do
     quote do

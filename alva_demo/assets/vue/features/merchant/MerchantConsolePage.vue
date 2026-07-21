@@ -42,19 +42,19 @@ const merchant_tabs = computed<
   {
     label: "Orders",
     value: "orders",
-    count: props.new_orders_count ?? 0,
+    count: props.new_orders_count ?? props.sales_orders?.filter(o => o.lifecycle_status === 'new').length ?? 0,
     description: "Advance the order lifecycle and inspect filters.",
   },
   {
     label: "Inventory",
     value: "inventory",
-    count: props.low_stock_count ?? 0,
+    count: props.low_stock_count ?? props.products?.filter(p => p.stock <= 25).length ?? 0,
     description: "Track low stock and update media or counts in place.",
   },
   {
     label: "Support",
     value: "support",
-    count: props.waiting_conversations_count ?? 0,
+    count: props.waiting_conversations_count ?? props.conversations?.filter(c => c.needs_merchant_reply).length ?? 0,
     description: "Work the shopper queue without losing realtime context.",
   },
 ]);
@@ -66,43 +66,37 @@ const active_tab_description = computed(() => {
 </script>
 
 <template>
-  <div class="space-y-6" data-testid="merchant-console-vue">
-    <section class="rounded-xl border border-[var(--color-rule)] bg-[var(--color-paper)] p-6 shadow-sm">
-      <div class="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-        <div class="space-y-2">
-          <p class="text-sm font-medium text-[var(--color-ink-2)]">Merchant Console surface</p>
-          <h1 class="text-2xl font-semibold text-[var(--color-ink)]" style="font-family: var(--font-display);">
+  <div class="max-w-7xl mx-auto py-12" data-testid="merchant-console-vue">
+    <!-- Header Section -->
+    <section class="border-b border-[var(--color-rule)] pb-12 mb-12">
+      <div class="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-12 items-end">
+        <div class="space-y-6">
+          <h1 class="text-4xl lg:text-5xl font-normal text-[var(--color-ink)]" style="font-family: var(--font-display); line-height: 1.1;">
             Operate orders, inventory, and support from one queue.
           </h1>
-          <p class="max-w-3xl text-sm text-[var(--color-ink-2)]">
+          <p class="max-w-xl text-base text-[var(--color-ink-2)]" style="line-height: 1.6;">
             This showcase keeps the merchant side operational: new orders, low
             stock, and customer replies stay visible while filters stay on the
             same subscription-backed surface.
           </p>
         </div>
 
-        <div class="grid gap-3 sm:grid-cols-2 xl:min-w-[420px] xl:grid-cols-2">
-          <div class="rounded-lg border border-red-200 bg-red-50 p-4">
-            <p class="text-xs font-medium uppercase tracking-wide text-red-600">Needs Attention</p>
-            <div class="mt-2 flex items-end justify-between gap-3">
-              <span class="text-3xl font-semibold text-red-700">{{ props.merchant_attention_count ?? 0 }}</span>
-              <span class="text-sm text-red-600">Total items</span>
-            </div>
+        <div class="flex gap-12 xl:justify-end border-t border-[var(--color-rule)] xl:border-t-0 pt-8 xl:pt-0">
+          <div class="space-y-2">
+            <p class="text-xs uppercase tracking-[0.1em] text-danger" style="font-family: var(--font-mono)">Needs Attention</p>
+            <p class="text-5xl text-danger" style="font-family: var(--font-display)">{{ props.merchant_attention_count ?? 0 }}</p>
           </div>
-
-          <div class="rounded-lg border border-[var(--color-rule)] bg-[var(--color-rule)] p-4">
-            <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-ink-2)]">In Progress</p>
-            <div class="mt-2 flex items-end justify-between gap-3">
-              <span class="text-3xl font-semibold text-[var(--color-ink)]">{{ props.processing_orders_count ?? 0 }}</span>
-              <span class="text-sm text-[var(--color-ink-2)]">Processing</span>
-            </div>
+          <div class="space-y-2">
+            <p class="text-xs uppercase tracking-[0.1em] text-[var(--color-ink-2)]" style="font-family: var(--font-mono)">In Progress</p>
+            <p class="text-5xl text-[var(--color-ink)]" style="font-family: var(--font-display)">{{ props.processing_orders_count ?? 0 }}</p>
           </div>
         </div>
       </div>
     </section>
 
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <nav class="flex gap-2 rounded-lg border border-[var(--color-rule)] bg-[var(--color-paper)] p-1 shadow-sm sm:w-auto" aria-label="Merchant Tabs">
+    <!-- Navigation Section -->
+    <div class="border-b border-[var(--color-rule)] mb-10 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-6">
+      <nav class="-mb-px flex gap-8" aria-label="Merchant Tabs">
         <button
           v-for="tab in merchant_tabs"
           :key="tab.value"
@@ -110,23 +104,28 @@ const active_tab_description = computed(() => {
           :aria-selected="active_tab === tab.value"
           @click="active_tab = tab.value"
           :class="[
-            'relative rounded-md px-4 py-2 text-sm font-medium transition-colors',
+            'pb-4 text-xs font-semibold tracking-[0.1em] uppercase transition-colors border-b-2 flex items-center gap-2',
             active_tab === tab.value
-              ? 'bg-[var(--color-rule)] text-[var(--color-ink)] shadow-sm'
-              : 'text-[var(--color-ink-2)] hover:bg-[var(--color-rule)] hover:text-[var(--color-ink)]'
+              ? 'border-[var(--color-ink)] text-[var(--color-ink)]'
+              : 'border-transparent text-[var(--color-ink-2)] hover:text-[var(--color-ink)]'
           ]"
+          style="font-family: var(--font-mono)"
         >
-          {{ tab.label }}
+          <span>{{ tab.label }}</span>
           <span
-            v-if="tab.count > 0"
-            class="ml-2 inline-flex h-5 items-center justify-center rounded-full px-2 text-[11px] font-medium"
-            :class="tab.value === 'orders' ? 'bg-[var(--color-ink)] text-[var(--color-paper)]' : 'bg-red-100 text-red-700'"
+            v-if="tab.count !== undefined"
+            class="inline-flex h-4 min-w-[1.25rem] items-center justify-center px-1 text-[10px] font-mono font-semibold"
+            :class="
+              tab.count > 0
+                ? (tab.value === 'orders' ? 'bg-[var(--color-ink)] text-[var(--color-paper)]' : 'bg-[var(--color-danger)] text-white')
+                : 'bg-[var(--color-rule-2)] text-[var(--color-ink)]'
+            "
           >
             {{ tab.count }}
           </span>
         </button>
       </nav>
-      <p class="text-sm text-[var(--color-ink-2)]">{{ active_tab_description }}</p>
+      <p class="pb-4 text-sm text-[var(--color-ink-2)] italic" style="font-family: var(--font-display);">{{ active_tab_description }}</p>
     </div>
 
     <!-- Features Content -->

@@ -13,10 +13,20 @@ export type AlvaEvents = {
     output: AlvaResult<Types.Product>;
   };
 
+  "catalog.get_product": {
+    input: {
+              page?: Types.PaginationInput;
+              sort?: string | string[];
+            };
+    output: AlvaResult<Types.Product>;
+  };
+
   "catalog.list_products": {
     input: {
               query?: string;
+              min_stock?: number;
               max_stock?: number;
+              filter?: Types.ProductFilter;
               page?: Types.PaginationInput;
               sort?: string | string[];
             };

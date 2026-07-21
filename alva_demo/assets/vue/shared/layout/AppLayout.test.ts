@@ -24,7 +24,7 @@ describe("AppLayout", () => {
     expect(navText).toContain("Customer Storefront");
     expect(navText).toContain("Merchant Console");
     expect(navText).toContain("Chat (Stream)");
-    expect(navText).toContain("Infinite Scroll (Signal)");
+    expect(navText).toContain("Infinite Scroll (Stream)");
     expect(navText).toContain("Toast (Global)");
     expect(wrapper.html()).toContain('href="/storefront"');
     expect(wrapper.html()).toContain('href="/console"');

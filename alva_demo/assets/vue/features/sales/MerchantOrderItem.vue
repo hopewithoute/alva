@@ -76,41 +76,42 @@ const formatDateTime = (isoString: string) => {
 
 <template>
   <div
-    class="flex flex-col gap-4 rounded-lg border border-[var(--color-rule)] p-4 transition-colors hover:bg-[var(--color-rule)] lg:flex-row lg:items-center lg:justify-between"
+    class="flex flex-col gap-4 border-b border-[var(--color-rule)] pb-6 pt-2 lg:flex-row lg:items-center lg:justify-between"
   >
-    <div class="min-w-0">
-      <div class="flex flex-wrap items-center gap-2">
-        <p class="font-medium text-[var(--color-ink)]">
+    <div class="min-w-0 space-y-1">
+      <div class="flex flex-wrap items-center gap-3">
+        <p class="text-base text-[var(--color-ink)]" style="font-family: var(--font-display)">
           Order by
           <span class="font-semibold">{{ order.customer_name }}</span>
         </p>
         <span
           v-if="order.lifecycle_status === 'new'"
-          class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-red-700"
+          class="border border-danger-border bg-danger-surface px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-danger"
+          style="font-family: var(--font-mono)"
         >
           New
         </span>
       </div>
-      <p class="mt-1 text-sm text-[var(--color-ink-2)]">
+      <p class="text-sm text-[var(--color-ink-2)]">
         {{ getOrderProductName() }} (Qty: {{ order.quantity }})
       </p>
-      <p class="mt-2 text-xs text-[var(--color-ink-2)]">
+      <p class="text-xs text-[var(--color-ink-2)]" style="font-family: var(--font-mono)">
         {{ formatDateTime(order.created_at) }}
       </p>
-      <p v-if="operationError" class="mt-2 text-xs text-red-600">
+      <p v-if="operationError" class="text-xs text-danger italic" style="font-family: var(--font-display)">
         {{ operationError }}
       </p>
     </div>
 
-    <div class="flex flex-wrap items-center gap-3 lg:justify-end">
+    <div class="flex flex-wrap items-center gap-4 lg:justify-end">
       <OrderStatusBadge :status="order.lifecycle_status" />
 
-      <div class="flex min-w-[136px] justify-end">
+      <div class="flex min-w-[140px] justify-end">
         <Button
           v-if="hasOrderAction"
           variant="secondary"
           size="sm"
-          class="min-w-[136px]"
+          class="btn--primary min-w-[140px] py-2 text-xs"
           @click="runOrderAction"
           :disabled="isLoading"
         >
@@ -118,7 +119,8 @@ const formatDateTime = (isoString: string) => {
         </Button>
         <span
           v-else
-          class="inline-flex min-w-[136px] items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700"
+          class="inline-flex min-w-[140px] items-center justify-center border border-success-border bg-success-surface px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-success"
+          style="font-family: var(--font-mono)"
         >
           Completed
         </span>

@@ -38,6 +38,17 @@ export interface BooleanFieldFilter {
   is_nil?: boolean | null;
 }
 
+export interface ProductFilter {
+  and?: ProductFilter[];
+  or?: ProductFilter[];
+  not?: ProductFilter;
+  id?: StringFieldFilter | null;
+  name?: StringFieldFilter | null;
+  description?: StringFieldFilter | null;
+  price?: IntFieldFilter | null;
+  stock?: IntFieldFilter | null;
+  media_reference?: StringFieldFilter | null;
+}
 
 
 export interface Product {

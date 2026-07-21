@@ -39,72 +39,85 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen">
-    <header class="nav sticky top-0 z-40 bg-[var(--color-paper)]/80">
-      <nav class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
-        <div class="flex items-center gap-8">
-          <Link navigate="/" class="flex items-center gap-2 text-sm font-semibold tracking-wide text-[var(--color-ink)]" style="font-family: var(--font-display);">
-            <img :src="'/images/alva-logo.png'" alt="Alva" class="h-6 w-auto object-contain" />
-            Alva
+  <div class="min-h-screen bg-[var(--color-paper)] text-[var(--color-ink)]">
+    <!-- Editorial Sticky Navigation Bar -->
+    <header class="sticky top-0 z-40 border-b border-[var(--color-rule)] bg-[var(--color-paper)]/95 backdrop-blur-md">
+      <nav class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        <div class="flex items-center gap-10">
+          <Link navigate="/" class="flex items-center gap-3 text-xl font-normal tracking-tight text-[var(--color-ink)] hover:opacity-90 transition-opacity" style="font-family: var(--font-display);">
+            <img :src="'/images/alva-logo.png'" alt="Alva" class="h-6 w-auto object-contain grayscale hover:grayscale-0 transition-all" />
+            <span>ALVA</span>
           </Link>
-          <div class="hidden items-center gap-6 text-sm md:flex">
-            <Link navigate="/storefront" class="hover:text-[var(--color-accent)] transition-colors">
-              Storefront
+          <div class="hidden items-center gap-8 text-xs font-semibold uppercase tracking-[0.1em] md:flex" style="font-family: var(--font-mono)">
+            <Link navigate="/storefront" class="text-[var(--color-ink-2)] hover:text-[var(--color-ink)] transition-colors">
+              Customer Storefront
             </Link>
-            <Link navigate="/console" class="hover:text-[var(--color-accent)] transition-colors">
-              Console
+            <Link navigate="/console" class="text-[var(--color-ink-2)] hover:text-[var(--color-ink)] transition-colors">
+              Merchant Console
+            </Link>
+            <Link navigate="/docs" class="text-[var(--color-ink-2)] hover:text-[var(--color-ink)] transition-colors">
+              Documentation
             </Link>
           </div>
         </div>
 
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-6">
           <button 
             @click="isCommandPaletteOpen = true"
-            class="hidden md:flex items-center gap-3 rounded-md border border-[var(--color-rule)] bg-transparent px-3 py-1.5 text-xs text-[var(--color-ink-2)] hover:border-[var(--color-rule-2)] transition-colors"
+            class="hidden md:flex items-center gap-4 rounded-none border border-[var(--color-rule-2)] bg-transparent px-3 py-2 text-xs text-[var(--color-ink-2)] hover:border-[var(--color-ink)] hover:text-[var(--color-ink)] transition-colors"
+            style="font-family: var(--font-mono)"
           >
             <span>Search demos...</span>
-            <kbd style="font-family: var(--font-mono); font-size: 10px;" class="rounded border border-[var(--color-rule)] px-1.5 py-0.5">⌘K</kbd>
+            <kbd style="font-size: 10px;" class="rounded-none border border-[var(--color-rule-2)] px-1.5 py-0.5">⌘K</kbd>
           </button>
-          <button @click="toggleDarkMode" class="rounded-md p-2 text-[var(--color-ink-2)] hover:bg-[var(--color-rule)] transition-colors">
-            <svg v-if="!isDarkMode" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+
+          <button @click="toggleDarkMode" class="p-2 text-[var(--color-ink-2)] hover:text-[var(--color-ink)] transition-colors" title="Toggle theme">
+            <svg v-if="!isDarkMode" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
             </svg>
-            <svg v-else class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg v-else class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
             </svg>
           </button>
-          <Link navigate="/console" class="btn--primary px-4 py-2 text-sm font-medium transition-colors hover:opacity-90">
+
+          <Link navigate="/console" class="btn--primary px-5 py-2.5 text-xs font-semibold">
             Open Console
           </Link>
         </div>
       </nav>
     </header>
 
-    <main class="mx-auto max-w-7xl px-5 py-12 md:py-24">
+    <main class="mx-auto max-w-7xl px-6 py-10">
       <slot />
     </main>
 
     <!-- Command Palette Overlay -->
     <div v-if="isCommandPaletteOpen" class="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]" role="dialog" aria-modal="true">
       <div class="fixed inset-0 bg-[var(--color-ink)]/20 backdrop-blur-sm" @click="isCommandPaletteOpen = false"></div>
-      <div class="relative w-full max-w-xl overflow-hidden rounded-xl border border-[var(--color-rule-2)] bg-[var(--color-paper)] shadow-2xl">
+      <div class="relative w-full max-w-xl overflow-hidden border border-[var(--color-ink)] bg-[var(--color-paper)] shadow-2xl">
         <div class="flex items-center border-b border-[var(--color-rule)] px-4 py-3">
-          <svg class="mr-3 h-5 w-5 text-[var(--color-ink-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="mr-3 h-4 w-4 text-[var(--color-ink-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input type="text" class="w-full bg-transparent text-sm text-[var(--color-ink)] outline-none placeholder:text-[var(--color-ink-2)]" placeholder="Search demos and docs..." style="font-family: var(--font-body);" autofocus />
-          <kbd style="font-family: var(--font-mono); font-size: 10px;" class="rounded border border-[var(--color-rule)] px-1.5 py-0.5 text-[var(--color-ink-2)]">ESC</kbd>
+          <kbd style="font-family: var(--font-mono); font-size: 10px;" class="rounded-none border border-[var(--color-rule-2)] px-1.5 py-0.5 text-[var(--color-ink-2)]">ESC</kbd>
         </div>
-        <div class="p-2">
-          <div class="px-2 py-1.5 text-xs font-semibold text-[var(--color-ink-2)] uppercase tracking-wider mt-2 mb-1" style="font-family: var(--font-mono);">Realtime Demos</div>
-          <Link navigate="/demo/chat" @click="isCommandPaletteOpen = false" class="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-[var(--color-rule)] hover:text-[var(--color-accent)] transition-colors">
+        <div class="p-4 space-y-2">
+          <div class="px-2 text-xs font-semibold text-[var(--color-ink-2)] uppercase tracking-[0.1em]" style="font-family: var(--font-mono);">Realtime Demos</div>
+          <Link navigate="/demo/chat" @click="isCommandPaletteOpen = false" class="block w-full border-b border-transparent px-3 py-2 text-left text-sm hover:border-[var(--color-ink)] hover:text-[var(--color-ink)] transition-colors" style="font-family: var(--font-display)">
             Chat (Stream)
           </Link>
-          <Link navigate="/demo/load-more" @click="isCommandPaletteOpen = false" class="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-[var(--color-rule)] hover:text-[var(--color-accent)] transition-colors">
-            Infinite Scroll (Signal)
+          <Link navigate="/demo/load-more" @click="isCommandPaletteOpen = false" class="block w-full border-b border-transparent px-3 py-2 text-left text-sm hover:border-[var(--color-ink)] hover:text-[var(--color-ink)] transition-colors" style="font-family: var(--font-display)">
+            Infinite Scroll (Stream)
           </Link>
-          <Link navigate="/demo/notifications" @click="isCommandPaletteOpen = false" class="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-[var(--color-rule)] hover:text-[var(--color-accent)] transition-colors">
+          <Link navigate="/demo/notifications" @click="isCommandPaletteOpen = false" class="block w-full border-b border-transparent px-3 py-2 text-left text-sm hover:border-[var(--color-ink)] hover:text-[var(--color-ink)] transition-colors" style="font-family: var(--font-display)">
             Toast (Global)
+          </Link>
+          <Link navigate="/demo/query-lookup" @click="isCommandPaletteOpen = false" class="block w-full border-b border-transparent px-3 py-2 text-left text-sm hover:border-[var(--color-ink)] hover:text-[var(--color-ink)] transition-colors" style="font-family: var(--font-display)">
+            Query Lookups & AST Filters
+          </Link>
+          <Link navigate="/demo/optimistic-form" @click="isCommandPaletteOpen = false" class="block w-full border-b border-transparent px-3 py-2 text-left text-sm hover:border-[var(--color-ink)] hover:text-[var(--color-ink)] transition-colors" style="font-family: var(--font-display)">
+            Optimistic Form UI & Server Rollback
           </Link>
         </div>
       </div>
