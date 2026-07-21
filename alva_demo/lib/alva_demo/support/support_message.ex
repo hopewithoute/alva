@@ -1,5 +1,4 @@
 defmodule AlvaDemo.Support.SupportMessage do
-
   use Ash.Resource,
     domain: AlvaDemo.Support,
     data_layer: Ash.DataLayer.Ets,

@@ -93,7 +93,9 @@ defmodule AlvaDemoWeb.SynchronizationTest do
       })
       |> Ash.create!()
 
-    {:ok, storefront_live, _html} = live(conn, "/storefront?customer_name=Console%20Sync%20Shopper")
+    {:ok, storefront_live, _html} =
+      live(conn, "/storefront?customer_name=Console%20Sync%20Shopper")
+
     {:ok, console_live, _html} = live(conn, "/console")
 
     render_hook(console_live, "sales.begin_processing", %{"id" => order.id})
@@ -276,5 +278,4 @@ defmodule AlvaDemoWeb.SynchronizationTest do
 
     result.data
   end
-
 end

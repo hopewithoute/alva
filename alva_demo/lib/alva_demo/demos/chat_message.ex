@@ -1,5 +1,4 @@
 defmodule AlvaDemo.Demos.ChatMessage do
-
   use Ash.Resource,
     domain: AlvaDemo.Demos,
     data_layer: Ash.DataLayer.Ets,
