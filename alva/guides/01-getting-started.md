@@ -1,132 +1,272 @@
 # Getting Started with Alva SDK
 
-Alva provides a fully typed, auto-generated TypeScript SDK for Vue 3 that seamlessly bridges your Vue frontend with your Elixir/Ash backend via Phoenix LiveView.
+This end-to-end tutorial guides you step-by-step from zero to a fully working Alva application in under 10 minutes.
 
-## Installation
+---
 
-> **Prerequisite:** Alva relies on the [LiveVue](https://hexdocs.pm/live_vue) package to function. You must have `live_vue` installed and configured in your Phoenix project. While Alva does not list `live_vue` as a hard Elixir dependency, the generated TypeScript SDK heavily depends on `live_vue` hooks on the frontend.
+## Prerequisites
 
-Add `alva` to your `mix.exs` dependencies:
+* Elixir 1.15+ and Phoenix 1.7+
+* [LiveVue](https://github.com/livevue/livevue) installed and configured in your Phoenix project
+* Ash Framework 3.0+
+
+---
+
+## Step 1: Install Dependencies
+
+Add `:alva` to your `mix.exs` dependencies:
 
 ```elixir
+# mix.exs
 def deps do
   [
-    {:alva, "~> 0.1.0"}
+    {:alva, "~> 0.1.0"},
+    {:live_vue, "~> 0.3.0"}
   ]
 end
 ```
 
-Then fetch the dependency:
+Fetch the new dependency:
 
 ```bash
 mix deps.get
 ```
 
-## Backend Setup
+---
 
-### 1. Configure Alva
+## Step 2: Register Application Domains
 
-Add Alva configuration to your application's `config.exs`:
+Configure your application's Ash domains in `config/config.exs`. At runtime, Alva uses this registry to discover events, validate authorization, and route WebSockets:
 
 ```elixir
-config :alva,
-  output_dir: "assets/js/alva",
-  actor_assign_key: :current_user,
-  tenant_assign_key: :current_tenant
+# config/config.exs
+config :my_app,
+  ash_domains: [
+    MyApp.Catalog
+  ]
 ```
 
-### 2. Extend Your Ash Resources
+---
 
-Add `Alva.Resource` as an extension to each Ash resource you want to expose:
+## Step 3: Define Ash Domain & Resource
+
+Extend your Ash Domain with `Alva.Domain` and your Ash Resource with `Alva.Resource`:
+
+### 3.1 Define Ash Domain
 
 ```elixir
+# lib/my_app/catalog.ex
+defmodule MyApp.Catalog do
+  use Ash.Domain,
+    extensions: [Alva.Domain]
+
+  resources do
+    resource MyApp.Catalog.Product
+  end
+end
+```
+
+### 3.2 Define Ash Resource & Alva Events
+
+Expose resource actions to the frontend using the `alva do ... end` block:
+
+```elixir
+# lib/my_app/catalog/product.ex
 defmodule MyApp.Catalog.Product do
   use Ash.Resource,
     domain: MyApp.Catalog,
+    data_layer: Ash.DataLayer.Ets,
     extensions: [Alva.Resource]
 
   alva do
-    event(:catalog_list_products,
-      name: "catalog.list_products",
-      action: :list
-    )
-
-    event(:catalog_create_product,
-      name: "catalog.create_product",
-      action: :create
-    )
+    event(:catalog_list_products, name: "catalog.list_products", action: :list)
+    event(:catalog_adjust_stock, name: "catalog.adjust_stock", action: :adjust_stock)
   end
 
   actions do
-    defaults [:read, :destroy]
+    defaults([:destroy])
 
     read :list do
+      public?(true) # Mandatory: exposed actions must be public
+    end
+
+    update :adjust_stock do
+      public?(true)
+      accept([:stock])
+      validate numericality(:stock, greater_than_or_equal_to: 0)
+    end
+  end
+
+  attributes do
+    uuid_primary_key(:id)
+
+    attribute :name, :string do
+      allow_nil?(false)
       public?(true)
     end
 
-    create :create do
+    attribute :stock, :integer do
+      allow_nil?(false)
       public?(true)
     end
   end
 end
 ```
 
-> All actions mapped via `event` must have `public?(true)`.
+---
 
-### 3. Inject Alva into Your LiveView
+## Step 4: Generate TypeScript SDK
 
-Add `use Alva.LiveView` to the LiveView that hosts your Vue component:
-
-```elixir
-defmodule MyAppWeb.StorefrontLive do
-  use MyAppWeb, :live_view
-  use Alva.LiveView, streams: [...]
-end
-```
-
-### 4. Generate the TypeScript SDK
-
-Run the code generator to produce typed frontend bindings:
+Run the Alva code generator to analyze your registered domains and build strongly-typed TypeScript interfaces and Vue composables:
 
 ```bash
 mix alva.codegen
 ```
 
-This outputs TypeScript files to `assets/js/alva/` (configurable via `output_dir`).
+This outputs your SDK directly into `assets/js/alva/`:
+* `assets/js/alva/types.ts`: TypeScript interfaces for Ash structs
+* `assets/js/alva/events.ts`: Input and payload type definitions
+* `assets/js/alva/index.ts`: Unified `useAlva()` composable
 
-## Frontend Usage
+---
 
-Import the generated SDK in your Vue 3 component:
+## Step 5: Create Phoenix LiveView
 
-```typescript
-import { useAlva } from "@/alva";
+Inject `Alva.LiveView` into your LiveView module to manage process memory and sync real-time streams over WebSockets:
+
+```elixir
+# lib/my_app_web/live/storefront_live.ex
+defmodule MyAppWeb.StorefrontLive do
+  use MyAppWeb, :live_view
+
+  use Alva.LiveView,
+    streams: [
+      products: [
+        resource: MyApp.Catalog.Product,
+        source: :list,
+        sync_on: [:adjust_stock, :destroy]
+      ]
+    ]
+
+  def render(assigns) do
+    ~H"""
+    <.vue
+      id="storefront-page"
+      v-component="StorefrontPage"
+      v-inject="layout"
+      v-socket={@socket}
+      products={Map.get(@streams, :products)}
+    />
+    """
+  end
+end
 ```
 
-### The Single Entry Point
+---
 
-The entire SDK surface is accessed through a single entry point: `useAlva()`. This function returns a deeply nested, domain-driven object that matches your backend Ash domains and resources.
+## Step 6: Add Phoenix Route
 
-```typescript
-import { useAlva } from "@/alva";
+Register your LiveView in `lib/my_app_web/router.ex`:
 
-// Initialize the SDK
-const alva = useAlva({
-  // Global config for handling responses
-  onSuccess: (data, event) => console.log(`Success on ${event}`, data),
-  onError: (error, event) => console.error(`Error on ${event}`, error)
+```elixir
+# lib/my_app_web/router.ex
+scope "/", MyAppWeb do
+  pipe_through :browser
+
+  live "/storefront", StorefrontLive
+end
+```
+
+---
+
+## Step 7: Build Vue 3 Component
+
+Import `useAlva()` inside your Vue 3 component to interact with your Elixir backend:
+
+```vue
+<!-- assets/vue/StorefrontPage.vue -->
+<script setup lang="ts">
+import { ref } from "vue";
+import { useAlva } from "@/js/alva";
+import type { Product } from "@/js/alva/types";
+
+const props = defineProps<{
+  products?: Product[];
+}>();
+
+const alva = useAlva();
+const searchQuery = ref("");
+
+// Reactive search query
+const { data: searchResults, loading } = alva.catalog.use_list_products_query(
+  () => ({ query: searchQuery.value }),
+  { debounceMs: 300 }
+);
+
+// Stock adjustment form
+const selectedProduct = ref<Product | null>(null);
+const stockForm = alva.catalog.use_adjust_stock_form({
+  initialValues: {
+    id: selectedProduct.value?.id || "",
+    stock: selectedProduct.value?.stock || 0
+  }
 });
+
+async function handleUpdateStock(product: Product) {
+  selectedProduct.value = product;
+  stockForm.field("id").value.value = product.id;
+  stockForm.field("stock").value.value = product.stock + 5;
+  
+  const result = await stockForm.submit();
+  if (result.ok) {
+    console.log("Stock updated successfully!");
+  }
+}
+</script>
+
+<template>
+  <div class="p-8 max-w-4xl mx-auto space-y-6">
+    <h1 class="text-2xl font-bold">Storefront Catalog</h1>
+
+    <input 
+      v-model="searchQuery" 
+      placeholder="Search products..." 
+      class="border p-2 w-full rounded"
+    />
+
+    <div v-if="loading">Searching...</div>
+
+    <div v-else class="space-y-4">
+      <div 
+        v-for="product in (searchResults || props.products)" 
+        :key="product.id"
+        class="border p-4 flex items-center justify-between rounded shadow-sm"
+      >
+        <div>
+          <h3 class="font-semibold text-lg">{{ product.name }}</h3>
+          <p class="text-sm text-gray-600">Stock: {{ product.stock }}</p>
+        </div>
+
+        <button 
+          @click="handleUpdateStock(product)"
+          class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+        >
+          Add 5 Stock
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
 ```
 
-## Domain-Driven Architecture
+---
 
-The SDK is organized by Domain -> Action. If you have an Ash domain named `Catalog` and a resource `Product` with an action `create_product`, it will be available under `alva.catalog.create_product`.
+## Verification
 
-The SDK provides different patterns depending on your use case:
+Start your Phoenix server:
 
-1. **Direct Actions** (`alva.domain.action`): Fire-and-forget or async/await server calls.
-2. **Queries** (`alva.domain.use_action_query`): Reactive data fetching for `:read` actions.
-3. **Forms** (`alva.domain.use_action_form`): Stateful form management with validation.
-4. **Signals** (`alva.domain.on_signal`): Real-time PubSub subscriptions.
-5. **Uploads** (`alva.use_upload`): File upload management.
+```bash
+mix phx.server
+```
 
-Read the subsequent guides to learn how to use each feature pattern effectively.
+Navigate to `http://localhost:4000/storefront` in your browser. Your Vue 3 component is now live, consuming stream data, executing reactive queries, and mutating stock levels over Phoenix LiveView WebSockets!

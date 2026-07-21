@@ -4,8 +4,9 @@ defmodule Mix.Tasks.Alva.CodegenTest do
   defmodule Endpoint do
   end
 
+  alias Mix.Tasks.Alva.Codegen
+
   setup do
-    # Create a temporary directory for output
     tmp_dir = "test/tmp/alva_codegen"
     File.mkdir_p!(tmp_dir)
 
@@ -82,7 +83,7 @@ defmodule Mix.Tasks.Alva.CodegenTest do
   end
 
   test "generates events.ts, composables, and index.ts", %{tmp_dir: tmp_dir} do
-    Mix.Tasks.Alva.Codegen.run([])
+    Codegen.run([])
 
     events_path = Path.join(tmp_dir, "events.ts")
     composables_dir = Path.join(tmp_dir, "composables")

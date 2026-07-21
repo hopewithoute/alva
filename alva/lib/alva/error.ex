@@ -26,6 +26,7 @@ defmodule Alva.Error do
   and optionally `:fields` or `:details`.
   """
   @doc since: "0.1.0"
+  @spec format(Exception.t() | struct() | term(), list() | nil) :: map()
   def format(error, stacktrace \\ nil)
 
   def format(%Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{} | _]}, _stacktrace),

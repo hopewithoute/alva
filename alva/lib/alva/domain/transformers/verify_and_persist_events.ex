@@ -11,26 +11,31 @@ defmodule Alva.Domain.Transformers.VerifyAndPersistEvents do
 
   use Spark.Dsl.Transformer
 
+  alias Alva.Registry
+  alias Ash.Domain.Info
+  alias Spark.Dsl.Extension
+  alias Spark.Dsl.Transformer
+
   def after?(Ash.Domain.Transformers.DefineResources), do: true
   def after?(_), do: false
 
   def transform(dsl_state) do
-    resources = Ash.Domain.Info.resources(dsl_state)
-    module = Spark.Dsl.Extension.get_persisted(dsl_state, :module)
+    resources = Info.resources(dsl_state)
+    module = Extension.get_persisted(dsl_state, :module)
 
     event_map =
-      persist_projection_map(resources, module, :event, &Alva.Registry.events/1)
+      persist_projection_map(resources, module, :event, &Registry.events/1)
 
     signal_map =
-      persist_projection_map(resources, module, :signal, &Alva.Registry.signals/1)
+      persist_projection_map(resources, module, :signal, &Registry.signals/1)
 
     dsl_state =
       dsl_state
-      |> Spark.Dsl.Transformer.persist(:alva_event_map, event_map)
-      |> Spark.Dsl.Transformer.persist(:alva_signal_map, signal_map)
+      |> Transformer.persist(:alva_event_map, event_map)
+      |> Transformer.persist(:alva_signal_map, signal_map)
 
-    Alva.Registry.verify_host_app_command_uniqueness!(module, event_map)
-    Alva.Registry.verify_host_app_signal_uniqueness!(module, signal_map)
+    Registry.verify_host_app_command_uniqueness!(module, event_map)
+    Registry.verify_host_app_signal_uniqueness!(module, signal_map)
 
     {:ok, dsl_state}
   end

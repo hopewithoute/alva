@@ -118,7 +118,7 @@ defmodule Alva.LiveViewTest do
   setup do
     socket = %Phoenix.LiveView.Socket{
       endpoint: MockEndpoint,
-      assigns: %{__changed__: %{}},
+      assigns: %{__changed__: %{}, streams: %{}},
       private: %{
         lifecycle: %Phoenix.LiveView.Lifecycle{},
         live_temp: %{}
@@ -222,6 +222,20 @@ defmodule Alva.LiveViewTest do
       config = %{uploads: []}
       {:cont, socket} = Alva.LiveView.on_mount(config, %{}, %{}, socket)
 
+      # Setup mock signals to test sync operations
+      socket =
+        update_in(
+          socket.private.alva,
+          &Map.put(&1, :active_signals, %{
+            "test_signal" => %{
+              resource: Alva.LiveViewTest.TestResource,
+              signal: %{name: "test_signal", on: [:create], expose_metadata: []},
+              topics: ["test_topic"],
+              params: %{}
+            }
+          })
+        )
+
       hook = Enum.find(socket.private.lifecycle.handle_info, &(&1.id == :alva_handle_info))
       %{socket: socket, handle_info: hook.function}
     end
@@ -231,13 +245,30 @@ defmodule Alva.LiveViewTest do
     end
 
     test "ignores notification for other resources", %{socket: socket, handle_info: handle_info} do
-      notification = %Ash.Notifier.Notification{
-        resource: Alva.LiveViewTest.SomeOtherResource,
-        action: %{type: :create, name: :create},
-        data: %{id: "1"}
+      broadcast = %Phoenix.Socket.Broadcast{
+        payload: %Ash.Notifier.Notification{
+          resource: Alva.LiveViewTest.SomeOtherResource,
+          action: %{type: :create, name: :create},
+          data: %{id: "1"}
+        }
       }
 
-      assert {:cont, ^socket} = handle_info.(notification, socket)
+      assert {:cont, ^socket} = handle_info.(broadcast, socket)
+    end
+
+    test "processes notification that matches signals", %{
+      socket: socket,
+      handle_info: handle_info
+    } do
+      broadcast = %Phoenix.Socket.Broadcast{
+        payload: %Ash.Notifier.Notification{
+          resource: Alva.LiveViewTest.TestResource,
+          action: %{type: :create, name: :create},
+          data: %{id: "123"}
+        }
+      }
+
+      assert {:halt, _result_socket} = handle_info.(broadcast, socket)
     end
   end
 

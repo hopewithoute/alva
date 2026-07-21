@@ -15,6 +15,8 @@ defmodule Alva.Serializer do
   See `Alva.Registry.public_fields/1` for how public fields are determined.
   """
 
+  alias Ash.Resource.Info
+
   @doc """
   Serializes a record or list of records.
 
@@ -25,6 +27,7 @@ defmodule Alva.Serializer do
       and return alongside the payload.
   """
   @doc since: "0.1.0"
+  @spec serialize(map() | list() | term(), keyword()) :: {term(), map()}
   def serialize(record, opts \\ [])
 
   def serialize(record, opts)
@@ -64,13 +67,14 @@ defmodule Alva.Serializer do
   Recursively strips Ash metadata and converts types to JSON-safe values.
   """
   @doc since: "0.1.0"
+  @spec strip_metadata(term()) :: term()
   def strip_metadata(%DateTime{} = datetime), do: DateTime.to_iso8601(datetime)
   def strip_metadata(%NaiveDateTime{} = datetime), do: NaiveDateTime.to_iso8601(datetime)
   def strip_metadata(%Date{} = date), do: Date.to_iso8601(date)
   def strip_metadata(%Time{} = time), do: Time.to_iso8601(time)
 
   def strip_metadata(%module{} = record) do
-    if Ash.Resource.Info.resource?(module) do
+    if Info.resource?(module) do
       strip_metadata_with_fields(record, public_fields(module))
     else
       record
@@ -83,7 +87,7 @@ defmodule Alva.Serializer do
   def strip_metadata([first | _] = list) when is_map(first) do
     case Map.get(first, :__struct__) do
       module when not is_nil(module) ->
-        if Ash.Resource.Info.resource?(module) do
+        if Info.resource?(module) do
           fields = public_fields(module)
           Enum.map(list, &strip_metadata_with_fields(&1, fields))
         else

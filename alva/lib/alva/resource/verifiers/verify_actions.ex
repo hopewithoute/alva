@@ -13,14 +13,18 @@ defmodule Alva.Resource.Verifiers.VerifyActions do
 
   use Spark.Dsl.Verifier
 
-  def verify(dsl_state) do
-    projections = Spark.Dsl.Extension.get_entities(dsl_state, [:alva])
-    events = Enum.filter(projections, &match?(%Alva.Resource.Event{}, &1))
+  alias Alva.Resource.Event
+  alias Ash.Resource.Info
+  alias Spark.Dsl.Extension
 
-    module = Spark.Dsl.Extension.get_persisted(dsl_state, :module)
+  def verify(dsl_state) do
+    projections = Extension.get_entities(dsl_state, [:alva])
+    events = Enum.filter(projections, &match?(%Event{}, &1))
+
+    module = Extension.get_persisted(dsl_state, :module)
 
     Enum.each(events, fn event ->
-      action = Ash.Resource.Info.action(dsl_state, event.action)
+      action = Info.action(dsl_state, event.action)
 
       if is_nil(action) do
         raise_dsl_error(module, event, "Action #{inspect(event.action)} does not exist.")

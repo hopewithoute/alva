@@ -1,12 +1,13 @@
 defmodule Alva.Domain.Transformers.VerifyAndPersistEventsTest do
   use ExUnit.Case, async: false
 
-  test "returns true for Ash.Domain.Transformers.DefineResources" do
-    assert Alva.Domain.Transformers.VerifyAndPersistEvents.after?(
-             Ash.Domain.Transformers.DefineResources
-           )
+  alias Alva.Domain.Transformers.VerifyAndPersistEvents
+  alias Ash.Domain.Transformers.DefineResources
 
-    refute Alva.Domain.Transformers.VerifyAndPersistEvents.after?(SomeOtherTransformer)
+  test "returns true for Ash.Domain.Transformers.DefineResources" do
+    assert VerifyAndPersistEvents.after?(DefineResources)
+
+    refute VerifyAndPersistEvents.after?(SomeOtherTransformer)
   end
 
   test "verifies event name uniqueness across resources" do

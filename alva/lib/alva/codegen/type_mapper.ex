@@ -113,7 +113,7 @@ defmodule Alva.Codegen.TypeMapper do
     policy_fields =
       if Code.ensure_loaded?(Ash.Policy.Info) and
            function_exported?(Ash.Policy.Info, :field_policies, 1) do
-        (apply(Ash.Policy.Info, :field_policies, [type]) || [])
+        (Ash.Policy.Info.field_policies(type) || [])
         |> Enum.flat_map(& &1.fields)
         |> Enum.uniq()
       else

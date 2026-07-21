@@ -1,6 +1,7 @@
 defmodule Alva.Codegen.InputContractTest do
   use ExUnit.Case
   alias Alva.Codegen.InputContract
+  alias Ash.Resource.Info
 
   defmodule Resource do
     use Ash.Resource, domain: nil
@@ -36,7 +37,7 @@ defmodule Alva.Codegen.InputContractTest do
   end
 
   test "generates input shape for create action" do
-    action = Ash.Resource.Info.action(Resource, :create)
+    action = Info.action(Resource, :create)
     shape = InputContract.generate_input_shape(Resource, %{}, action)
 
     # name is accepted, allow_nil false, but in allow_nil_input -> optional
@@ -50,7 +51,7 @@ defmodule Alva.Codegen.InputContractTest do
   end
 
   test "generates input shape for update action" do
-    action = Ash.Resource.Info.action(Resource, :update)
+    action = Info.action(Resource, :update)
     shape = InputContract.generate_input_shape(Resource, %{}, action)
 
     # update actions usually make all accepted optional, EXCEPT if require_attributes is set
@@ -61,7 +62,7 @@ defmodule Alva.Codegen.InputContractTest do
   end
 
   test "generates input shape for generic action" do
-    action = Ash.Resource.Info.action(Resource, :do_something)
+    action = Info.action(Resource, :do_something)
     shape = InputContract.generate_input_shape(Resource, %{}, action)
 
     # force has default, so it's optional
@@ -71,7 +72,7 @@ defmodule Alva.Codegen.InputContractTest do
   end
 
   test "generates filter property for read action if enable_filter is true" do
-    action = Ash.Resource.Info.action(Resource, :read)
+    action = Info.action(Resource, :read)
     event_def = %{enable_filter: true}
 
     shape = InputContract.generate_input_shape(Resource, event_def, action)

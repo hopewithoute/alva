@@ -39,6 +39,7 @@ defmodule Alva.Test do
 
   @doc false
   def do_dispatch(socket, event, params, opts) do
+    otp_app = Keyword.get(opts, :otp_app) || Alva.Registry.otp_app(socket)
     domains = Keyword.get(opts, :domains) || get_in(socket.private, [:alva, :domains]) || []
 
     # Extract assigns as requested by the spec
@@ -49,6 +50,7 @@ defmodule Alva.Test do
 
     opts = Keyword.put(opts, :domains, domains)
     opts = Keyword.put(opts, :socket, socket)
+    opts = if otp_app, do: Keyword.put(opts, :otp_app, otp_app), else: opts
     opts = if actor, do: Keyword.put(opts, :actor, actor), else: opts
     opts = if tenant, do: Keyword.put(opts, :tenant, tenant), else: opts
 

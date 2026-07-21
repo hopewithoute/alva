@@ -12,6 +12,8 @@ defmodule Alva.Codegen.DtoGenerator do
 
   alias Alva.Codegen.TypeMapper
 
+  alias Ash.Resource.Info
+
   @doc """
   Generates the complete `types.ts` content including base filter types,
   resource filter interfaces, and resource data interfaces.
@@ -205,7 +207,7 @@ defmodule Alva.Codegen.DtoGenerator do
   defp resource_policy_fields(resource) do
     if Code.ensure_loaded?(Ash.Policy.Info) and
          function_exported?(Ash.Policy.Info, :field_policies, 1) do
-      (apply(Ash.Policy.Info, :field_policies, [resource]) || [])
+      (Ash.Policy.Info.field_policies(resource) || [])
       |> Enum.flat_map(& &1.fields)
       |> Enum.uniq()
     else
@@ -215,11 +217,11 @@ defmodule Alva.Codegen.DtoGenerator do
 
   defp public_fields_and_relationships(resource) do
     fields =
-      Ash.Resource.Info.public_attributes(resource) ++
-        Ash.Resource.Info.public_calculations(resource) ++
-        Ash.Resource.Info.public_aggregates(resource)
+      Info.public_attributes(resource) ++
+        Info.public_calculations(resource) ++
+        Info.public_aggregates(resource)
 
-    rels = Ash.Resource.Info.public_relationships(resource)
+    rels = Info.public_relationships(resource)
 
     {fields, rels}
   end

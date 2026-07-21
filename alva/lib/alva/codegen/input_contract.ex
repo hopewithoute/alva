@@ -65,7 +65,7 @@ defmodule Alva.Codegen.InputContract do
   defp resource_policy_fields(resource) do
     if Code.ensure_loaded?(Ash.Policy.Info) and
          function_exported?(Ash.Policy.Info, :field_policies, 1) do
-      (apply(Ash.Policy.Info, :field_policies, [resource]) || [])
+      (Ash.Policy.Info.field_policies(resource) || [])
       |> Enum.flat_map(& &1.fields)
       |> Enum.uniq()
     else

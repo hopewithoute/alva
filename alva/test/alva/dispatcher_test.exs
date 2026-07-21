@@ -314,15 +314,6 @@ defmodule Alva.DispatcherTest do
     assert result.data == "Hello World"
   end
 
-  test "dispatch resolves application-wide commands from socket endpoint" do
-    socket = %Phoenix.LiveView.Socket{endpoint: Endpoint, assigns: %{}}
-
-    result = Alva.Dispatcher.dispatch("test.say_hello", %{"name" => "World"}, socket: socket)
-
-    assert result.ok == true
-    assert result.data == "Hello World"
-  end
-
   test "dispatch passes actor and tenant from opts to Ash" do
     result =
       Alva.Dispatcher.dispatch(
@@ -391,26 +382,6 @@ defmodule Alva.DispatcherTest do
 
       assert log =~
                "Alva Extension: Dispatching event \"test.say_hello\" without a tenant. Expected socket.assigns.current_tenant to be set."
-    end
-
-    test "extracts actor and tenant from socket.assigns" do
-      # Configure fake keys just in case
-      Application.put_env(:alva, :actor_assign_key, :current_user)
-      Application.put_env(:alva, :tenant_assign_key, :current_tenant)
-
-      socket = %{assigns: %{current_user: %{id: 99}, current_tenant: "org_99"}}
-
-      result =
-        Alva.Dispatcher.dispatch(
-          "test.get_context",
-          %{},
-          domains: [TestDomain],
-          socket: socket
-        )
-
-      assert result.ok == true
-      assert result.data.actor == %{id: 99}
-      assert result.data.tenant == "org_99"
     end
   end
 
@@ -880,14 +851,25 @@ defmodule Alva.DispatcherTest do
         }
       }
 
+      {:ok, resource, event_def} = Alva.Registry.fetch_event(:alva, "test.upload")
+      action = Ash.Resource.Info.action(resource, event_def.action)
+
+      {params, cleanup_paths} =
+        Alva.LiveView.Uploads.consume_uploads_into_params(
+          socket,
+          action,
+          %{},
+          upload_consumer: MockUploadConsumer
+        )
+
       result =
         Alva.Dispatcher.dispatch(
           "test.upload",
-          %{},
-          socket: socket,
-          domains: [TestDomain],
-          upload_consumer: MockUploadConsumer
+          params,
+          domains: [TestDomain]
         )
+
+      Alva.LiveView.Uploads.cleanup_persisted_uploads(cleanup_paths)
 
       persisted_after = alva_upload_temp_paths()
 
@@ -925,14 +907,25 @@ defmodule Alva.DispatcherTest do
         }
       }
 
+      {:ok, resource, event_def} = Alva.Registry.fetch_event(:alva, "test.upload_with_contents")
+      action = Ash.Resource.Info.action(resource, event_def.action)
+
+      {params, cleanup_paths} =
+        Alva.LiveView.Uploads.consume_uploads_into_params(
+          socket,
+          action,
+          %{},
+          upload_consumer: CleanupMockUploadConsumer
+        )
+
       result =
         Alva.Dispatcher.dispatch(
           "test.upload_with_contents",
-          %{},
-          socket: socket,
-          domains: [TestDomain],
-          upload_consumer: CleanupMockUploadConsumer
+          params,
+          domains: [TestDomain]
         )
+
+      Alva.LiveView.Uploads.cleanup_persisted_uploads(cleanup_paths)
 
       persisted_after = alva_upload_temp_paths()
 
@@ -971,14 +964,25 @@ defmodule Alva.DispatcherTest do
         }
       }
 
+      {:ok, resource, event_def} = Alva.Registry.fetch_event(:alva, "test.upload_array")
+      action = Ash.Resource.Info.action(resource, event_def.action)
+
+      {params, cleanup_paths} =
+        Alva.LiveView.Uploads.consume_uploads_into_params(
+          socket,
+          action,
+          %{},
+          upload_consumer: MockUploadConsumer
+        )
+
       result =
         Alva.Dispatcher.dispatch(
           "test.upload_array",
-          %{},
-          socket: socket,
-          domains: [TestDomain],
-          upload_consumer: MockUploadConsumer
+          params,
+          domains: [TestDomain]
         )
+
+      Alva.LiveView.Uploads.cleanup_persisted_uploads(cleanup_paths)
 
       persisted_after = alva_upload_temp_paths()
 
@@ -1015,14 +1019,25 @@ defmodule Alva.DispatcherTest do
         }
       }
 
+      {:ok, resource, event_def} = Alva.Registry.fetch_event(:alva, "test.upload")
+      action = Ash.Resource.Info.action(resource, event_def.action)
+
+      {params, cleanup_paths} =
+        Alva.LiveView.Uploads.consume_uploads_into_params(
+          socket,
+          action,
+          %{},
+          upload_consumer: MockUploadConsumer
+        )
+
       result =
         Alva.Dispatcher.dispatch(
           "test.upload",
-          %{},
-          socket: socket,
-          domains: [TestDomain],
-          upload_consumer: MockUploadConsumer
+          params,
+          domains: [TestDomain]
         )
+
+      Alva.LiveView.Uploads.cleanup_persisted_uploads(cleanup_paths)
 
       persisted_after = alva_upload_temp_paths()
 

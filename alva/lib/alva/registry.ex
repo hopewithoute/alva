@@ -17,6 +17,8 @@ defmodule Alva.Registry do
   for how events and signals are defined per resource.
   """
 
+  alias Ash.Resource.Info
+
   @typedoc """
   The registry struct holding cached introspection data for a host application.
   """
@@ -39,12 +41,15 @@ defmodule Alva.Registry do
   defmodule SparkAdapter do
     @moduledoc since: "0.1.0"
     @moduledoc false
+
+    alias Spark.Dsl.Extension
+
     def get_persisted(module, key, default) do
-      Spark.Dsl.Extension.get_persisted(module, key, default)
+      Extension.get_persisted(module, key, default)
     end
 
     def get_entities(module, path) do
-      Spark.Dsl.Extension.get_entities(module, path)
+      Extension.get_entities(module, path)
     end
   end
 
@@ -58,6 +63,7 @@ defmodule Alva.Registry do
   via `:persistent_term`.
   """
   @doc since: "0.1.0"
+  @spec registry(atom()) :: t()
   def registry(otp_app) when is_atom(otp_app) and not is_nil(otp_app) do
     if cache_registry?() do
       cache_key = {@registry_cache_key, otp_app}
@@ -80,6 +86,7 @@ defmodule Alva.Registry do
   Returns the full event name-to-`{resource, event}` map for the given OTP app.
   """
   @doc since: "0.1.0"
+  @spec event_map(atom()) :: %{String.t() => {atom(), Alva.Resource.Event.t()}}
   def event_map(otp_app) when is_atom(otp_app) and not is_nil(otp_app) do
     registry(otp_app).event_map
   end
@@ -89,6 +96,7 @@ defmodule Alva.Registry do
   Returns `{:ok, resource, event}` or `:error`.
   """
   @doc since: "0.1.0"
+  @spec fetch_event(atom(), String.t()) :: {:ok, atom(), Alva.Resource.Event.t()} | :error
   def fetch_event(otp_app, event_name)
       when is_atom(otp_app) and not is_nil(otp_app) and is_binary(event_name) do
     case Map.fetch(event_map(otp_app), event_name) do
@@ -101,6 +109,7 @@ defmodule Alva.Registry do
   Returns the full signal name-to-`{resource, signal}` map for the given OTP app.
   """
   @doc since: "0.1.0"
+  @spec signal_map(atom()) :: %{String.t() => {atom(), Alva.Resource.Signal.t()}}
   def signal_map(otp_app) when is_atom(otp_app) and not is_nil(otp_app) do
     registry(otp_app).signal_map
   end
@@ -110,6 +119,7 @@ defmodule Alva.Registry do
   Returns `{:ok, resource, signal}` or `:error`.
   """
   @doc since: "0.1.0"
+  @spec fetch_signal(atom(), String.t()) :: {:ok, atom(), Alva.Resource.Signal.t()} | :error
   def fetch_signal(otp_app, signal_name)
       when is_atom(otp_app) and not is_nil(otp_app) and is_binary(signal_name) do
     case Map.fetch(signal_map(otp_app), signal_name) do
@@ -318,6 +328,7 @@ defmodule Alva.Registry do
   Returns the event map persisted on the given domain module at compile time.
   """
   @doc since: "0.1.0"
+  @spec alva_event_map(atom()) :: %{String.t() => {atom(), Alva.Resource.Event.t()}}
   def alva_event_map(domain) do
     SparkAdapter.get_persisted(domain, :alva_event_map, %{})
   end
@@ -326,6 +337,7 @@ defmodule Alva.Registry do
   Returns the signal map persisted on the given domain module at compile time.
   """
   @doc since: "0.1.0"
+  @spec alva_signal_map(atom()) :: %{String.t() => {atom(), Alva.Resource.Signal.t()}}
   def alva_signal_map(domain) do
     SparkAdapter.get_persisted(domain, :alva_signal_map, %{})
   end
@@ -363,6 +375,7 @@ defmodule Alva.Registry do
   Returns all `Alva.Resource.Event` entities defined on the given resource.
   """
   @doc since: "0.1.0"
+  @spec events(atom()) :: [Alva.Resource.Event.t()]
   def events(resource) do
     get_live_vue_entities(resource, Alva.Resource.Event)
   end
@@ -371,6 +384,7 @@ defmodule Alva.Registry do
   Returns all `Alva.Resource.Signal` entities defined on the given resource.
   """
   @doc since: "0.1.0"
+  @spec signals(atom()) :: [Alva.Resource.Signal.t()]
   def signals(resource) do
     get_live_vue_entities(resource, Alva.Resource.Signal)
   end
@@ -385,12 +399,13 @@ defmodule Alva.Registry do
   for the given Ash resource.
   """
   @doc since: "0.1.0"
+  @spec public_fields(atom()) :: [atom()]
   def public_fields(resource) do
     [
-      Ash.Resource.Info.public_attributes(resource),
-      Ash.Resource.Info.public_calculations(resource),
-      Ash.Resource.Info.public_relationships(resource),
-      Ash.Resource.Info.public_aggregates(resource)
+      Info.public_attributes(resource),
+      Info.public_calculations(resource),
+      Info.public_relationships(resource),
+      Info.public_aggregates(resource)
     ]
     |> Enum.flat_map(fn items -> Enum.map(items, & &1.name) end)
   end

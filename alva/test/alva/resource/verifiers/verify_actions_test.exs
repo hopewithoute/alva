@@ -2,21 +2,6 @@ defmodule Alva.Resource.Verifiers.VerifyActionsTest do
   use ExUnit.Case, async: false
   import ExUnit.CaptureLog
 
-  defp mock_dsl_state(events, action_defs) do
-    # Create a mock DSL state that VerifyActions can read
-    # We just need it to return our mock entities
-    %{
-      persisted: %{module: MockModule},
-      entities: [
-        %{
-          path: [:alva],
-          entities: events
-        }
-      ],
-      actions: action_defs
-    }
-  end
-
   defmodule MockModule do
     # Just a dummy module name for errors
   end

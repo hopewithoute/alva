@@ -80,6 +80,7 @@ defmodule Alva.MixProject do
       {:ex_slop, "~> 0.1", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:sourceror, "~> 1.7", only: [:dev, :test]},
+      {:picosat_elixir, "~> 0.2", only: [:dev, :test]},
       {:excoveralls, "~> 0.18", only: :test},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false}
     ]

@@ -7,19 +7,10 @@ defmodule Alva.SerializerTest do
     defstruct [:a, :b, :__meta__, :__metadata__]
   end
 
-  defmodule TestDomain do
-    use Ash.Domain, validate_config_inclusion?: false
-
-    resources do
-      resource MockResource
-    end
-  end
-
   defmodule MockResource do
     use Ash.Resource,
-      domain: TestDomain,
-      data_layer: Ash.DataLayer.Ets,
-      validate_domain_inclusion?: false
+      domain: nil,
+      data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id
