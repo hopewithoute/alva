@@ -197,6 +197,10 @@ defmodule Alva.RegistryTest do
       data_layer: Ash.DataLayer.Ets,
       validate_domain_inclusion?: false
 
+    resource do
+      require_primary_key?(false)
+    end
+
     alva do
       event(:upload, name: "upload.file1", action: :create)
     end
@@ -215,6 +219,10 @@ defmodule Alva.RegistryTest do
       extensions: [Alva.Resource],
       data_layer: Ash.DataLayer.Ets,
       validate_domain_inclusion?: false
+
+    resource do
+      require_primary_key?(false)
+    end
 
     alva do
       event(:upload2, name: "upload.file2", action: :create)

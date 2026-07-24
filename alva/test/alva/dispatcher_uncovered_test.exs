@@ -102,7 +102,7 @@ defmodule Alva.DispatcherUncoveredTest do
   end
 
   defmodule ErrorDomain do
-    use Ash.Domain, extensions: [Alva.Domain]
+    use Ash.Domain, validate_config_inclusion?: false, extensions: [Alva.Domain]
 
     resources do
       resource ErrorResource
