@@ -1,1 +1,7 @@
 node_modules
+skills-lock.json
+.agents
+.gortex
+.scratch
+docs
+CONTEXT.md
