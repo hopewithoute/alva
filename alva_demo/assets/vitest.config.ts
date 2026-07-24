@@ -10,6 +10,11 @@ export default defineConfig({
       vue: path.resolve(__dirname, "node_modules/vue")
     }
   },
+  server: {
+    fs: {
+      allow: ["..", "../.."]
+    }
+  },
   test: {
     environment: "jsdom",
     include: ["vue/**/*.test.ts"]

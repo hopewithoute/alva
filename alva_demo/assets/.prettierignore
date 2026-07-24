@@ -1,0 +1,8 @@
+# Ignore build artifacts and dependencies
+dist/
+node_modules/
+../priv/
+package-lock.json
+
+# Ignore auto-generated Alva SDK code
+js/alva/
