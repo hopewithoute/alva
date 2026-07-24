@@ -69,7 +69,7 @@ export type AlvaEvents = {
   "demo_notifications.send": {
     input: {
               title: string;
-              severity: "info" | "success" | "warning";
+              severity: "info" | "success" | "warning" | "danger" | "error";
             };
     output: AlvaResult<Types.Notification>;
   };

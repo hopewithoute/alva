@@ -15,6 +15,7 @@ export type AlvaFormOptions<FormValues, EventKeys> = {
 
 export type AlvaFormReturn<K extends keyof AlvaEvents, FormValues extends object> =
     Omit<UseLiveFormReturn<FormValues>, "submit"> & {
+        values: FormValues;
         submit: () => Promise<AlvaEvents[K]["output"]>;
         reset: (newValues?: Partial<FormValues>) => void;
     };
@@ -41,7 +42,7 @@ export function useAlvaForm<
 
     const liveForm = useLiveForm(pseudoForm, {
         submitEvent: submitEvent as string,
-        changeEvent: (options.validateEvent as string) || null,
+        changeEvent: (options.validateEvent as unknown as string) || null,
         debounceInMiliseconds: options.debounceMs || 300,
         prepareData: (data: any) => {
             if (options.uploads) {
@@ -63,6 +64,15 @@ export function useAlvaForm<
     };
 
     const submit = async (): Promise<AlvaEvents[K]["output"]> => {
+        for (const key of Object.keys(pseudoForm.values as object)) {
+            try {
+                const fieldRef = liveForm.field(key as any);
+                if (fieldRef && fieldRef.value && fieldRef.value.value !== undefined) {
+                    (pseudoForm.values as any)[key] = fieldRef.value.value;
+                }
+            } catch (_e) {}
+        }
+
         const rollbackFn = options.onOptimisticSubmit?.(pseudoForm.values);
         let result: any;
 
@@ -88,6 +98,7 @@ export function useAlvaForm<
 
     return {
         ...liveForm,
+        values: pseudoForm.values,
         submit,
         reset,
     } as AlvaFormReturn<K, FormValues>;

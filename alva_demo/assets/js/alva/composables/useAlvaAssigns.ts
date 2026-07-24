@@ -4,10 +4,10 @@
 import { computed, type ComputedRef } from "vue";
 import { useLiveVue } from "live_vue";
 
-export function useAlvaAssigns<T extends Record<string, any> = Record<string, any>>(): ComputedRef<T> {
+export function useAlvaAssigns<T extends Record<string, unknown> = Record<string, unknown>>(): ComputedRef<T> {
     const live = useLiveVue();
     return computed(() => {
-        const props = (live.vue?.props || {}) as Record<string, any>;
+        const props = (live.vue?.props || {}) as Record<string, unknown>;
         return (props.assigns || props) as T;
     });
 }

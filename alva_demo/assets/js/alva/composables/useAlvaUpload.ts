@@ -41,8 +41,13 @@ type UploadConfigShape = {
 };
 
 export function useAlvaUpload(name: string, options?: AlvaUploadOptions) {
-    const live = useLiveVue();
-    const uploadProps = live.vue?.props as Record<string, unknown> | null | undefined;
+    let live: any;
+    try {
+        live = useLiveVue();
+    } catch (_e) {
+        return missingUpload(name);
+    }
+    const uploadProps = live?.vue?.props as Record<string, unknown> | null | undefined;
 
     const getUploadConfig = (): UploadConfigShape | null => {
         const directConfig = uploadProps?.[name];
@@ -145,12 +150,13 @@ export function useAlvaUpload(name: string, options?: AlvaUploadOptions) {
 }
 
 function isUploadConfig(value: unknown): value is UploadConfigShape {
-    return Boolean(
-        value && typeof value === "object" &&
-        typeof (value as UploadConfigShape).ref === "string" &&
-        typeof (value as UploadConfigShape).name === "string" &&
-        Array.isArray((value as UploadConfigShape).entries) &&
-        Array.isArray((value as UploadConfigShape).errors)
+    if (!value || typeof value !== "object") return false;
+    const obj = value as Record<string, unknown>;
+    return (
+        typeof obj.ref === "string" &&
+        typeof obj.name === "string" &&
+        Array.isArray(obj.entries) &&
+        Array.isArray(obj.errors)
     );
 }
 

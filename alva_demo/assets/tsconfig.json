@@ -11,8 +11,8 @@
       "live_vue": ["../deps/live_vue/assets"],
       "alva/useAlvaApi": ["../../alva/assets/js/useAlvaApi"],
       "alva": ["../../alva/assets/js"],
-      "phoenix": ["../deps/phoenix"],
-      "phoenix_live_view": ["../deps/phoenix_live_view"]
+      "phoenix": ["node_modules/@types/phoenix"],
+      "phoenix_live_view": ["node_modules/@types/phoenix_live_view"]
     },
     "strict": true,
     "jsx": "preserve",
@@ -23,6 +23,5 @@
     "types": ["vite/client"],
     "skipLibCheck": true
   },
-  "include": ["js/**/*.ts", "js/**/*.js", "vue/**/*.vue"],
-  "exclude": ["../deps", "node_modules"]
+  "include": ["js/**/*.ts", "js/**/*.js", "vue/**/*.vue", "vue/**/*.ts"]
 }
