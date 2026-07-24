@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 ## Parent
 
@@ -14,9 +14,9 @@ Scan the `/lib/` directory of the host application (outside of `/alva/`) for any
 
 ## Acceptance criteria
 
-- [ ] All instances of `commands: [` inside `use Alva.LiveView` across the host app are replaced with `uploads: [`.
-- [ ] All instances of `live_vue do` across the host app's Ash Resources are replaced with `alva do`.
-- [ ] `mix compile` succeeds at the root of the host application (`/var/www/ash_vue`).
+- [x] All instances of `commands: [` inside `use Alva.LiveView` across the host app are replaced with `uploads: [`.
+- [x] All instances of `live_vue do` across the host app's Ash Resources are replaced with `alva do`.
+- [x] `mix compile` succeeds at the root of the host application (`/var/www/ash_vue`).
 
 ## Blocked by
 

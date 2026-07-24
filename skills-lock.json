@@ -115,6 +115,12 @@
       "skillPath": "skills/engineering/triage/SKILL.md",
       "computedHash": "b77ea99c2e6e97815b373cc476ad4cc1835d3e736867b764602147be71f6c131"
     },
+    "vue-best-practices": {
+      "source": "hyf0/vue-skills",
+      "sourceType": "github",
+      "skillPath": "skills/vue-best-practices/SKILL.md",
+      "computedHash": "3df585ad31aec78fe55c56c1411262737e6b231677a3153dec512a882fde80cd"
+    },
     "writing-great-skills": {
       "source": "mattpocock/skills",
       "sourceType": "github",

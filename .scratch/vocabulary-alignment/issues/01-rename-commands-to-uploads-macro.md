@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 ## What to build
 
@@ -10,10 +10,10 @@ Update all tests in `alva/test/` to use `uploads:` instead of `commands:` to ens
 
 ## Acceptance criteria
 
-- [ ] `alva/lib/alva/live_view.ex` accepts `uploads:` instead of `commands:` in `use Alva.LiveView`.
-- [ ] Internal private functions in `alva/lib/alva/live_view.ex` are renamed to reflect `uploads`.
-- [ ] All occurrences of `commands:` in `alva/test/` are updated to `uploads:`.
-- [ ] `mix test` passes perfectly inside the `alva/` directory.
+- [x] `alva/lib/alva/live_view.ex` accepts `uploads:` instead of `commands:` in `use Alva.LiveView`.
+- [x] Internal private functions in `alva/lib/alva/live_view.ex` are renamed to reflect `uploads`.
+- [x] All occurrences of `commands:` in `alva/test/` are updated to `uploads:`.
+- [x] `mix test` passes perfectly inside the `alva/` directory.
 
 ## Blocked by
 
