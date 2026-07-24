@@ -1,23 +1,25 @@
 <script setup lang="ts">
-import type { Order } from "../../../../js/alva/types";
+import type { Order } from "@/js/alva/types";
 import { Badge } from "@/vue/components/ui/badge";
 
-const props = defineProps<{
+type BadgeVariant = "default" | "secondary" | "outline";
+
+const BADGE_VARIANT_MAP: Record<Order["lifecycle_status"], BadgeVariant> = {
+  new: "default",
+  processing: "secondary",
+  fulfilled: "outline"
+};
+
+defineProps<{
   status: Order["lifecycle_status"];
 }>();
-
-const getVariant = (status: string) => {
-  switch (status) {
-    case 'new': return 'default';
-    case 'processing': return 'secondary';
-    case 'fulfilled': return 'outline';
-    default: return 'outline';
-  }
-};
 </script>
 
 <template>
-  <Badge :variant="getVariant(status)" class="capitalize px-3 py-1 text-sm font-medium">
+  <Badge
+    :variant="BADGE_VARIANT_MAP[status] ?? 'outline'"
+    class="px-3 py-1 text-sm font-medium capitalize"
+  >
     {{ status }}
   </Badge>
 </template>

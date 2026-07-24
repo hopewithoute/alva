@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
-import { useAlva } from "../../../js/alva";
-import type { Product } from "../../../js/alva/types";
-import Button from "../../shared/ui/button/Button.vue";
+import { useAlva } from "@/js/alva";
+import type { Product } from "@/js/alva/types";
+import Button from "@/vue/shared/ui/button/Button.vue";
+import SpecimenSourceViewerModal from "@/vue/shared/components/SpecimenSourceViewerModal.vue";
+
+const isSourceModalOpen = ref(false);
 
 const props = defineProps<{
   products?: Product[];
@@ -19,24 +22,40 @@ const availableProducts = computed<Product[]>(() => {
   return [];
 });
 
-const selectedProductId = ref<string>("");
+const selectedProductId = ref("");
 
-watch(availableProducts, (list) => {
-  if (list.length > 0 && !selectedProductId.value) {
-    selectedProductId.value = list[0].id;
-  }
-}, { immediate: true });
+watch(
+  availableProducts,
+  (list) => {
+    if (list.length > 0 && !selectedProductId.value) {
+      selectedProductId.value = list[0].id;
+    }
+  },
+  { immediate: true }
+);
 
 const selectedProduct = computed(() => {
-  return availableProducts.value.find((p) => p.id === selectedProductId.value) || availableProducts.value[0];
+  return (
+    availableProducts.value.find((p) => p.id === selectedProductId.value) ||
+    availableProducts.value[0]
+  );
 });
+
+const OPTIMISTIC_FORM_STATE = {
+  IDLE: "idle",
+  OPTIMISTIC: "optimistic",
+  CONFIRMED: "confirmed",
+  ROLLED_BACK: "rolled_back"
+} as const;
+
+export type OptimisticFormState = typeof OPTIMISTIC_FORM_STATE[keyof typeof OPTIMISTIC_FORM_STATE];
 
 // UI State
 const stockDisplay = ref(50);
 const simulateFailure = ref(false);
-const statusState = ref<"idle" | "optimistic" | "confirmed" | "rolled_back">("idle");
-const statusLog = ref<string>("Ready for interactive optimistic submission.");
-const timelineStep = ref<number>(1);
+const statusState = ref<OptimisticFormState>(OPTIMISTIC_FORM_STATE.IDLE);
+const statusLog = ref("Ready for interactive optimistic submission.");
+const timelineStep = ref(1);
 
 // Telemetry Log
 type TelemetryLog = {
@@ -60,15 +79,19 @@ const addLog = (type: TelemetryLog["type"], text: string) => {
   }
 };
 
-watch(selectedProduct, (prod) => {
-  if (prod) {
-    stockDisplay.value = prod.stock;
-    statusState.value = "idle";
-    statusLog.value = `Selected product: ${prod.name} (Stock: ${prod.stock})`;
-    timelineStep.value = 1;
-    addLog("rpc", `Initialized mutation target: ${prod.name} (Stock: ${prod.stock})`);
-  }
-}, { immediate: true });
+watch(
+  selectedProduct,
+  (prod) => {
+    if (prod) {
+      stockDisplay.value = prod.stock;
+      statusState.value = OPTIMISTIC_FORM_STATE.IDLE;
+      statusLog.value = `Selected product: ${prod.name} (Stock: ${prod.stock})`;
+      timelineStep.value = 1;
+      addLog("rpc", `Initialized mutation target: ${prod.name} (Stock: ${prod.stock})`);
+    }
+  },
+  { immediate: true }
+);
 
 const stockForm = alva.catalog.use_adjust_stock_form({
   initialValues: {
@@ -77,10 +100,10 @@ const stockForm = alva.catalog.use_adjust_stock_form({
   },
   onOptimisticSubmit: (formData) => {
     const previousStock = stockDisplay.value;
-    
+
     // 1. Instant local UI update
     stockDisplay.value = formData.stock ?? previousStock;
-    statusState.value = "optimistic";
+    statusState.value = OPTIMISTIC_FORM_STATE.OPTIMISTIC;
     statusLog.value = `⚡ Step 1/3 (0ms): Local state updated to ${stockDisplay.value} units!`;
     timelineStep.value = 2;
 
@@ -89,11 +112,14 @@ const stockForm = alva.catalog.use_adjust_stock_form({
     // 2. Return rollback function if server fails
     return () => {
       stockDisplay.value = previousStock;
-      statusState.value = "rolled_back";
+      statusState.value = OPTIMISTIC_FORM_STATE.ROLLED_BACK;
       statusLog.value = `❌ Step 3/3: Server validation failed! Restored inventory state to ${previousStock} units.`;
       timelineStep.value = 4;
 
-      addLog("rollback", `Server validation error: Stock cannot be negative. Executed UI rollback to ${previousStock} units.`);
+      addLog(
+        "rollback",
+        `Server validation error: Stock cannot be negative. Executed UI rollback to ${previousStock} units.`
+      );
     };
   }
 });
@@ -106,6 +132,10 @@ const handleAdjustStock = async (delta: number) => {
 
   stockForm.field("id").value.value = selectedProduct.value.id;
   stockForm.field("stock").value.value = submitStock;
+  if (stockForm.values) {
+    stockForm.values.id = selectedProduct.value.id;
+    stockForm.values.stock = submitStock;
+  }
 
   timelineStep.value = 3;
   statusLog.value = `⏳ Step 2/3: Dispatching RPC request over WebSocket...`;
@@ -114,83 +144,132 @@ const handleAdjustStock = async (delta: number) => {
   const result = await stockForm.submit();
 
   if (result.ok) {
-    statusState.value = "confirmed";
-    statusLog.value = `✔ Step 3/3: Server confirmed DB write! Stock successfully locked at ${stockDisplay.value} units.`;
+    const resultData =
+      result && "data" in result && typeof result.data === "object" && result.data !== null
+        ? result.data
+        : null;
+    const confirmedStock =
+      resultData && "stock" in resultData && typeof resultData.stock === "number"
+        ? resultData.stock
+        : submitStock;
+    stockDisplay.value = confirmedStock;
+    statusState.value = OPTIMISTIC_FORM_STATE.CONFIRMED;
+    statusLog.value = `✔ Step 3/3: Server confirmed DB write! Stock successfully locked at ${confirmedStock} units.`;
     timelineStep.value = 4;
-    addLog("confirmed", `Server DB write confirmed. Stock locked at ${stockDisplay.value} units.`);
+    addLog("confirmed", `Server DB write confirmed. Stock locked at ${confirmedStock} units.`);
   }
 };
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto py-12 px-6 lg:px-12 space-y-16" data-testid="demo-optimistic-form-vue">
+  <div class="w-full space-y-16 py-4" data-testid="demo-optimistic-form-vue">
     <!-- Broadsheet Header -->
-    <header class="space-y-6 pb-12 border-b border-[var(--color-rule)]">
+    <header class="space-y-6 border-b border-[var(--color-rule)] pb-12">
       <div class="space-y-1">
-        <span class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-ink-2)]" style="font-family: var(--font-mono)">
+        <span
+          class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-ink-2)]"
+          style="font-family: var(--font-mono)"
+        >
           № 05 — OPTIMISTIC MUTATION ENGINE
         </span>
-        <p class="text-[10px] uppercase tracking-[0.15em] text-[var(--color-ink-2)]" style="font-family: var(--font-mono)">
+        <p
+          class="text-[10px] uppercase tracking-[0.15em] text-[var(--color-ink-2)]"
+          style="font-family: var(--font-mono)"
+        >
           Zero-Latency UI Execution Specimen
         </p>
       </div>
-      <h1 class="text-5xl font-normal text-[var(--color-ink)]" style="font-family: var(--font-display); line-height: 1.1;">
+      <h1
+        class="text-5xl font-normal text-[var(--color-ink)]"
+        style="font-family: var(--font-display); line-height: 1.1"
+      >
         Optimistic Form UI &amp; State Rollback.
       </h1>
-      <p class="text-lg text-[var(--color-ink-2)] max-w-[65ch]" style="line-height: 1.7;">
-        Execute zero-latency client state mutations with <code>onOptimisticSubmit</code> hooks, accompanied by automatic state rollback when server validations fail.
-      </p>
+      <div class="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+        <p class="max-w-[65ch] text-lg text-[var(--color-ink-2)]" style="line-height: 1.7">
+          Execute zero-latency client state mutations with <code>onOptimisticSubmit</code> hooks,
+          accompanied by automatic state rollback when server validations fail.
+        </p>
+        <Button variant="specimen" @click="isSourceModalOpen = true">
+          <span>⚡ INSPECT SPECIMEN CODE</span>
+        </Button>
+      </div>
     </header>
 
     <!-- Main Broadsheet Section -->
     <section class="space-y-8 border-t border-[var(--color-rule)] pt-8">
       <!-- Target Product Bar -->
-      <div class="flex flex-col sm:flex-row sm:items-baseline justify-between border-b border-[var(--color-rule)] pb-4 gap-4">
+      <div
+        class="flex flex-col justify-between gap-4 border-b border-[var(--color-rule)] pb-4 sm:flex-row sm:items-baseline"
+      >
         <div class="space-y-1">
-          <span class="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--color-ink-2)]" style="font-family: var(--font-mono)">
+          <span
+            class="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--color-ink-2)]"
+            style="font-family: var(--font-mono)"
+          >
             01 / SPECIMEN SELECTION
           </span>
-          <h2 class="text-3xl font-normal text-[var(--color-ink)]" style="font-family: var(--font-display)">
+          <h2
+            class="text-3xl font-normal text-[var(--color-ink)]"
+            style="font-family: var(--font-display)"
+          >
             Inventory Mutation Target
           </h2>
         </div>
 
-        <select v-model="selectedProductId" class="rounded-none border-0 border-b border-[var(--color-rule-2)] bg-transparent px-0 py-2 text-sm text-[var(--color-ink)] font-mono focus:border-[var(--color-ink)] focus:outline-none focus:ring-0 min-w-[260px]">
-          <option v-for="p in availableProducts" :key="p.id" :value="p.id">
+        <select
+          v-model="selectedProductId"
+          class="min-w-[260px] rounded-none border-0 border-b border-[var(--color-rule-2)] bg-[var(--color-paper)] px-2 py-2 font-mono text-sm text-[var(--color-ink)] focus:border-[var(--color-ink)] focus:outline-none focus:ring-0"
+        >
+          <option
+            v-for="p in availableProducts"
+            :key="p.id"
+            :value="p.id"
+            class="bg-[var(--color-paper)] text-[var(--color-ink)]"
+          >
             {{ p.name }} (Stock: {{ p.stock }})
           </option>
         </select>
       </div>
 
       <!-- Main Broadsheet Card -->
-      <div class="border border-[var(--color-rule-2)] bg-[var(--color-paper)] p-8 space-y-10">
+      <div class="space-y-10 border border-[var(--color-rule-2)] bg-[var(--color-paper)] p-8">
         <!-- Live Product Header & Inventory Count -->
-        <div class="flex flex-col sm:flex-row items-baseline justify-between border-b border-[var(--color-rule)] pb-8 gap-6">
+        <div
+          class="flex flex-col items-baseline justify-between gap-6 border-b border-[var(--color-rule)] pb-8 sm:flex-row"
+        >
           <div class="flex items-center gap-6">
-            <img 
-              v-if="selectedProduct?.media_reference" 
-              :src="'/images/' + selectedProduct.media_reference" 
+            <img
+              v-if="selectedProduct?.media_reference"
+              :src="'/images/' + selectedProduct.media_reference"
               :alt="selectedProduct.name"
-              class="h-24 w-24 object-contain border border-[var(--color-rule-2)] bg-white p-2"
+              class="h-24 w-24 border border-[var(--color-rule-2)] bg-white object-contain p-2"
             />
             <div class="space-y-2">
-              <h3 class="text-3xl font-normal text-[var(--color-ink)]" style="font-family: var(--font-display)">
+              <h3
+                class="text-3xl font-normal text-[var(--color-ink)]"
+                style="font-family: var(--font-display)"
+              >
                 {{ selectedProduct?.name || "Product Stock" }}
               </h3>
-              <p class="text-xs font-mono text-[var(--color-ink-2)]">Resource Primary Key: {{ selectedProduct?.id }}</p>
+              <p class="font-mono text-xs text-[var(--color-ink-2)]">
+                Resource Primary Key: {{ selectedProduct?.id }}
+              </p>
             </div>
           </div>
 
           <!-- Stock Counter Display -->
-          <div class="text-right space-y-1">
-            <div class="text-xs uppercase tracking-[0.15em] text-[var(--color-ink-2)] font-mono">Live Inventory State</div>
-            <div 
-              class="text-6xl font-normal transition-all duration-300 font-mono"
+          <div class="space-y-1 text-right">
+            <div class="font-mono text-xs uppercase tracking-[0.15em] text-[var(--color-ink-2)]">
+              Live Inventory State
+            </div>
+            <div
+              class="font-mono text-6xl font-normal transition-all duration-300"
               :class="{
                 'text-[var(--color-ink)]': statusState === 'idle',
-                'text-blue-600 font-bold': statusState === 'optimistic',
-                'text-emerald-600 font-bold': statusState === 'confirmed',
-                'text-red-600 font-bold': statusState === 'rolled_back'
+                'font-bold text-blue-600': statusState === 'optimistic',
+                'font-bold text-emerald-600': statusState === 'confirmed',
+                'font-bold text-red-600': statusState === 'rolled_back'
               }"
             >
               {{ stockDisplay }}
@@ -201,82 +280,144 @@ const handleAdjustStock = async (delta: number) => {
 
         <!-- Execution Lifecycle Flow -->
         <div class="space-y-4">
-          <div class="text-xs font-mono font-semibold uppercase tracking-[0.15em] text-[var(--color-ink-2)]">
+          <div
+            class="font-mono text-xs font-semibold uppercase tracking-[0.15em] text-[var(--color-ink-2)]"
+          >
             02 / EXECUTION LIFECYCLE PROTOCOL
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs text-center">
-            <div 
-              class="p-4 border transition-colors"
-              :class="timelineStep >= 2 ? 'border-[var(--color-ink)] bg-[var(--color-paper-2)] font-bold text-[var(--color-ink)]' : 'border-[var(--color-rule-2)] text-[var(--color-ink-2)]'"
+          <div class="grid grid-cols-1 gap-4 text-center font-mono text-xs md:grid-cols-3">
+            <div
+              class="border p-4 transition-colors"
+              :class="
+                timelineStep >= 2
+                  ? 'border-[var(--color-ink)] bg-[var(--color-paper-2)] font-bold text-[var(--color-ink)]'
+                  : 'border-[var(--color-rule-2)] text-[var(--color-ink-2)]'
+              "
             >
               1. Optimistic Local (0ms)
             </div>
-            <div 
-              class="p-4 border transition-colors"
-              :class="timelineStep >= 3 ? 'border-[var(--color-ink)] bg-[var(--color-paper-2)] font-bold text-[var(--color-ink)]' : 'border-[var(--color-rule-2)] text-[var(--color-ink-2)]'"
+            <div
+              class="border p-4 transition-colors"
+              :class="
+                timelineStep >= 3
+                  ? 'border-[var(--color-ink)] bg-[var(--color-paper-2)] font-bold text-[var(--color-ink)]'
+                  : 'border-[var(--color-rule-2)] text-[var(--color-ink-2)]'
+              "
             >
               2. WebSocket RPC Dispatch
             </div>
-            <div 
-              class="p-4 border transition-colors"
-              :class="statusState === 'confirmed' ? 'border-emerald-600 font-bold text-emerald-600' : statusState === 'rolled_back' ? 'border-red-600 font-bold text-red-600' : 'border-[var(--color-rule-2)] text-[var(--color-ink-2)]'"
+            <div
+              class="border p-4 transition-colors"
+              :class="
+                statusState === OPTIMISTIC_FORM_STATE.CONFIRMED
+                  ? 'border-emerald-600 font-bold text-emerald-600'
+                  : statusState === OPTIMISTIC_FORM_STATE.ROLLED_BACK
+                    ? 'border-red-600 font-bold text-red-600'
+                    : 'border-[var(--color-rule-2)] text-[var(--color-ink-2)]'
+              "
             >
-              3. {{ statusState === 'rolled_back' ? 'Rollback State' : statusState === 'confirmed' ? 'Server Confirmed' : 'Result State' }}
+              3.
+              {{
+                statusState === OPTIMISTIC_FORM_STATE.ROLLED_BACK
+                  ? "Rollback State"
+                  : statusState === OPTIMISTIC_FORM_STATE.CONFIRMED
+                    ? "Server Confirmed"
+                    : "Result State"
+              }}
             </div>
           </div>
         </div>
 
         <!-- Controls -->
         <div class="space-y-6">
-          <div class="flex items-center gap-3 p-4 border border-[var(--color-rule-2)] bg-[var(--color-paper-2)]">
-            <input type="checkbox" v-model="simulateFailure" id="sim-fail" class="h-4 w-4 accent-[var(--color-ink)] cursor-pointer" />
-            <label for="sim-fail" class="text-xs font-mono font-semibold text-[var(--color-ink)] cursor-pointer">
-              ⚠️ SIMULATE SERVER VALIDATION FAILURE (submits negative stock -15 to trigger automatic UI rollback)
+          <div
+            class="flex items-center gap-3 border border-[var(--color-rule-2)] bg-[var(--color-paper-2)] p-4"
+          >
+            <input
+              type="checkbox"
+              v-model="simulateFailure"
+              id="sim-fail"
+              class="h-4 w-4 cursor-pointer accent-[var(--color-ink)]"
+            />
+            <label
+              for="sim-fail"
+              class="cursor-pointer font-mono text-xs font-semibold text-[var(--color-ink)]"
+            >
+              ⚠️ SIMULATE SERVER VALIDATION FAILURE (submits negative stock -15 to trigger automatic
+              UI rollback)
             </label>
           </div>
 
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <button @click="handleAdjustStock(1)" class="border border-[var(--color-ink)] bg-transparent py-4 text-xs font-semibold font-mono uppercase tracking-[0.1em] text-[var(--color-ink)] transition-colors hover:bg-[var(--color-ink)] hover:text-[var(--color-paper)]">
+          <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <button
+              @click="handleAdjustStock(1)"
+              class="border border-[var(--color-ink)] bg-transparent py-4 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-[var(--color-ink)] transition-colors hover:bg-[var(--color-ink)] hover:text-[var(--color-paper)]"
+            >
               +1 Stock
             </button>
-            <button @click="handleAdjustStock(10)" class="btn--primary py-4 text-xs font-semibold uppercase tracking-[0.1em]">
+            <button
+              @click="handleAdjustStock(10)"
+              class="btn--primary py-4 text-xs font-semibold uppercase tracking-[0.1em]"
+            >
               +10 Stock
             </button>
-            <button @click="handleAdjustStock(-1)" class="border border-[var(--color-ink)] bg-transparent py-4 text-xs font-semibold font-mono uppercase tracking-[0.1em] text-[var(--color-ink)] transition-colors hover:bg-[var(--color-ink)] hover:text-[var(--color-paper)]">
+            <button
+              @click="handleAdjustStock(-1)"
+              class="border border-[var(--color-ink)] bg-transparent py-4 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-[var(--color-ink)] transition-colors hover:bg-[var(--color-ink)] hover:text-[var(--color-paper)]"
+            >
               -1 Stock
             </button>
-            <button @click="handleAdjustStock(-10)" class="border border-[var(--color-ink)] bg-transparent py-4 text-xs font-semibold font-mono uppercase tracking-[0.1em] text-[var(--color-ink)] transition-colors hover:bg-[var(--color-ink)] hover:text-[var(--color-paper)]">
+            <button
+              @click="handleAdjustStock(-10)"
+              class="border border-[var(--color-ink)] bg-transparent py-4 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-[var(--color-ink)] transition-colors hover:bg-[var(--color-ink)] hover:text-[var(--color-paper)]"
+            >
               -10 Stock
             </button>
           </div>
         </div>
 
         <!-- Broadsheet Code Telemetry Card -->
-        <div class="space-y-2">
-          <div class="text-xs font-mono font-semibold uppercase tracking-[0.15em] text-[var(--color-ink-2)] flex justify-between">
+        <div
+          class="space-y-3 border border-[var(--color-rule-2)] bg-[var(--color-paper-2)] p-4 font-mono"
+        >
+          <div
+            class="flex items-center justify-between border-b border-[var(--color-rule)] pb-2 text-[10px] uppercase tracking-[0.15em] text-[var(--color-ink-2)]"
+          >
             <span>03 / WEBSOCKET TELEMETRY LOG</span>
-            <span>Channel: alva:dispatch</span>
+            <span>CHANNEL: ALVA:DISPATCH</span>
           </div>
-          <div class="code-card p-6 text-xs leading-relaxed overflow-x-auto min-h-[140px]">
-            <div v-if="telemetryLogs.length === 0" class="text-slate-500 italic">Awaiting interactive stock mutation...</div>
-            <div v-for="log in telemetryLogs" :key="log.id" class="flex gap-4 items-start py-1 border-b border-slate-800/50 last:border-0 font-mono">
-              <span class="text-slate-500">{{ log.time }}</span>
-              <span 
-                class="uppercase font-bold tracking-[0.1em] text-[10px]"
+          <div class="min-h-[130px] space-y-1 overflow-x-auto pt-1 text-xs leading-relaxed">
+            <div
+              v-if="telemetryLogs.length === 0"
+              class="text-[11px] italic text-[var(--color-ink-2)]"
+            >
+              Awaiting interactive stock mutation...
+            </div>
+            <div
+              v-for="log in telemetryLogs"
+              :key="log.id"
+              class="border-[var(--color-rule)]/40 flex items-start gap-3 border-b py-1 last:border-0"
+            >
+              <span class="min-w-[70px] text-[11px] text-[var(--color-ink-2)]">{{ log.time }}</span>
+              <span
+                class="min-w-[85px] text-[10px] font-bold uppercase tracking-[0.1em]"
                 :class="{
-                  'text-blue-400': log.type === 'optimistic',
-                  'text-amber-400': log.type === 'rpc',
-                  'text-emerald-400': log.type === 'confirmed',
-                  'text-red-400': log.type === 'rollback'
+                  'text-sky-600 dark:text-sky-400': log.type === 'optimistic',
+                  'text-amber-600 dark:text-amber-400': log.type === 'rpc',
+                  'text-emerald-600 dark:text-emerald-400': log.type === 'confirmed',
+                  'text-rose-600 dark:text-rose-400': log.type === 'rollback'
                 }"
               >
                 [{{ log.type }}]
               </span>
-              <span class="text-slate-300 flex-1">{{ log.text }}</span>
+              <span class="flex-1 text-[11px] font-semibold text-[var(--color-ink)]">{{
+                log.text
+              }}</span>
             </div>
           </div>
         </div>
       </div>
     </section>
+    <SpecimenSourceViewerModal v-model="isSourceModalOpen" specimen-id="optimistic-form" />
   </div>
 </template>

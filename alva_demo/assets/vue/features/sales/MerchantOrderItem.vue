@@ -1,31 +1,39 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useAlva } from "../../../js/alva";
-import type { Order } from "../../../js/alva/types";
-import OrderStatusBadge from "../../shared/ui/badge/OrderStatusBadge.vue";
-import Button from "../../shared/ui/button/Button.vue";
+import { useAlva } from "@/js/alva";
+import type { Order } from "@/js/alva/types";
+import {
+  ORDER_ACTION_PENDING_LABELS,
+  ORDER_LIFECYCLE_ACTION_LABELS,
+  ORDER_STATUS,
+  type OrderPendingAction
+} from "@/vue/features/merchant/types";
+import OrderStatusBadge from "@/vue/shared/ui/badge/OrderStatusBadge.vue";
+import Button from "@/vue/shared/ui/button/Button.vue";
+import { getErrorMessage } from "@/vue/utils/error";
+import { formatDateTime } from "@/vue/utils/format";
 
 const props = defineProps<{
   order: Order;
 }>();
 
 const alva = useAlva();
-const pendingAction = ref<"begin_processing" | "fulfill" | null>(null);
+const pendingAction = ref<OrderPendingAction>(null);
 const operationError = ref<string | null>(null);
 
 const isLoading = computed(() => pendingAction.value !== null);
 
 const orderActionLabel = computed(() => {
-  if (pendingAction.value === "begin_processing") return "Processing...";
-  if (pendingAction.value === "fulfill") return "Fulfilling...";
-  if (props.order.lifecycle_status === "new") return "Begin Processing";
-  if (props.order.lifecycle_status === "processing") return "Fulfill Order";
-  return "Completed";
+  if (pendingAction.value) {
+    return ORDER_ACTION_PENDING_LABELS[pendingAction.value];
+  }
+  return ORDER_LIFECYCLE_ACTION_LABELS[props.order.lifecycle_status] ?? "Completed";
 });
 
 const hasOrderAction = computed(() => {
   return (
-    props.order.lifecycle_status === "new" || props.order.lifecycle_status === "processing"
+    props.order.lifecycle_status === ORDER_STATUS.NEW ||
+    props.order.lifecycle_status === ORDER_STATUS.PROCESSING
   );
 });
 
@@ -35,7 +43,7 @@ const runOrderAction = async () => {
   operationError.value = null;
 
   try {
-    if (props.order.lifecycle_status === "new") {
+    if (props.order.lifecycle_status === ORDER_STATUS.NEW) {
       pendingAction.value = "begin_processing";
 
       const result = await alva.sales.begin_processing({ id: props.order.id });
@@ -43,7 +51,7 @@ const runOrderAction = async () => {
       if (!result.ok) {
         operationError.value = result.error?.message || "Failed to begin processing order.";
       }
-    } else if (props.order.lifecycle_status === "processing") {
+    } else if (props.order.lifecycle_status === ORDER_STATUS.PROCESSING) {
       pendingAction.value = "fulfill";
 
       const result = await alva.sales.fulfill({ id: props.order.id });
@@ -52,8 +60,8 @@ const runOrderAction = async () => {
         operationError.value = result.error?.message || "Failed to fulfill order.";
       }
     }
-  } catch (error: any) {
-    operationError.value = error.message || "Failed to update order.";
+  } catch (error: unknown) {
+    operationError.value = getErrorMessage(error);
   } finally {
     pendingAction.value = null;
   }
@@ -62,16 +70,6 @@ const runOrderAction = async () => {
 const getOrderProductName = () => {
   return props.order.product?.name ?? "Unknown Product";
 };
-
-const formatDateTime = (isoString: string) => {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(isoString));
-};
-
 </script>
 
 <template>
@@ -98,7 +96,11 @@ const formatDateTime = (isoString: string) => {
       <p class="text-xs text-[var(--color-ink-2)]" style="font-family: var(--font-mono)">
         {{ formatDateTime(order.created_at) }}
       </p>
-      <p v-if="operationError" class="text-xs text-danger italic" style="font-family: var(--font-display)">
+      <p
+        v-if="operationError"
+        class="text-xs italic text-danger"
+        style="font-family: var(--font-display)"
+      >
         {{ operationError }}
       </p>
     </div>

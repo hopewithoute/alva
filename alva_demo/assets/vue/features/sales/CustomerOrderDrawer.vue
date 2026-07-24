@@ -1,19 +1,21 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
-import type { Order } from "../../../js/alva/types";
-import OrderStatusBadge from "../../shared/ui/badge/OrderStatusBadge.vue";
-import Button from "../../shared/ui/button/Button.vue";
+import type { Order } from "@/js/alva/types";
+import OrderStatusBadge from "@/vue/shared/ui/badge/OrderStatusBadge.vue";
+import Button from "@/vue/shared/ui/button/Button.vue";
 
 const props = defineProps<{
   customerOrders: Order[];
   connectedCustomerName?: string | null;
+  initialSelectedOrderId?: string | null;
 }>();
 
 const emit = defineEmits<{
   (e: "close"): void;
+  (e: "select-order", id: string): void;
 }>();
 
-const selectedOrderId = ref<string | null>(null);
+const selectedOrderId = ref<string | null>(props.initialSelectedOrderId || null);
 
 const recentOrderCount = computed(() => props.customerOrders.length);
 const recentOrderItems = computed(() =>
@@ -22,24 +24,39 @@ const recentOrderItems = computed(() =>
 
 const selectedOrder = computed(() => {
   if (!selectedOrderId.value) return props.customerOrders[0] ?? null;
-  return props.customerOrders.find((order) => order.id === selectedOrderId.value) ?? props.customerOrders[0] ?? null;
+  return (
+    props.customerOrders.find((order) => order.id === selectedOrderId.value) ??
+    props.customerOrders[0] ??
+    null
+  );
 });
 
 const selectOrder = (orderId: string) => {
   selectedOrderId.value = orderId;
+  emit("select-order", orderId);
+};
+
+const syncSelectedOrder = ([orders, initialId]: [
+  readonly Order[] | undefined,
+  string | null | undefined
+]) => {
+  const list = orders || [];
+  if (initialId && list.some((o) => o.id === initialId)) {
+    selectedOrderId.value = initialId;
+    return;
+  }
+  if (list.length === 0) {
+    selectedOrderId.value = null;
+    return;
+  }
+  if (!selectedOrderId.value || !list.some((o) => o.id === selectedOrderId.value)) {
+    selectedOrderId.value = list[0].id;
+  }
 };
 
 watch(
-  () => props.customerOrders,
-  (orders) => {
-    if (orders.length === 0) {
-      selectedOrderId.value = null;
-      return;
-    }
-    if (!selectedOrderId.value || !orders.some((o) => o.id === selectedOrderId.value)) {
-      selectedOrderId.value = orders[0].id;
-    }
-  },
+  [() => props.customerOrders, () => props.initialSelectedOrderId],
+  (newVal) => syncSelectedOrder(newVal),
   { immediate: true }
 );
 
@@ -72,18 +89,35 @@ defineExpose<CustomerOrderDrawerExpose>({ selectOrder });
         leave-from-class="opacity-100 translate-y-0 scale-100"
         leave-to-class="opacity-0 translate-y-4 scale-95"
       >
-        <div class="w-full max-w-4xl border border-[var(--color-rule)] bg-[var(--color-paper)] shadow-2xl origin-center">
-          <div class="flex items-start justify-between gap-4 border-b border-[var(--color-rule)] px-8 py-6">
+        <div
+          class="w-full max-w-4xl origin-center border border-[var(--color-rule)] bg-[var(--color-paper)] shadow-2xl"
+        >
+          <div
+            class="flex items-start justify-between gap-4 border-b border-[var(--color-rule)] px-8 py-6"
+          >
             <div class="space-y-1">
-              <p class="text-xs uppercase tracking-[0.1em] text-[var(--color-ink-2)]" style="font-family: var(--font-mono)">Recent Orders</p>
-              <h2 class="text-3xl font-normal text-[var(--color-ink)]" style="font-family: var(--font-display);">
+              <p
+                class="text-xs uppercase tracking-[0.1em] text-[var(--color-ink-2)]"
+                style="font-family: var(--font-mono)"
+              >
+                Recent Orders
+              </p>
+              <h2
+                class="text-3xl font-normal text-[var(--color-ink)]"
+                style="font-family: var(--font-display)"
+              >
                 {{ connectedCustomerName || "Customer" }}
               </h2>
               <p class="text-sm text-[var(--color-ink-2)]">
                 {{ recentOrderCount }} orders, {{ recentOrderItems }} items tracked.
               </p>
             </div>
-            <Button size="sm" variant="secondary" class="btn--primary px-6 py-2 text-xs" @click="emit('close')">
+            <Button
+              size="sm"
+              variant="secondary"
+              class="btn--primary px-6 py-2 text-xs"
+              @click="emit('close')"
+            >
               Close
             </Button>
           </div>
@@ -103,28 +137,39 @@ defineExpose<CustomerOrderDrawerExpose>({ selectOrder });
                 @click="selectOrder(order.id)"
               >
                 <div class="flex items-center justify-between gap-3">
-                  <div class="font-normal text-base" style="font-family: var(--font-display)">
+                  <div class="text-base font-normal" style="font-family: var(--font-display)">
                     {{ order.product?.name || order.product_id }}
                   </div>
-                  <span class="text-xs font-mono uppercase tracking-[0.1em]">
+                  <span class="font-mono text-xs uppercase tracking-[0.1em]">
                     x{{ order.quantity }}
                   </span>
                 </div>
                 <p
                   class="mt-1 text-xs uppercase tracking-[0.1em]"
                   style="font-family: var(--font-mono)"
-                  :class="selectedOrder?.id === order.id ? 'text-[var(--color-paper)] opacity-80' : 'text-[var(--color-ink-2)]'"
+                  :class="
+                    selectedOrder?.id === order.id
+                      ? 'text-[var(--color-paper)] opacity-80'
+                      : 'text-[var(--color-ink-2)]'
+                  "
                 >
                   {{ order.lifecycle_status }}
                 </p>
               </button>
             </div>
 
-            <div v-if="selectedOrder" class="border border-[var(--color-rule)] p-6 space-y-6">
-              <div class="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--color-rule)] pb-4">
+            <div v-if="selectedOrder" class="space-y-6 border border-[var(--color-rule)] p-6">
+              <div
+                class="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--color-rule)] pb-4"
+              >
                 <div>
-                  <p class="text-xs font-mono uppercase tracking-[0.1em] text-[var(--color-ink-2)]">Order Detail</p>
-                  <h3 class="mt-1 text-3xl font-normal text-[var(--color-ink)]" style="font-family: var(--font-display);">
+                  <p class="font-mono text-xs uppercase tracking-[0.1em] text-[var(--color-ink-2)]">
+                    Order Detail
+                  </p>
+                  <h3
+                    class="mt-1 text-3xl font-normal text-[var(--color-ink)]"
+                    style="font-family: var(--font-display)"
+                  >
                     {{ selectedOrder.product?.name || selectedOrder.product_id }}
                   </h3>
                 </div>
@@ -132,19 +177,47 @@ defineExpose<CustomerOrderDrawerExpose>({ selectOrder });
               </div>
 
               <dl class="grid gap-6 sm:grid-cols-2">
-                <div class="border-b sm:border-b-0 border-[var(--color-rule)] pb-4 sm:pb-0">
-                  <dt class="text-xs font-mono uppercase tracking-[0.1em] text-[var(--color-ink-2)]">Customer</dt>
-                  <dd class="mt-1 text-base font-normal text-[var(--color-ink)]" style="font-family: var(--font-display)">{{ selectedOrder.customer_name }}</dd>
+                <div class="border-b border-[var(--color-rule)] pb-4 sm:border-b-0 sm:pb-0">
+                  <dt
+                    class="font-mono text-xs uppercase tracking-[0.1em] text-[var(--color-ink-2)]"
+                  >
+                    Customer
+                  </dt>
+                  <dd
+                    class="mt-1 text-base font-normal text-[var(--color-ink)]"
+                    style="font-family: var(--font-display)"
+                  >
+                    {{ selectedOrder.customer_name }}
+                  </dd>
                 </div>
                 <div>
-                  <dt class="text-xs font-mono uppercase tracking-[0.1em] text-[var(--color-ink-2)]">Quantity</dt>
-                  <dd class="mt-1 text-base font-normal text-[var(--color-ink)]" style="font-family: var(--font-display)">{{ selectedOrder.quantity }} item(s)</dd>
+                  <dt
+                    class="font-mono text-xs uppercase tracking-[0.1em] text-[var(--color-ink-2)]"
+                  >
+                    Quantity
+                  </dt>
+                  <dd
+                    class="mt-1 text-base font-normal text-[var(--color-ink)]"
+                    style="font-family: var(--font-display)"
+                  >
+                    {{ selectedOrder.quantity }} item(s)
+                  </dd>
                 </div>
-                <div class="sm:col-span-2 pt-4 border-t border-[var(--color-rule)]">
-                  <dt class="text-xs font-mono uppercase tracking-[0.1em] text-[var(--color-ink-2)]">What happens next</dt>
-                  <dd class="mt-2 text-sm text-[var(--color-ink-2)]" style="line-height: 1.6;">
-                    <span v-if="selectedOrder.lifecycle_status === 'new'">The merchant will see this order in the Merchant Console and can begin processing it.</span>
-                    <span v-else-if="selectedOrder.lifecycle_status === 'processing'">The merchant is actively processing this order. Keep the support chat nearby if you need help.</span>
+                <div class="border-t border-[var(--color-rule)] pt-4 sm:col-span-2">
+                  <dt
+                    class="font-mono text-xs uppercase tracking-[0.1em] text-[var(--color-ink-2)]"
+                  >
+                    What happens next
+                  </dt>
+                  <dd class="mt-2 text-sm text-[var(--color-ink-2)]" style="line-height: 1.6">
+                    <span v-if="selectedOrder.lifecycle_status === 'new'"
+                      >The merchant will see this order in the Merchant Console and can begin
+                      processing it.</span
+                    >
+                    <span v-else-if="selectedOrder.lifecycle_status === 'processing'"
+                      >The merchant is actively processing this order. Keep the support chat nearby
+                      if you need help.</span
+                    >
                     <span v-else>This order has been fulfilled and should now be complete.</span>
                   </dd>
                 </div>

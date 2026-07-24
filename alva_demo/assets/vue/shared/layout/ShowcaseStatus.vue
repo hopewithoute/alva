@@ -1,7 +1,7 @@
 <script setup lang="ts">
 defineProps<{
-  surface: "entry" | "customer" | "merchant"
-}>()
+  surface: "entry" | "customer" | "merchant";
+}>();
 </script>
 
 <template>

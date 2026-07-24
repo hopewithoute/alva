@@ -1,23 +1,78 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
+
+declare global {
+  interface Window {
+    __ALVA_RECORD_TELEMETRY__?: (event: string, durationMs: number, ok: boolean) => void;
+  }
+}
 
 const isExpanded = ref(false);
-const logs = ref<Array<{ id: number; event: string; durationMs: number; timestamp: string; ok: boolean }>>([]);
+const logs = ref<
+  Array<{
+    id: number;
+    event: string;
+    durationMs: number;
+    timestamp: string;
+    ok: boolean;
+    type?: string;
+  }>
+>([]);
 let nextId = 1;
+
+const recordEvent = (
+  event: string,
+  durationMs = 0,
+  ok = true,
+  type = "api"
+) => {
+  logs.value.unshift({
+    id: nextId++,
+    event,
+    durationMs,
+    timestamp: new Date().toLocaleTimeString(),
+    ok,
+    type
+  });
+  if (logs.value.length > 30) logs.value.pop();
+};
 
 // Global event interceptor for Alva inspector metrics
 if (typeof window !== "undefined") {
-  (window as any).__ALVA_RECORD_TELEMETRY__ = (event: string, durationMs: number, ok: boolean) => {
-    logs.value.unshift({
-      id: nextId++,
-      event,
-      durationMs,
-      timestamp: new Date().toLocaleTimeString(),
-      ok
-    });
-    if (logs.value.length > 20) logs.value.pop();
+  window.__ALVA_RECORD_TELEMETRY__ = (event: string, durationMs: number, ok: boolean) => {
+    recordEvent(event, durationMs, ok, "api");
   };
 }
+
+const handlePopState = () => {
+  if (typeof window !== "undefined") {
+    recordEvent(`router.navigate: ${window.location.pathname}`, 1, true, "route");
+  }
+};
+
+const handleAlvaSignal = (e: Event) => {
+  const customDetail =
+    "detail" in e && typeof e.detail === "object" && e.detail !== null ? e.detail : null;
+  const signalName =
+    customDetail && "name" in customDetail && typeof customDetail.name === "string"
+      ? customDetail.name
+      : "pubsub.signal";
+  recordEvent(`signal.receive: ${signalName}`, 2, true, "signal");
+};
+
+onMounted(() => {
+  if (typeof window !== "undefined") {
+    window.addEventListener("popstate", handlePopState);
+    window.addEventListener("alva:signal", handleAlvaSignal);
+  }
+});
+
+onUnmounted(() => {
+  if (typeof window !== "undefined") {
+    window.removeEventListener("popstate", handlePopState);
+    window.removeEventListener("alva:signal", handleAlvaSignal);
+  }
+});
 
 const clearLogs = () => {
   logs.value = [];
@@ -32,7 +87,9 @@ const clearLogs = () => {
       class="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-slate-900 px-3 py-1.5 text-emerald-400 backdrop-blur-md transition-all hover:border-emerald-400"
     >
       <span class="relative flex h-2 w-2">
-        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+        <span
+          class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"
+        ></span>
         <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
       </span>
       <span class="font-bold tracking-wider">ALVA INSPECTOR</span>
@@ -68,10 +125,7 @@ const clearLogs = () => {
         >
           <div class="flex items-center gap-2 overflow-hidden">
             <span
-              :class="[
-                'h-2 w-2 rounded-full',
-                log.ok ? 'bg-emerald-400' : 'bg-rose-500'
-              ]"
+              :class="['h-2 w-2 rounded-full', log.ok ? 'bg-emerald-400' : 'bg-rose-500']"
             ></span>
             <span class="truncate text-slate-300">{{ log.event }}</span>
           </div>
@@ -80,7 +134,9 @@ const clearLogs = () => {
             <span
               :class="[
                 'rounded px-1 py-0.5 font-bold',
-                log.durationMs < 50 ? 'bg-emerald-950 text-emerald-300' : 'bg-amber-950 text-amber-300'
+                log.durationMs < 50
+                  ? 'bg-emerald-950 text-emerald-300'
+                  : 'bg-amber-950 text-amber-300'
               ]"
             >
               {{ log.durationMs }}ms

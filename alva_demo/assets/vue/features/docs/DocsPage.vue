@@ -1,32 +1,33 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
-import { Link } from 'live_vue';
-import { getAllGuides, getGuideBySlug, type GuideMeta } from './docsLoader';
-import { renderMarkdownToHtml } from './docsRenderer';
-import AlvaInspector from './AlvaInspector.vue';
+import { ref, computed, watch, onMounted } from "vue";
+import { Link } from "live_vue";
+import { getAllGuides, getGuideBySlug, type GuideMeta } from "./docsLoader";
+import { renderMarkdownToHtml } from "./docsRenderer";
 
 const props = defineProps<{
   slug?: string;
 }>();
 
 const allGuides = getAllGuides();
-const currentSlug = computed(() => props.slug || 'getting-started');
+const currentSlug = computed(() => props.slug || "getting-started");
 
-const currentGuide = computed<GuideMeta>(() => {
+const currentGuide = computed(() => {
   return getGuideBySlug(currentSlug.value) || allGuides[0];
 });
 
-const renderedHtml = ref<string>('');
-const isLoading = ref<boolean>(true);
-const searchQuery = ref<string>('');
+const renderedHtml = ref("");
+const isLoading = ref(true);
+const searchQuery = ref("");
 
 const categories = computed(() => {
   const map: Record<string, GuideMeta[]> = {};
+  const query = searchQuery.value.toLowerCase().trim();
+
   for (const guide of allGuides) {
     if (
-      searchQuery.value &&
-      !guide.title.toLowerCase().includes(searchQuery.value.toLowerCase()) &&
-      !guide.description.toLowerCase().includes(searchQuery.value.toLowerCase())
+      query &&
+      !guide.title.toLowerCase().includes(query) &&
+      !guide.description.toLowerCase().includes(query)
     ) {
       continue;
     }
@@ -59,8 +60,26 @@ const loadContent = async () => {
 
 watch(currentSlug, loadContent, { immediate: true });
 
+let themeObserver: MutationObserver | null = null;
+
 onMounted(() => {
   loadContent();
+  if (typeof document !== "undefined") {
+    themeObserver = new MutationObserver(() => {
+      loadContent();
+    });
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"]
+    });
+  }
+});
+
+import { onUnmounted } from "vue";
+onUnmounted(() => {
+  if (themeObserver) {
+    themeObserver.disconnect();
+  }
 });
 </script>
 
@@ -70,14 +89,23 @@ onMounted(() => {
     <div class="mb-6 border-b border-[var(--color-rule)] pb-4">
       <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <span class="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--color-ink-2)]" style="font-family: var(--font-mono)">
+          <span
+            class="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--color-ink-2)]"
+            style="font-family: var(--font-mono)"
+          >
             Alva SDK Documentation
           </span>
-          <h1 class="text-3xl font-normal tracking-tight text-[var(--color-ink)] sm:text-4xl" style="font-family: var(--font-display)">
+          <h1
+            class="text-3xl font-normal tracking-tight text-[var(--color-ink)] sm:text-4xl"
+            style="font-family: var(--font-display)"
+          >
             {{ currentGuide.title }}
           </h1>
         </div>
-        <div class="mt-2 md:mt-0 text-xs text-[var(--color-ink-2)]" style="font-family: var(--font-mono)">
+        <div
+          class="mt-2 text-xs text-[var(--color-ink-2)] md:mt-0"
+          style="font-family: var(--font-mono)"
+        >
           Guide {{ currentGuide.order }} of {{ allGuides.length }}
         </div>
       </div>
@@ -85,82 +113,104 @@ onMounted(() => {
 
     <!-- Main Layout Grid -->
     <div class="grid gap-10 lg:grid-cols-[260px_1fr]">
-        <!-- Sidebar Navigation -->
-        <aside class="space-y-6 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto pr-2">
-          <!-- Search Filter -->
-          <div class="relative">
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Filter guides..."
-              class="w-full border border-[var(--color-rule-2)] bg-transparent px-3 py-1.5 text-xs text-[var(--color-ink)] placeholder-[var(--color-ink-2)] outline-none focus:border-[var(--color-ink)] transition-colors"
-              style="font-family: var(--font-mono)"
-            />
-          </div>
+      <!-- Sidebar Navigation -->
+      <aside class="space-y-6 pr-2 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto">
+        <!-- Search Filter -->
+        <div class="relative">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Filter guides..."
+            class="w-full border border-[var(--color-rule-2)] bg-transparent px-3 py-1.5 text-xs text-[var(--color-ink)] placeholder-[var(--color-ink-2)] outline-none transition-colors focus:border-[var(--color-ink)]"
+            style="font-family: var(--font-mono)"
+          />
+        </div>
 
-          <!-- Category Navigation Groups -->
-          <div v-for="(guides, catName) in categories" :key="catName" class="space-y-2">
-            <h3 class="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--color-ink-2)]" style="font-family: var(--font-mono)">
-              {{ catName }}
-            </h3>
-            <ul class="space-y-1">
-              <li v-for="guide in guides" :key="guide.slug">
-                <Link
-                  :navigate="`/docs/${guide.slug}`"
-                  class="group flex items-center justify-between border-l-2 px-3 py-1.5 text-xs transition-colors"
-                  :class="[
-                    currentSlug === guide.slug
-                      ? 'border-[var(--color-ink)] font-semibold text-[var(--color-ink)] bg-[var(--color-rule)]/30'
-                      : 'border-transparent text-[var(--color-ink-2)] hover:border-[var(--color-rule-2)] hover:text-[var(--color-ink)]'
-                  ]"
+        <!-- Category Navigation Groups -->
+        <div v-for="(guides, catName) in categories" :key="catName" class="space-y-2">
+          <h3
+            class="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--color-ink-2)]"
+            style="font-family: var(--font-mono)"
+          >
+            {{ catName }}
+          </h3>
+          <ul class="space-y-1">
+            <li v-for="guide in guides" :key="guide.slug">
+              <Link
+                :navigate="`/docs/${guide.slug}`"
+                class="group flex items-center justify-between border-l-2 px-3 py-1.5 text-xs transition-colors"
+                :class="[
+                  currentSlug === guide.slug
+                    ? 'bg-[var(--color-rule)]/30 border-[var(--color-ink)] font-semibold text-[var(--color-ink)]'
+                    : 'border-transparent text-[var(--color-ink-2)] hover:border-[var(--color-rule-2)] hover:text-[var(--color-ink)]'
+                ]"
+              >
+                <span class="truncate">{{ guide.title }}</span>
+                <span
+                  class="text-[10px] text-[var(--color-ink-2)] opacity-60 group-hover:opacity-100"
+                  style="font-family: var(--font-mono)"
                 >
-                  <span class="truncate">{{ guide.title }}</span>
-                  <span class="text-[10px] text-[var(--color-ink-2)] opacity-60 group-hover:opacity-100" style="font-family: var(--font-mono)">
-                    0{{ guide.order }}
-                  </span>
-                </Link>
-              </li>
-            </ul>
-          </div>
-        </aside>
-
-        <!-- Markdown Rendered Content Area -->
-        <main class="min-w-0">
-          <div v-if="isLoading" class="flex items-center justify-center py-20 text-xs text-[var(--color-ink-2)]" style="font-family: var(--font-mono)">
-            Loading Shiki syntax highlighter...
-          </div>
-          <div v-else class="prose-container border border-[var(--color-rule-2)] bg-[var(--color-paper)] p-6 sm:p-10 shadow-sm">
-            <div class="prose-content text-sm leading-relaxed" v-html="renderedHtml"></div>
-          </div>
-
-          <!-- Bottom Prev / Next Navigation Footer -->
-          <nav class="mt-10 flex items-center justify-between border-t border-[var(--color-rule)] pt-6">
-            <div>
-              <Link
-                v-if="prevGuide"
-                :navigate="`/docs/${prevGuide.slug}`"
-                class="group inline-flex flex-col gap-1 text-left text-xs text-[var(--color-ink-2)] hover:text-[var(--color-ink)] transition-colors"
-              >
-                <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-2)]">← Previous</span>
-                <span class="font-semibold text-sm text-[var(--color-ink)] group-hover:underline">{{ prevGuide.title }}</span>
+                  0{{ guide.order }}
+                </span>
               </Link>
-            </div>
+            </li>
+          </ul>
+        </div>
+      </aside>
 
-            <div>
-              <Link
-                v-if="nextGuide"
-                :navigate="`/docs/${nextGuide.slug}`"
-                class="group inline-flex flex-col items-end gap-1 text-right text-xs text-[var(--color-ink-2)] hover:text-[var(--color-ink)] transition-colors"
+      <!-- Markdown Rendered Content Area -->
+      <main class="min-w-0">
+        <div
+          v-if="isLoading"
+          class="flex items-center justify-center py-20 text-xs text-[var(--color-ink-2)]"
+          style="font-family: var(--font-mono)"
+        >
+          Loading Shiki syntax highlighter...
+        </div>
+        <div
+          v-else
+          class="prose-container border border-[var(--color-rule-2)] bg-[var(--color-paper)] p-6 shadow-sm sm:p-10"
+        >
+          <div class="prose-content text-sm leading-relaxed" v-html="renderedHtml"></div>
+        </div>
+
+        <!-- Bottom Prev / Next Navigation Footer -->
+        <nav
+          class="mt-10 flex items-center justify-between border-t border-[var(--color-rule)] pt-6"
+        >
+          <div>
+            <Link
+              v-if="prevGuide"
+              :navigate="`/docs/${prevGuide.slug}`"
+              class="group inline-flex flex-col gap-1 text-left text-xs text-[var(--color-ink-2)] transition-colors hover:text-[var(--color-ink)]"
+            >
+              <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-2)]"
+                >← Previous</span
               >
-                <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-2)]">Next →</span>
-                <span class="font-semibold text-sm text-[var(--color-ink)] group-hover:underline">{{ nextGuide.title }}</span>
-              </Link>
-            </div>
-          </nav>
-        </main>
-      </div>
+              <span class="text-sm font-semibold text-[var(--color-ink)] group-hover:underline">{{
+                prevGuide.title
+              }}</span>
+            </Link>
+          </div>
+
+          <div>
+            <Link
+              v-if="nextGuide"
+              :navigate="`/docs/${nextGuide.slug}`"
+              class="group inline-flex flex-col items-end gap-1 text-right text-xs text-[var(--color-ink-2)] transition-colors hover:text-[var(--color-ink)]"
+            >
+              <span class="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-2)]"
+                >Next →</span
+              >
+              <span class="text-sm font-semibold text-[var(--color-ink)] group-hover:underline">{{
+                nextGuide.title
+              }}</span>
+            </Link>
+          </div>
+        </nav>
+      </main>
+    </div>
   </div>
-  <AlvaInspector />
 </template>
 
 <style>
@@ -202,7 +252,8 @@ onMounted(() => {
   margin-bottom: 1rem;
 }
 
-.prose-content ul, .prose-content ol {
+.prose-content ul,
+.prose-content ol {
   margin-bottom: 1rem;
   padding-left: 1.5rem;
 }
@@ -238,7 +289,8 @@ onMounted(() => {
   font-size: 0.85rem;
 }
 
-.prose-content th, .prose-content td {
+.prose-content th,
+.prose-content td {
   border: 1px solid var(--color-rule-2);
   padding: 0.5rem 0.75rem;
   text-align: left;

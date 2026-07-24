@@ -8,11 +8,17 @@ const { apiCall, patchQueryMock } = vi.hoisted(() => ({
   patchQueryMock: vi.fn()
 }));
 
-vi.mock("../../../js/alva/client", () => ({
-  ashCall: apiCall
+vi.mock("@/js/alva", () => ({
+  useAlva: () => ({
+    support: {
+      create: (payload: Record<string, unknown>) => apiCall("support.create", payload),
+      send_message: (payload: Record<string, unknown>) => apiCall("support.send_message", payload),
+      use_list_messages_query: () => ({ data: { value: [] }, refetch: vi.fn() })
+    }
+  })
 }));
 
-vi.mock("../../shared/useRouteQueryPatch", () => ({
+vi.mock("@/vue/shared/useRouteQueryPatch", () => ({
   useRouteQueryPatch: () => ({
     patchQuery: patchQueryMock
   })

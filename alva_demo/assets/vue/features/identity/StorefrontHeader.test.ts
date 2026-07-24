@@ -8,11 +8,15 @@ const { apiCall, patchQueryMock } = vi.hoisted(() => ({
   patchQueryMock: vi.fn()
 }));
 
-vi.mock("../../../js/alva/client", () => ({
-  ashCall: apiCall
+vi.mock("@/js/alva", () => ({
+  useAlva: () => ({
+    support: {
+      get_conversation: apiCall
+    }
+  })
 }));
 
-vi.mock("../../shared/useRouteQueryPatch", () => ({
+vi.mock("@/vue/shared/useRouteQueryPatch", () => ({
   useRouteQueryPatch: () => ({
     patchQuery: patchQueryMock
   })
@@ -45,7 +49,7 @@ describe("StorefrontHeader", () => {
     await vi.advanceTimersByTimeAsync(500);
     await flushPromises();
 
-    expect(apiCall).toHaveBeenCalledWith("support.get_conversation", {
+    expect(apiCall).toHaveBeenCalledWith({
       customer_name: "Alice"
     });
     expect(patchQueryMock).toHaveBeenCalledWith({

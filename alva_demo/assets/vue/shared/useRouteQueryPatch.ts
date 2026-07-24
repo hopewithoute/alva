@@ -10,21 +10,17 @@ type PatchQueryOptions = {
 export function useRouteQueryPatch() {
   const { patch } = useLiveNavigation();
 
-  const patchQuery = (
-    updates: Record<string, QueryValue>,
-    options: PatchQueryOptions = {},
-  ) => {
+  const patchQuery = (updates: Record<string, QueryValue>, options: PatchQueryOptions = {}) => {
     const url = new URL(window.location.href);
     const path = options.path || url.pathname;
 
-    Object.entries(updates).forEach(([key, value]) => {
+    for (const [key, value] of Object.entries(updates)) {
       if (value === null || value === undefined || value === "") {
         url.searchParams.delete(key);
-        return;
+      } else {
+        url.searchParams.set(key, String(value));
       }
-
-      url.searchParams.set(key, String(value));
-    });
+    }
 
     const query = url.searchParams.toString();
     const href = query === "" ? path : `${path}?${query}`;

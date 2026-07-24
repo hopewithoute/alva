@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { useAlva } from "../../../js/alva";
-import type { Product, Order } from "../../../js/alva/types";
-import Button from "../../shared/ui/button/Button.vue";
+import { useAlva } from "@/js/alva";
+import type { Product, Order } from "@/js/alva/types";
+import Button from "@/vue/shared/ui/button/Button.vue";
+import { getErrorMessage } from "@/vue/utils/error";
+import { formatPrice } from "@/vue/utils/format";
 
 const props = defineProps<{
   product: Product;
@@ -18,8 +20,6 @@ const emit = defineEmits<{
 
 const isOrdering = ref(false);
 
-const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
-
 const buyProduct = async () => {
   if (!props.connectedCustomerName) {
     emit("order-error", "Enter your name before placing an order.");
@@ -32,7 +32,7 @@ const buyProduct = async () => {
     const result = await alva.sales.create_order({
       customer_name: props.connectedCustomerName,
       product_id: props.product.id,
-      quantity: 1,
+      quantity: 1
     });
 
     if (result.ok) {
@@ -40,8 +40,8 @@ const buyProduct = async () => {
     } else {
       emit("order-error", `Failed to create order: ${result.error?.message || "Unknown error"}`);
     }
-  } catch (error: any) {
-    emit("order-error", error.message || "Unknown error");
+  } catch (error: unknown) {
+    emit("order-error", getErrorMessage(error));
   } finally {
     isOrdering.value = false;
   }
@@ -50,24 +50,44 @@ const buyProduct = async () => {
 
 <template>
   <div class="flex flex-col border-b border-[var(--color-rule)] pb-8 pt-4">
-    <div class="flex h-56 items-center justify-center overflow-hidden border border-[var(--color-rule)] bg-[var(--color-paper-2)]">
+    <div
+      class="flex h-56 items-center justify-center overflow-hidden border border-[var(--color-rule)] bg-[var(--color-paper-2)]"
+    >
       <img
         v-if="product.media_reference"
         :src="`/images/${product.media_reference}`"
         :alt="product.name"
         class="h-full w-full object-cover"
       />
-      <div v-else class="text-xs uppercase tracking-[0.1em] text-[var(--color-ink-2)]" style="font-family: var(--font-mono)">No Image</div>
+      <div
+        v-else
+        class="text-xs uppercase tracking-[0.1em] text-[var(--color-ink-2)]"
+        style="font-family: var(--font-mono)"
+      >
+        No Image
+      </div>
     </div>
     <div class="flex flex-1 flex-col pt-6">
       <div class="flex items-baseline justify-between gap-4">
-        <h3 class="text-2xl font-normal text-[var(--color-ink)]" style="font-family: var(--font-display);">
+        <h3
+          class="text-2xl font-normal text-[var(--color-ink)]"
+          style="font-family: var(--font-display)"
+        >
           {{ product.name }}
         </h3>
-        <span class="text-lg font-normal text-[var(--color-ink)]" style="font-family: var(--font-display);">{{ formatPrice(product.price) }}</span>
+        <span
+          class="text-lg font-normal text-[var(--color-ink)]"
+          style="font-family: var(--font-display)"
+          >{{ formatPrice(product.price) }}</span
+        >
       </div>
-      <p class="mt-2 text-sm text-[var(--color-ink-2)]" style="line-height: 1.6;">{{ product.description }}</p>
-      <div class="mt-4 flex items-center justify-between text-xs text-[var(--color-ink-2)] uppercase tracking-[0.1em]" style="font-family: var(--font-mono)">
+      <p class="mt-2 text-sm text-[var(--color-ink-2)]" style="line-height: 1.6">
+        {{ product.description }}
+      </p>
+      <div
+        class="mt-4 flex items-center justify-between text-xs uppercase tracking-[0.1em] text-[var(--color-ink-2)]"
+        style="font-family: var(--font-mono)"
+      >
         <span>Stock: {{ product.stock }} available</span>
       </div>
 

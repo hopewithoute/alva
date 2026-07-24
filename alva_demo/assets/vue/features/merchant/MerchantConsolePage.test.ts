@@ -4,33 +4,33 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import MerchantConsolePage from "./MerchantConsolePage.vue";
 
 const { apiCall, patchQueryMock, streamCalls, uploadMock } = vi.hoisted(() => {
-  let pendingDispatch:
-    | {
-        submit: (upload: {
-          primaryReference: string;
-          references: string[];
-          files: unknown[];
-        }) => Promise<unknown>;
-        resolve: (value: unknown) => void;
-        reject: (reason?: unknown) => void;
-      }
-    | null = null;
+  let pendingDispatch: {
+    submit: (upload: {
+      primaryReference: string;
+      references: string[];
+      files: unknown[];
+    }) => Promise<unknown>;
+    resolve: (value: unknown) => void;
+    reject: (reason?: unknown) => void;
+  } | null = null;
 
   const uploadMock = {
-    progress: undefined as any,
-    files: undefined as any,
+    progress: { value: 0 },
+    files: { value: [] as any[] },
     showFilePicker: vi.fn(),
     clear: vi.fn(),
     getFileReferences: vi.fn(() => []),
     dispatch: vi.fn(
-      (submit: (upload: {
-        primaryReference: string;
-        references: string[];
-        files: unknown[];
-      }) => Promise<unknown>) =>
+      (
+        submit: (upload: {
+          primaryReference: string;
+          references: string[];
+          files: unknown[];
+        }) => Promise<unknown>
+      ) =>
         new Promise((resolve, reject) => {
           pendingDispatch = { submit, resolve, reject };
-        }),
+        })
     ),
     completeDispatch: async (upload: {
       primaryReference: string;
@@ -68,7 +68,7 @@ const { apiCall, patchQueryMock, streamCalls, uploadMock } = vi.hoisted(() => {
   };
 });
 
-vi.mock("alva", async () => {
+vi.mock("@/js/alva", async () => {
   const { ref } = await import("vue");
 
   uploadMock.progress = ref(0);
@@ -76,10 +76,18 @@ vi.mock("alva", async () => {
 
   return {
     useAlva: () => ({
-      catalog: { upload_media: apiCall },
+      catalog: {
+        upload_media: (payload: any) => apiCall("catalog.upload_media", payload),
+        use_adjust_stock_form: () => ({
+          values: { id: "p1", stock: 10 },
+          errors: {},
+          field: (name: string) => ({ name, value: "", error: "" }),
+          submit: apiCall
+        })
+      },
       sales: { begin_processing: apiCall, fulfill: apiCall },
       support: { send_message: apiCall },
-      use_upload: () => uploadMock,
+      use_upload: () => uploadMock
     }),
     useAlvaStream: (name: string, input: unknown) => {
       streamCalls.push({ name, input });
@@ -97,13 +105,6 @@ vi.mock("../../shared/useRouteQueryPatch", () => ({
   useRouteQueryPatch: () => ({
     patchQuery: patchQueryMock
   })
-}));
-
-vi.mock("../../../../js/alva/client", () => ({
-  createAlvaApi: () => ({
-    call: apiCall
-  }),
-  ashCall: apiCall
 }));
 
 const buildProps = () => ({
@@ -224,19 +225,19 @@ describe("MerchantConsolePage tabs", () => {
   it("defaults to the orders tab and exposes workflow badge counts", () => {
     const wrapper = mountPage();
 
-    expect(wrapper.get('[data-testid="merchant-console-tab-orders"]').attributes("aria-selected")).toBe(
-      "true"
-    );
+    expect(
+      wrapper.get('[data-testid="merchant-console-tab-orders"]').attributes("aria-selected")
+    ).toBe("true");
     expect(wrapper.find('[data-testid="merchant-console-panel-orders"]').exists()).toBe(true);
-    expect(isHidden(wrapper.get('[data-testid="merchant-console-panel-orders"]').attributes("style"))).toBe(
-      false
-    );
-    expect(isHidden(wrapper.get('[data-testid="merchant-console-panel-inventory"]').attributes("style"))).toBe(
-      true
-    );
-    expect(isHidden(wrapper.get('[data-testid="merchant-console-panel-support"]').attributes("style"))).toBe(
-      true
-    );
+    expect(
+      isHidden(wrapper.get('[data-testid="merchant-console-panel-orders"]').attributes("style"))
+    ).toBe(false);
+    expect(
+      isHidden(wrapper.get('[data-testid="merchant-console-panel-inventory"]').attributes("style"))
+    ).toBe(true);
+    expect(
+      isHidden(wrapper.get('[data-testid="merchant-console-panel-support"]').attributes("style"))
+    ).toBe(true);
 
     expect(wrapper.get('[data-testid="merchant-console-tab-orders"]').text()).toContain("1");
     expect(wrapper.get('[data-testid="merchant-console-tab-inventory"]').text()).toContain("1");
@@ -246,9 +247,7 @@ describe("MerchantConsolePage tabs", () => {
   it("preserves order filter input across tab switches", async () => {
     const wrapper = mountPage();
 
-    await wrapper
-      .get('[data-testid="merchant-order-customer-query"]')
-      .setValue("Alice");
+    await wrapper.get('[data-testid="merchant-order-customer-query"]').setValue("Alice");
 
     await wrapper.get('[data-testid="merchant-console-tab-inventory"]').trigger("click");
     await wrapper.get('[data-testid="merchant-console-tab-orders"]').trigger("click");
@@ -265,9 +264,7 @@ describe("MerchantConsolePage tabs", () => {
     const props = buildProps();
     const wrapper = mountPage();
 
-    await wrapper
-      .get('[data-testid="merchant-order-customer-query"]')
-      .setValue("Alice");
+    await wrapper.get('[data-testid="merchant-order-customer-query"]').setValue("Alice");
 
     await vi.advanceTimersByTimeAsync(300);
     await flushPromises();
@@ -349,9 +346,7 @@ describe("MerchantConsolePage tabs", () => {
     const wrapper = mountPage();
 
     await wrapper.get('[data-testid="merchant-console-tab-support"]').trigger("click");
-    await wrapper
-      .get('[data-testid="merchant-conversation-conv-waiting"]')
-      .trigger("click");
+    await wrapper.get('[data-testid="merchant-conversation-conv-waiting"]').trigger("click");
     await flushPromises();
 
     expect(patchQueryMock).toHaveBeenCalledWith(
