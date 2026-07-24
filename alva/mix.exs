@@ -7,6 +7,7 @@ defmodule Alva.MixProject do
       version: "0.1.0",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
+      consolidate_protocols: Mix.env() != :test,
       name: "Alva",
       source_url: "https://github.com/hopewithoute/alva",
       homepage_url: "https://hex.pm/packages/alva",
