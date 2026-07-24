@@ -1,1 +1,0 @@
-/var/www/ash_vue/docs/prd.md
