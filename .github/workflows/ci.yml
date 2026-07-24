@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Build and Test
+    name: Build, Audit and Test
     runs-on: ubuntu-latest
     
     env:
@@ -28,8 +28,8 @@ jobs:
         elixir-version: '1.20.2'
         otp-version: '28'
 
-    - name: Cache dependencies and build
-      uses: actions/cache@v3
+    - name: Cache dependencies and PLTs
+      uses: actions/cache@v4
       with:
         path: |
           alva/deps
@@ -47,5 +47,11 @@ jobs:
     - name: Compile with warnings as errors
       run: mix compile --warnings-as-errors
 
+    - name: Run Static Security Audit (Sobelow)
+      run: mix sobelow
+
+    - name: Run Static Type Checker (Dialyzer)
+      run: mix dialyzer
+
     - name: Run tests and coverage
-      run: mix coveralls.json
+      run: mix coveralls
