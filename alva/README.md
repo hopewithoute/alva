@@ -73,10 +73,14 @@ Then run `mix deps.get`.
 See the guides for detailed walkthroughs:
 
 - [Getting Started](guides/01-getting-started.md)
-- [Queries and Actions](guides/02-queries-and-actions.md)
-- [Forms and Mutations](guides/03-forms-and-mutations.md)
-- [Uploads](guides/04-uploads.md)
-- [Signals](guides/05-signals.md)
+- [Ash Backend Setup](guides/02-ash-backend-setup.md)
+- [LiveView Integration](guides/03-liveview-integration.md)
+- [Queries and Actions](guides/04-queries-and-actions.md)
+- [Forms and Mutations](guides/05-forms-and-mutations.md)
+- [Frontend Composables](guides/06-frontend-composables.md)
+- [Uploads](guides/07-uploads.md)
+- [Streams](guides/08-streams.md)
+- [Signals](guides/09-signals.md)
 
 Full API reference is available at [https://hexdocs.pm/alva](https://hexdocs.pm/alva).
 

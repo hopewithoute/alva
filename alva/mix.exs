@@ -43,12 +43,14 @@ defmodule Alva.MixProject do
       extras: [
         "README.md",
         "guides/01-getting-started.md",
-        "guides/02-queries-and-actions.md",
-        "guides/03-forms-and-mutations.md",
-        "guides/04-uploads.md",
-        "guides/05-signals.md",
-        "guides/06-ash-backend-setup.md",
-        "guides/07-liveview-integration.md"
+        "guides/02-ash-backend-setup.md",
+        "guides/03-liveview-integration.md",
+        "guides/04-queries-and-actions.md",
+        "guides/05-forms-and-mutations.md",
+        "guides/06-frontend-composables.md",
+        "guides/07-uploads.md",
+        "guides/08-streams.md",
+        "guides/09-signals.md"
       ],
       extra_section: "GUIDES",
       groups_for_modules: [
@@ -65,7 +67,7 @@ defmodule Alva.MixProject do
         "Core Concepts",
         ~r/^guides\/0[2-5]-/,
         "Advanced",
-        ~r/^guides\/0[6-7]-/
+        ~r/^guides\/0[6-9]-/
       ]
     ]
   end

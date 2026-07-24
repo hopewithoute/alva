@@ -147,6 +147,7 @@ end
 
 In your Vue component, consume streams directly as typed props:
 
+```html
 <script setup lang="ts">
 import { useAlvaAssigns } from "@/js/alva";
 import type { Order, Product } from "@/js/alva/types";
