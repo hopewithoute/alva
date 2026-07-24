@@ -117,7 +117,14 @@ defmodule Alva.LiveView do
   alias Alva.LiveView.Uploads
   alias Alva.LiveView.State
 
-  defdelegate reconfigure_streams(socket, params \\ %{}), to: Streams
+  @doc """
+  Reconfigures and re-evaluates active streams for a LiveView process when route parameters change.
+  """
+  @doc since: "0.1.0"
+  @spec reconfigure_streams(Phoenix.LiveView.Socket.t(), map()) :: Phoenix.LiveView.Socket.t()
+  def reconfigure_streams(socket, params \\ %{}) do
+    Streams.reconfigure_streams(socket, params)
+  end
 
   @doc false
   @spec on_mount(map() | keyword(), map(), map(), Phoenix.LiveView.Socket.t()) ::
