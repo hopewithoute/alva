@@ -160,7 +160,8 @@ defmodule Alva.LiveView.Streams do
     )
   end
 
-  defp record_in_scope?(socket, stream_meta, record) do
+  @doc false
+  def record_in_scope?(socket, stream_meta, record) do
     resource = stream_meta.resource
     primary_keys = Info.primary_key(resource)
     filter_args = Map.take(record, primary_keys) |> Map.to_list()

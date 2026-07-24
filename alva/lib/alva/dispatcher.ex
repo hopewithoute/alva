@@ -102,6 +102,11 @@ defmodule Alva.Dispatcher do
     end
   end
 
+  # ==========================================
+  # EVENT DISPATCH & RESOLUTION
+  # ==========================================
+
+  # Internal entrypoint for resolving event definitions, consuming file uploads, and executing actions
   defp do_dispatch(%Context{event_name: event_name} = context, opts) do
     case find_event(opts, event_name) do
       {:ok, resource, event_def} ->
@@ -139,6 +144,39 @@ defmodule Alva.Dispatcher do
     end
   end
 
+  # Resolves event definition from OTP app registry or explicit domain list
+  defp find_event(opts, event_name) do
+    otp_app =
+      Keyword.get(opts, :otp_app) ||
+        case Keyword.get(opts, :socket) do
+          %Phoenix.LiveView.Socket{} = socket -> Alva.Registry.otp_app(socket)
+          _ -> nil
+        end
+
+    if otp_app do
+      Alva.Registry.fetch_event(otp_app, event_name)
+    else
+      find_event_in_domains(Keyword.get(opts, :domains, []), event_name)
+    end
+  end
+
+  # Fallback search across explicit list of Ash Domain modules
+  defp find_event_in_domains(domains, event_name) do
+    Enum.find_value(domains, :error, fn domain ->
+      map = Alva.Registry.alva_event_map(domain)
+
+      case Map.fetch(map, event_name) do
+        {:ok, {resource, event}} -> {:ok, resource, event}
+        :error -> nil
+      end
+    end)
+  end
+
+  # ==========================================
+  # ACTION EXECUTION HANDLERS
+  # ==========================================
+
+  # Executes a read action without lookup parameter
   defp execute_action(
          :read,
          resource,
@@ -149,6 +187,7 @@ defmodule Alva.Dispatcher do
     handle_read(resource, action, event_def, context)
   end
 
+  # Executes a read action using a primary key / lookup parameter
   defp execute_action(
          :read,
          resource,
@@ -160,6 +199,7 @@ defmodule Alva.Dispatcher do
     handle_read_with_lookup(resource, event_def, context)
   end
 
+  # Executes a create action (persisted or validate_only dry-run)
   defp execute_action(:create, resource, _action, event_def, context) do
     changeset = Ash.Changeset.for_create(resource, event_def.action, context.params, context.opts)
 
@@ -176,6 +216,7 @@ defmodule Alva.Dispatcher do
     end
   end
 
+  # Executes an update action using primary key lookup
   defp execute_action(:update, resource, _action, event_def, context) do
     lookup_field = event_def.lookup || :id
     lookup_key = to_string(lookup_field)
@@ -190,6 +231,7 @@ defmodule Alva.Dispatcher do
     end
   end
 
+  # Executes a destroy action using primary key lookup
   defp execute_action(:destroy, resource, _action, event_def, context) do
     with {:ok, record} <- fetch_record(resource, event_def, context),
          changeset <- Ash.Changeset.for_destroy(record, event_def.action, %{}, context.opts) do
@@ -205,6 +247,7 @@ defmodule Alva.Dispatcher do
     end
   end
 
+  # Executes a generic action (Ash.ActionInput)
   defp execute_action(:action, resource, _action, event_def, context) do
     input = Ash.ActionInput.for_action(resource, event_def.action, context.params)
 
@@ -217,6 +260,7 @@ defmodule Alva.Dispatcher do
     end
   end
 
+  # Applies update changeset or handles validate_only dry-run
   defp apply_update_changeset(changeset, event_def, ash_opts) do
     if event_def.validate_only do
       handle_dry_run(changeset, event_def)
@@ -231,6 +275,7 @@ defmodule Alva.Dispatcher do
     end
   end
 
+  # Handles read actions filtered by a single lookup field (e.g. id)
   defp handle_read_with_lookup(resource, event_def, context) do
     lookup_field = event_def.lookup
     lookup_key = to_string(lookup_field)
@@ -260,6 +305,28 @@ defmodule Alva.Dispatcher do
     end
   end
 
+  # Fetches a single record by primary key / lookup field for update/destroy actions
+  defp fetch_record(resource, event_def, context) do
+    lookup_field = event_def.lookup || :id
+    lookup_key = to_string(lookup_field)
+    lookup_value = Map.get(context.params, lookup_key)
+    Ash.get(resource, [{lookup_field, lookup_value}], context.opts)
+  end
+
+  # Handles validate_only dry-run for form validation without persistence
+  defp handle_dry_run(changeset, _event_def) do
+    if changeset.valid? do
+      %{ok: true, data: %{}}
+    else
+      handle_error(Ash.Error.to_error_class(changeset.errors, changeset: changeset))
+    end
+  end
+
+  # ==========================================
+  # READ QUERY & PAGINATION HELPERS
+  # ==========================================
+
+  # Handles execution of collection/list read actions with pagination and sorting
   defp handle_read(resource, action, event_def, context) do
     action_params = Map.drop(context.params, ["page", :page, "sort", :sort])
     read_opts = build_read_opts(context.params, action, resource, context.opts)
@@ -279,6 +346,7 @@ defmodule Alva.Dispatcher do
     end
   end
 
+  # Processes read query result items and formats single record vs list responses
   defp handle_read_result(records, action, event_def, resource, page) do
     cond do
       action.get? ->
@@ -298,131 +366,14 @@ defmodule Alva.Dispatcher do
     end
   end
 
-  defp fetch_record(resource, event_def, context) do
-    lookup_field = event_def.lookup || :id
-    lookup_key = to_string(lookup_field)
-    lookup_value = Map.get(context.params, lookup_key)
-    Ash.get(resource, [{lookup_field, lookup_value}], context.opts)
-  end
-
-  defp handle_dry_run(changeset, _event_def) do
-    if changeset.valid? do
-      %{ok: true, data: %{}}
-    else
-      handle_error(Ash.Error.to_error_class(changeset.errors, changeset: changeset))
-    end
-  end
-
-  defp dispatch_success(record_or_list, event_def, page \\ nil) do
-    {stripped, exposed_meta} =
-      Alva.Serializer.serialize(record_or_list, expose_metadata: event_def.expose_metadata)
-
-    handle_success(stripped, exposed_meta, page)
-  end
-
-  defp find_event(opts, event_name) do
-    otp_app =
-      Keyword.get(opts, :otp_app) ||
-        case Keyword.get(opts, :socket) do
-          %Phoenix.LiveView.Socket{} = socket -> Alva.Registry.otp_app(socket)
-          _ -> nil
-        end
-
-    if otp_app do
-      Alva.Registry.fetch_event(otp_app, event_name)
-    else
-      find_event_in_domains(Keyword.get(opts, :domains, []), event_name)
-    end
-  end
-
-  defp find_event_in_domains(domains, event_name) do
-    Enum.find_value(domains, :error, fn domain ->
-      map = Alva.Registry.alva_event_map(domain)
-
-      case Map.fetch(map, event_name) do
-        {:ok, {resource, event}} -> {:ok, resource, event}
-        :error -> nil
-      end
-    end)
-  end
-
-  defp not_found_error(resource, lookup_field, lookup_value) do
-    NotFound.exception(
-      resource: resource,
-      primary_key: %{lookup_field => lookup_value}
-    )
-  end
-
-  defp handle_success(data, exposed_meta, page) do
-    {permissions, cleaned_data} = extract_and_remove_permissions(data)
-    meta = build_response_meta(permissions, exposed_meta, page)
-
-    if map_size(meta) > 0 do
-      %{ok: true, data: cleaned_data, meta: meta}
-    else
-      %{ok: true, data: cleaned_data}
-    end
-  end
-
-  defp build_response_meta(permissions, exposed_meta, nil) do
-    build_meta(permissions, exposed_meta)
-  end
-
-  defp build_response_meta(permissions, exposed_meta, page) do
-    pagination =
-      %{limit: page.limit, offset: page.offset, count: page.count, has_more: page.more?}
-      |> Enum.reject(fn {_, v} -> is_nil(v) end)
-      |> Enum.into(%{})
-
-    Map.merge(%{pagination: pagination}, build_meta(permissions, exposed_meta))
-  end
-
-  defp build_meta(permissions, exposed_meta) do
-    meta = if map_size(permissions) > 0, do: %{_permissions: permissions}, else: %{}
-    Map.merge(meta, exposed_meta)
-  end
-
-  defp extract_and_remove_permissions([]), do: {%{}, []}
-
-  defp extract_and_remove_permissions([first | _] = data) when is_list(data) do
-    {permissions, _} = extract_permissions_from_map(first)
-
-    new_data =
-      Enum.map(data, fn item ->
-        {_, cleaned} = extract_permissions_from_map(item)
-        cleaned
-      end)
-
-    {permissions, new_data}
-  end
-
-  defp extract_and_remove_permissions(data) when is_map(data) do
-    extract_permissions_from_map(data)
-  end
-
-  defp extract_and_remove_permissions(other), do: {%{}, other}
-
-  defp extract_permissions_from_map(map) when is_map(map) do
-    {perms, rest} =
-      Map.split_with(map, fn {k, _v} ->
-        String.starts_with?(to_string(k), "can_")
-      end)
-
-    {Map.new(perms), Map.new(rest)}
-  end
-
-  defp extract_permissions_from_map(other), do: {%{}, other}
-
-  defp handle_error(error) do
-    %{ok: false, error: Alva.Error.format(error)}
-  end
-
+  # Constructs read options including pagination limits and Ash action options
   defp build_read_opts(params, action, resource, ash_opts) do
     page_opts = get_indifferent(params, "page", :page)
     read_opts = resolve_page_opts(page_opts, action, resource)
     Keyword.merge(read_opts, ash_opts)
   end
 
+  # Builds an Ash.Query for read actions, parsing sorting parameters if present
   defp build_read_query(resource, action_name, action_params, params, ash_opts) do
     sort_opts = get_indifferent(params, "sort", :sort)
     query = Ash.Query.for_read(resource, action_name, action_params, ash_opts)
@@ -437,6 +388,7 @@ defmodule Alva.Dispatcher do
     end
   end
 
+  # Resolves pagination options or applies safe defaults / logs warnings for unpaginated queries
   defp resolve_page_opts(page_opts, _action, _resource) when is_map(page_opts) do
     valid_keys = ~w(limit offset after before count filter)
 
@@ -470,6 +422,98 @@ defmodule Alva.Dispatcher do
     end
   end
 
+  # ==========================================
+  # RESPONSE FORMATTING & METADATA HELPERS
+  # ==========================================
+
+  # Serializes records and wraps successful responses with exposed metadata
+  defp dispatch_success(record_or_list, event_def, page \\ nil) do
+    {stripped, exposed_meta} =
+      Alva.Serializer.serialize(record_or_list, expose_metadata: event_def.expose_metadata)
+
+    handle_success(stripped, exposed_meta, page)
+  end
+
+  # Constructs response map containing ok: true, data, and optional meta block
+  defp handle_success(data, exposed_meta, page) do
+    {permissions, cleaned_data} = extract_and_remove_permissions(data)
+    meta = build_response_meta(permissions, exposed_meta, page)
+
+    if map_size(meta) > 0 do
+      %{ok: true, data: cleaned_data, meta: meta}
+    else
+      %{ok: true, data: cleaned_data}
+    end
+  end
+
+  # Builds response metadata for unpaginated queries
+  defp build_response_meta(permissions, exposed_meta, nil) do
+    build_meta(permissions, exposed_meta)
+  end
+
+  # Builds response metadata including pagination statistics for paginated queries
+  defp build_response_meta(permissions, exposed_meta, page) do
+    pagination =
+      %{limit: page.limit, offset: page.offset, count: page.count, has_more: page.more?}
+      |> Enum.reject(fn {_, v} -> is_nil(v) end)
+      |> Enum.into(%{})
+
+    Map.merge(%{pagination: pagination}, build_meta(permissions, exposed_meta))
+  end
+
+  # Combines _permissions map with explicitly exposed metadata keys
+  defp build_meta(permissions, exposed_meta) do
+    meta = if map_size(permissions) > 0, do: %{_permissions: permissions}, else: %{}
+    Map.merge(meta, exposed_meta)
+  end
+
+  # Extracts can_* permission fields from response items and separates them into _permissions
+  defp extract_and_remove_permissions([]), do: {%{}, []}
+
+  defp extract_and_remove_permissions([first | _] = data) when is_list(data) do
+    {permissions, _} = extract_permissions_from_map(first)
+
+    new_data =
+      Enum.map(data, fn item ->
+        {_, cleaned} = extract_permissions_from_map(item)
+        cleaned
+      end)
+
+    {permissions, new_data}
+  end
+
+  defp extract_and_remove_permissions(data) when is_map(data) do
+    extract_permissions_from_map(data)
+  end
+
+  defp extract_and_remove_permissions(other), do: {%{}, other}
+
+  # Helper for extracting keys beginning with "can_" from a map
+  defp extract_permissions_from_map(map) when is_map(map) do
+    {perms, rest} =
+      Map.split_with(map, fn {k, _v} ->
+        String.starts_with?(to_string(k), "can_")
+      end)
+
+    {Map.new(perms), Map.new(rest)}
+  end
+
+  defp extract_permissions_from_map(other), do: {%{}, other}
+
+  # Formats runtime errors via Alva.Error into a normalized %{ok: false, error: ...} payload
+  defp handle_error(error) do
+    %{ok: false, error: Alva.Error.format(error)}
+  end
+
+  # Helper to construct a NotFound exception struct
+  defp not_found_error(resource, lookup_field, lookup_value) do
+    NotFound.exception(
+      resource: resource,
+      primary_key: %{lookup_field => lookup_value}
+    )
+  end
+
+  # Looks up a key in a map using string or atom representation
   defp get_indifferent(map, string_key, atom_key) do
     Map.get(map, string_key, Map.get(map, atom_key))
   end

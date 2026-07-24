@@ -329,6 +329,10 @@ defmodule Alva.DispatcherTest do
     assert result.data.tenant == "organization_1"
   end
 
+  def handle_telemetry(_event, measurements, metadata, test_pid) do
+    send(test_pid, {:telemetry_event, measurements, metadata})
+  end
+
   describe "telemetry and auth logging" do
     import ExUnit.CaptureLog
 
@@ -340,10 +344,8 @@ defmodule Alva.DispatcherTest do
       :telemetry.attach(
         handler_id,
         [:alva, :dispatch, :stop],
-        fn _event, measurements, metadata, _config ->
-          send(test_pid, {:telemetry_event, measurements, metadata})
-        end,
-        nil
+        &__MODULE__.handle_telemetry/4,
+        test_pid
       )
 
       # Dispatch action

@@ -110,5 +110,6 @@ defmodule Alva.SerializerTest do
   test "strip_metadata others" do
     assert Serializer.strip_metadata("string") == "string"
     assert Serializer.strip_metadata(123) == 123
+    assert Serializer.strip_metadata([1, 2, 3]) == [1, 2, 3]
   end
 end

@@ -18,10 +18,26 @@ defmodule Alva.StreamsTest do
     attributes do
       uuid_primary_key :id
       attribute :name, :string, public?: true
+      attribute :status, :atom, public?: true, default: :open
     end
 
     actions do
-      defaults [:read, :create, :update, :destroy]
+      defaults [:read, :destroy]
+
+      create :create do
+        primary? true
+        accept [:name, :status]
+      end
+
+      update :update do
+        primary? true
+        accept [:name, :status]
+      end
+
+      read :open_items do
+        primary? false
+        filter expr(status == :open)
+      end
     end
   end
 
@@ -61,33 +77,31 @@ defmodule Alva.StreamsTest do
     %{socket: socket}
   end
 
-  describe "configure_streams/4" do
-    test "configures stream and loads data", %{socket: socket} do
-      # Start without Phoenix.LiveViewTest because it might be tricky without a full LiveView.
-      # Actually Phoenix.LiveView.stream doesn't work well outside LiveView tests
-      # unless we mock it or just let it modify the socket.
+  describe "record_in_scope?/3" do
+    test "returns true when record is in scope and false when out of scope", %{socket: socket} do
+      open_rec =
+        Ash.create!(
+          Ash.Changeset.for_create(TestResource, :create, %{name: "Item 1", status: :open})
+        )
 
-      # Let's ensure Ash works
-      Ash.create!(Ash.Changeset.for_create(TestResource, :create, %{}))
+      closed_rec =
+        Ash.create!(
+          Ash.Changeset.for_create(TestResource, :create, %{name: "Item 2", status: :closed})
+        )
 
-      config = %{
-        test_stream: [
-          resource: TestResource,
-          source: :read,
-          sync_on: [:create, :update, :destroy]
-        ]
+      stream_meta = %{
+        resource: TestResource,
+        source: :open_items,
+        scope: %{},
+        scope_args: %{},
+        sync_on: [:update]
       }
 
-      # We can't really call `Streams.configure_streams` easily without Phoenix blowing up
-      # on `Phoenix.LiveView.stream` which requires proper `live_temp` maps that Phoenix internalizes.
-      # Let's just wrap it in a catch to see if it sets up `alva` private assign before blowing up,
-      # or just assert on a pure function if possible.
+      # open_rec has status: :open -> in scope
+      assert Streams.record_in_scope?(socket, stream_meta, open_rec) == true
 
-      try do
-        Streams.configure_streams(socket, config, %{}, :alva)
-      catch
-        :error, _ -> :ok
-      end
+      # closed_rec has status: :closed -> out of scope
+      assert Streams.record_in_scope?(socket, stream_meta, closed_rec) == false
     end
   end
 end

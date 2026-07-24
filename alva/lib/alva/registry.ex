@@ -325,21 +325,53 @@ defmodule Alva.Registry do
   # ==========================================
 
   @doc """
-  Returns the event map persisted on the given domain module at compile time.
+  Returns the event map for the given domain module by inspecting its resources.
   """
   @doc since: "0.1.0"
   @spec alva_event_map(atom()) :: %{String.t() => {atom(), Alva.Resource.Event.t()}}
   def alva_event_map(domain) do
-    SparkAdapter.get_persisted(domain, :alva_event_map, %{})
+    if Code.ensure_loaded?(domain) and function_exported?(Ash.Domain.Info, :resources, 1) do
+      domain
+      |> Ash.Domain.Info.resources()
+      |> Enum.map(fn
+        res when is_atom(res) -> res
+        %{resource: res} -> res
+        _ -> nil
+      end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.reduce(%{}, fn resource, acc ->
+        Enum.reduce(events(resource), acc, fn event, map ->
+          Map.put(map, event.name, {resource, event})
+        end)
+      end)
+    else
+      SparkAdapter.get_persisted(domain, :alva_event_map, %{})
+    end
   end
 
   @doc """
-  Returns the signal map persisted on the given domain module at compile time.
+  Returns the signal map for the given domain module by inspecting its resources.
   """
   @doc since: "0.1.0"
   @spec alva_signal_map(atom()) :: %{String.t() => {atom(), Alva.Resource.Signal.t()}}
   def alva_signal_map(domain) do
-    SparkAdapter.get_persisted(domain, :alva_signal_map, %{})
+    if Code.ensure_loaded?(domain) and function_exported?(Ash.Domain.Info, :resources, 1) do
+      domain
+      |> Ash.Domain.Info.resources()
+      |> Enum.map(fn
+        res when is_atom(res) -> res
+        %{resource: res} -> res
+        _ -> nil
+      end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.reduce(%{}, fn resource, acc ->
+        Enum.reduce(signals(resource), acc, fn signal, map ->
+          Map.put(map, signal.name, {resource, signal})
+        end)
+      end)
+    else
+      SparkAdapter.get_persisted(domain, :alva_signal_map, %{})
+    end
   end
 
   @doc """
@@ -377,6 +409,7 @@ defmodule Alva.Registry do
   @doc since: "0.1.0"
   @spec events(atom()) :: [Alva.Resource.Event.t()]
   def events(resource) do
+    Code.ensure_loaded?(resource)
     get_live_vue_entities(resource, Alva.Resource.Event)
   end
 
@@ -386,6 +419,7 @@ defmodule Alva.Registry do
   @doc since: "0.1.0"
   @spec signals(atom()) :: [Alva.Resource.Signal.t()]
   def signals(resource) do
+    Code.ensure_loaded?(resource)
     get_live_vue_entities(resource, Alva.Resource.Signal)
   end
 

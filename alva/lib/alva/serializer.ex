@@ -53,6 +53,7 @@ defmodule Alva.Serializer do
     {strip_metadata(result), %{}}
   end
 
+  # Extracts whitelisted keys from record.__metadata__ map based on expose_metadata option list
   defp extract_exposed_metadata(_record, []), do: %{}
 
   defp extract_exposed_metadata(%{__metadata__: metadata}, keys) when is_map(metadata) do
@@ -64,7 +65,8 @@ defmodule Alva.Serializer do
   defp extract_exposed_metadata(_, _), do: %{}
 
   @doc """
-  Recursively strips Ash metadata and converts types to JSON-safe values.
+  Recursively strips Ash metadata, removes forbidden or unloaded fields,
+  and converts Elixir types (Date, Time, DateTime, atoms, tuples) to JSON-safe representations.
   """
   @doc since: "0.1.0"
   @spec strip_metadata(term()) :: term()
@@ -73,6 +75,7 @@ defmodule Alva.Serializer do
   def strip_metadata(%Date{} = date), do: Date.to_iso8601(date)
   def strip_metadata(%Time{} = time), do: Time.to_iso8601(time)
 
+  # Handles serialization of an Ash Resource struct by iterating through its public fields
   def strip_metadata(%module{} = record) do
     if Info.resource?(module) do
       strip_metadata_with_fields(record, public_fields(module))
@@ -84,6 +87,7 @@ defmodule Alva.Serializer do
     end
   end
 
+  # Handles serialization of a list of Ash Resource structs
   def strip_metadata([first | _] = list) when is_map(first) do
     case Map.get(first, :__struct__) do
       module when not is_nil(module) ->
@@ -99,28 +103,34 @@ defmodule Alva.Serializer do
     end
   end
 
+  # Handles serialization of generic lists
   def strip_metadata(list) when is_list(list) do
     Enum.map(list, &strip_metadata/1)
   end
 
+  # Handles serialization of generic maps, dropping internal __meta__ and __metadata__ keys
   def strip_metadata(%{} = map) when not is_struct(map) do
     map
     |> drop_metadata()
     |> Map.new(fn {k, v} -> {k, strip_metadata(v)} end)
   end
 
+  # Converts Elixir atoms (excluding nil, true, false) to string representations for JSON
   def strip_metadata(atom) when is_atom(atom) and atom not in [nil, true, false] do
     Atom.to_string(atom)
   end
 
+  # Converts Elixir tuples to lists for JSON compatibility
   def strip_metadata(tuple) when is_tuple(tuple) do
     tuple
     |> Tuple.to_list()
     |> strip_metadata()
   end
 
+  # Fallback for primitive types (numbers, strings, booleans, nil)
   def strip_metadata(other), do: other
 
+  # Filters resource fields, skipping %Ash.NotLoaded{} and %Ash.ForbiddenField{} structs
   defp strip_metadata_with_fields(record, fields) do
     fields
     |> Map.new(fn field ->
@@ -133,10 +143,12 @@ defmodule Alva.Serializer do
     |> Map.reject(fn {_k, v} -> v == :skip end)
   end
 
+  # Removes internal Elixir/Ecto metadata keys (__meta__, __metadata__) from map payloads
   defp drop_metadata(map) do
     Map.drop(map, [:__meta__, :__metadata__])
   end
 
+  # Retrieves public field atoms for a given Ash Resource module via Alva.Registry
   defp public_fields(resource) do
     Alva.Registry.public_fields(resource)
   end
