@@ -8,6 +8,8 @@ defmodule Alva.MixProject do
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: Mix.env() != :test,
+      description: description(),
+      package: package(),
       name: "Alva",
       source_url: "https://github.com/hopewithoute/alva",
       homepage_url: "https://hex.pm/packages/alva",
@@ -86,6 +88,19 @@ defmodule Alva.MixProject do
       {:picosat_elixir, "~> 0.2", only: [:dev, :test]},
       {:excoveralls, "~> 0.18", only: :test},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false}
+    ]
+  end
+
+  defp description do
+    "Ash Live Vue Adapter (Alva) connects Ash Framework resources seamlessly to Phoenix LiveView and Vue 3 with end-to-end TypeScript code generation."
+  end
+
+  defp package do
+    [
+      name: "alva",
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/hopewithoute/alva"},
+      files: ~w(lib .formatter.exs mix.exs README.md LICENSE* guides)
     ]
   end
 end
