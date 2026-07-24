@@ -63,7 +63,7 @@ defmodule Mix.Tasks.Alva.CodegenTest do
       event(:test_upload, name: "test.upload", action: :upload)
 
       signal :test_signal do
-        name("test_signal")
+        name("test.test_signal")
         on(:create)
         authorize_with(:read)
       end
@@ -142,7 +142,7 @@ defmodule Mix.Tasks.Alva.CodegenTest do
     assert String.contains?(index_content, "export type { AlvaEvents } from \"./events\"")
 
     signals_content = File.read!(signals_path)
-    assert String.contains?(signals_content, ~s("test_signal"))
+    assert String.contains?(signals_content, ~s("test.test_signal"))
     assert String.contains?(signals_content, ~s(payload: Types.Resource;))
 
     use_alva_form_content = File.read!(use_alva_form_path)
