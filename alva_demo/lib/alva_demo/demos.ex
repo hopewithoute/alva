@@ -1,6 +1,5 @@
 defmodule AlvaDemo.Demos do
-  use Ash.Domain,
-    extensions: [Alva.Domain]
+  use Ash.Domain
 
   resources do
     resource(AlvaDemo.Demos.ChatMessage)
