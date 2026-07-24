@@ -39,7 +39,6 @@ defmodule Alva.LiveViewTest do
       event(:update_event, name: "update_event", action: :update)
       event(:destroy_event, name: "destroy_event", action: :destroy)
       event(:upload_command, name: "upload_command", action: :upload_action)
-      event(:unknown_action_command, name: "unknown_action_command", action: :unknown_action)
 
       signal :test_signal do
         name "test_signal"
