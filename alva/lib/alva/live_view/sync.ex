@@ -207,8 +207,8 @@ defmodule Alva.LiveView.Sync do
     case action.type do
       :read -> Ash.Query.for_read(resource, action.name, payload)
       :create -> Changeset.for_create(resource, action.name, payload)
-      :update -> Changeset.for_update(resource, action.name, payload)
-      :destroy -> Changeset.for_destroy(resource, action.name, payload)
+      :update -> Changeset.for_update(struct(resource), action.name, payload)
+      :destroy -> Changeset.for_destroy(struct(resource), action.name, payload)
       :action -> Ash.ActionInput.for_action(resource, action.name, payload)
     end
   end

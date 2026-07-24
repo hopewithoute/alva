@@ -101,7 +101,11 @@ defmodule Alva.LiveView.Streams do
     end)
   end
 
-  @spec apply_stream_operations(Phoenix.LiveView.Socket.t(), map(), struct() | map()) ::
+  @spec apply_stream_operations(
+          Phoenix.LiveView.Socket.t(),
+          list() | map(),
+          struct() | map()
+        ) ::
           Phoenix.LiveView.Socket.t()
   def apply_stream_operations(socket, streams, data) do
     Enum.reduce(streams, socket, fn {name, operation}, acc_socket ->
