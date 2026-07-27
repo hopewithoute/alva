@@ -454,7 +454,12 @@ defmodule Alva.Dispatcher do
   # Builds response metadata including pagination statistics for paginated queries
   defp build_response_meta(permissions, exposed_meta, page) do
     pagination =
-      %{limit: page.limit, offset: page.offset, count: page.count, has_more: page.more?}
+      %{
+        limit: Map.get(page, :limit),
+        offset: Map.get(page, :offset),
+        count: Map.get(page, :count),
+        has_more: Map.get(page, :more?)
+      }
       |> Enum.reject(fn {_, v} -> is_nil(v) end)
       |> Enum.into(%{})
 

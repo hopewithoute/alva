@@ -1054,4 +1054,12 @@ defmodule Alva.DispatcherTest do
       assert result.data.name == "__"
     end
   end
+
+  test "dispatch supports pagination struct in response meta" do
+    result =
+      Alva.Dispatcher.dispatch("test.list", %{"page" => %{"limit" => 5}}, domains: [TestDomain])
+
+    assert result.ok == true
+    assert result.meta.pagination.limit == 5
+  end
 end
