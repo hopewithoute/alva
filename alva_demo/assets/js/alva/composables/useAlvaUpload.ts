@@ -150,13 +150,12 @@ export function useAlvaUpload(name: string, options?: AlvaUploadOptions) {
 }
 
 function isUploadConfig(value: unknown): value is UploadConfigShape {
-    if (!value || typeof value !== "object") return false;
-    const obj = value as Record<string, unknown>;
-    return (
-        typeof obj.ref === "string" &&
-        typeof obj.name === "string" &&
-        Array.isArray(obj.entries) &&
-        Array.isArray(obj.errors)
+    return Boolean(
+        value && typeof value === "object" &&
+        typeof (value as UploadConfigShape).ref === "string" &&
+        typeof (value as UploadConfigShape).name === "string" &&
+        Array.isArray((value as UploadConfigShape).entries) &&
+        Array.isArray((value as UploadConfigShape).errors)
     );
 }
 

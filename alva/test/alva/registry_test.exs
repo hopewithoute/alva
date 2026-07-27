@@ -260,4 +260,9 @@ defmodule Alva.RegistryTest do
       Registry.registry(:alva)
     end
   end
+
+  test "alva_event_map and alva_signal_map correctly inspect domain resources" do
+    assert Map.has_key?(Registry.alva_event_map(TestDomain), "my_event")
+    assert Map.has_key?(Registry.alva_signal_map(TestDomain), "dup_signal")
+  end
 end

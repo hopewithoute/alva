@@ -330,7 +330,8 @@ defmodule Alva.Registry do
   @doc since: "0.1.0"
   @spec alva_event_map(atom()) :: %{String.t() => {atom(), Alva.Resource.Event.t()}}
   def alva_event_map(domain) do
-    if Code.ensure_loaded?(domain) and function_exported?(Ash.Domain.Info, :resources, 1) do
+    if Code.ensure_loaded?(domain) and Code.ensure_loaded?(Ash.Domain.Info) and
+         function_exported?(Ash.Domain.Info, :resources, 1) do
       domain
       |> Ash.Domain.Info.resources()
       |> Enum.map(fn
@@ -355,7 +356,8 @@ defmodule Alva.Registry do
   @doc since: "0.1.0"
   @spec alva_signal_map(atom()) :: %{String.t() => {atom(), Alva.Resource.Signal.t()}}
   def alva_signal_map(domain) do
-    if Code.ensure_loaded?(domain) and function_exported?(Ash.Domain.Info, :resources, 1) do
+    if Code.ensure_loaded?(domain) and Code.ensure_loaded?(Ash.Domain.Info) and
+         function_exported?(Ash.Domain.Info, :resources, 1) do
       domain
       |> Ash.Domain.Info.resources()
       |> Enum.map(fn

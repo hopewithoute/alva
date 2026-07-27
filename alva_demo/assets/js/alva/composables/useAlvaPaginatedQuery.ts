@@ -25,7 +25,7 @@ export function useAlvaPaginatedQuery<K extends keyof AlvaEvents>(
         } as AlvaEvents[K]["input"];
     };
 
-    const query = useAlvaQuery(eventName, queryInput, options);
+    const query = useAlvaQuery(eventName, queryInput as any, options);
 
     watch(query.data, (newData) => {
         if (Array.isArray(newData)) {
