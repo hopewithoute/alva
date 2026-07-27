@@ -91,7 +91,7 @@ defmodule Mix.Tasks.Alva.Check do
       if File.exists?(target_types_file) and File.read!(target_types_file) == types_content do
         Mix.shell().info("✔ TypeScript SDK types.ts is in sync.")
       else
-        Mix.shell().warn(
+        Mix.shell().error(
           "⚠ TypeScript SDK is out of sync with backend Ash definitions. Run `mix alva.codegen`."
         )
       end
