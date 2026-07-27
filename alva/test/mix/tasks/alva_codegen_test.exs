@@ -139,6 +139,7 @@ defmodule Mix.Tasks.Alva.CodegenTest do
              "export { useAlva } from \"./composables/useAlva\""
            )
 
+    refute String.contains?(index_content, "./testing")
     assert String.contains?(index_content, "export type { AlvaEvents } from \"./events\"")
 
     signals_content = File.read!(signals_path)

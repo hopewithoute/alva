@@ -844,7 +844,6 @@ defmodule Mix.Tasks.Alva.Codegen do
     export { useAlva } from "./composables/useAlva";
     export { useAlvaAssigns } from "./composables/useAlvaAssigns";
     export { useAlvaPaginatedQuery } from "./composables/useAlvaPaginatedQuery";
-    export { createMockAlvaClient } from "./testing";
     export type { AlvaConfig, AlvaError } from "./composables/useAlva";
     export type { AlvaFormOptions } from "./composables/useAlvaForm";
     export type { AlvaQueryOptions, AlvaQueryReturn } from "./composables/useAlvaQuery";
